@@ -4,6 +4,7 @@
 
 - **Vercel** (HTTPS automático), projeto estático `vite build`.
 - Conta CLI autenticada como `henrique1601` (team `henrique1601s-projects`).
+- **URL de produção:** https://fotos-hidrometros.vercel.app (deploy 2026-07-31).
 
 ## Como fazer
 

@@ -4,6 +4,7 @@
 
 ### Feito
 
+- **Deploy Vercel concluído** — https://fotos-hidrometros.vercel.app (project `fotos-hidrometros`, target production, status Ready, HTTP 200).
 - **Spec aprovada** em `docs/superpowers/specs/2026-07-31-foto-hidrometros-design.md` (ajuste: códigos de ap sem zero à esquerda).
 - **Banco:** schema Dexie `fotos-hidrometros` v1 (tabelas `campaigns` e `records`), índice único `[campaignId + towerId + aptCode]`.
 - **CRUD:** `records.ts` com `upsertRecord` que preserva o índice ao refotografar.
@@ -29,8 +30,7 @@
 ### Pendências
 
 - [ ] Confirmar com o cliente se a Torre E tem o ap `236`.
-- [ ] Testar câmera real em celular (Chrome Android, HTTPS).
-- [ ] Deploy Vercel (skill `deploy-to-vercel`).
+- [ ] Testar câmera real em celular (Chrome Android, HTTPS) em https://fotos-hidrometros.vercel.app.
 - [ ] Teste offline completo (PWA).
 
 Ver também: [[00 - Visão Geral]] · [[06 - Deploy]]
