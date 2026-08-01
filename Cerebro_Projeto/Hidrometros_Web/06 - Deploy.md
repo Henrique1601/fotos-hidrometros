@@ -15,6 +15,12 @@ Sempre usar a skill `deploy-to-vercel` (instruções completas lá). Resumo:
 3. Projeto já linked → `vercel deploy -y --no-wait` (ou git push se houver remote).
 4. Projeto não linked → `vercel link` (ou `--repo` se houver remote) e depois deploy.
 
+## Deploy automático (git push)
+
+- Repositório GitHub **privado**: `Henrique1601/fotos-hidrometros`.
+- Conectado à Vercel (project `fotos-hidrometros`) via `vercel git connect`.
+- **Push na `main` dispara deploy automático de produção.**
+
 ## Comandos do projeto
 
 - `npm run dev` — dev server local.

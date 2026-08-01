@@ -11,26 +11,14 @@
             "id": "e771cbb2a7538ed8",
             "type": "leaf",
             "state": {
-              "type": "empty",
-              "state": {},
+              "type": "markdown",
+              "state": {
+                "file": "07 - Changelog.md",
+                "mode": "source",
+                "source": false
+              },
               "icon": "lucide-file",
-              "title": "Nova aba"
-            }
-          }
-        ]
-      },
-      {
-        "id": "ea8a9c9281804a39",
-        "type": "tabs",
-        "children": [
-          {
-            "id": "8c2d942ed2d89745",
-            "type": "leaf",
-            "state": {
-              "type": "graph",
-              "state": {},
-              "icon": "lucide-git-fork",
-              "title": "Visualização em gráfico"
+              "title": "07 - Changelog"
             }
           }
         ]
@@ -106,6 +94,7 @@
             "state": {
               "type": "backlink",
               "state": {
+                "file": "07 - Changelog.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -115,7 +104,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Links inversos"
+              "title": "Links inversos para 07 - Changelog"
             }
           },
           {
@@ -124,11 +113,12 @@
             "state": {
               "type": "outgoing-link",
               "state": {
+                "file": "07 - Changelog.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "Links de saída"
+              "title": "Links de saída para 07 - Changelog"
             }
           },
           {
@@ -166,12 +156,13 @@
             "state": {
               "type": "outline",
               "state": {
+                "file": "07 - Changelog.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Sumário"
+              "title": "Sumário de 07 - Changelog"
             }
           }
         ]
@@ -194,9 +185,9 @@
   },
   "active": "e771cbb2a7538ed8",
   "lastOpenFiles": [
+    "06 - Deploy.md",
     "Bem-vindo.md",
     "07 - Changelog.md",
-    "06 - Deploy.md",
     "05 - Design.md",
     "04 - Coleta de Fotos.md",
     "03 - Banco de Dados Local.md",

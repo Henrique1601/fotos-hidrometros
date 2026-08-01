@@ -18,6 +18,7 @@ PWA mobile-first (React 18 + Vite 5 + TypeScript) para fotografia de hidrômetro
 - `npm run preview` — serve build (flag `-- --host` p/ testar no celular da rede)
 - `npm run icons` — regenera ícones PWA (scripts/generate-icons.ps1)
 - Deploy: use a skill `deploy-to-vercel` (CLI já autenticado como `henrique1601`)
+- Git: repositório `Henrique1601/fotos-hidrometros` (privado), conectado à Vercel → push na `main` dispara deploy automático de produção
 
 ## Stack
 
