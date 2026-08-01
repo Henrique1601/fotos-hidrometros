@@ -665,10 +665,13 @@ select.text-input {
 }
 
 .cam-top {
+  position: relative;
+  z-index: 3;
   display: flex;
   align-items: center;
   gap: 12px;
   padding: calc(env(safe-area-inset-top, 0px) + 14px) 16px 10px;
+  background: linear-gradient(180deg, rgba(2, 8, 13, 0.78), rgba(2, 8, 13, 0) 100%);
 }
 
 .cam-title {
@@ -699,25 +702,25 @@ select.text-input {
 }
 
 .cam-video {
-  flex: 1;
+  position: absolute;
+  inset: 0;
   width: 100%;
+  height: 100%;
   object-fit: cover;
-  min-height: 0;
 }
 
 .cam-preview-wrap {
   flex: 1;
-  display: grid;
-  place-items: center;
   min-height: 0;
-  padding: 0 16px;
+  position: relative;
+  overflow: hidden;
 }
 
 .cam-preview {
-  max-width: 100%;
-  max-height: 100%;
-  border-radius: 14px;
-  border: 1px solid var(--border);
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .reticle {
@@ -726,6 +729,7 @@ select.text-input {
   bottom: 0;
   left: 0;
   right: 0;
+  z-index: 2;
   display: grid;
   place-items: center;
   pointer-events: none;
@@ -781,6 +785,7 @@ select.text-input {
 
 .capture-btn {
   position: absolute;
+  z-index: 4;
   bottom: calc(env(safe-area-inset-bottom, 0px) + 40px);
   left: 50%;
   transform: translateX(-50%);
@@ -801,14 +806,20 @@ select.text-input {
 }
 
 .cam-actions {
-  position: absolute;
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 34px);
-  left: 0;
-  right: 0;
+  position: relative;
+  z-index: 3;
   display: flex;
   justify-content: center;
-  gap: 14px;
-  padding: 0 20px;
+  gap: 12px;
+  padding: 12px 16px calc(env(safe-area-inset-bottom, 0px) + 14px);
+  background: rgba(2, 8, 13, 0.92);
+  border-top: 1px solid var(--border);
+}
+
+.cam-actions .btn-ghost,
+.cam-actions .btn-primary {
+  flex: 1;
+  justify-content: center;
 }
 
 .cam-error {

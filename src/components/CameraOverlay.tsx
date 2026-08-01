@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Camera, RotateCcw, Upload, X } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Camera, RotateCcw, Undo2, Upload, X } from 'lucide-react';
 import { captureFrame, startCamera, stopCamera } from '../lib/camera';
 import { upsertRecord } from '../db/records';
 import { pad2 } from '../lib/utils';
@@ -9,13 +10,14 @@ interface Props {
   campaignId: number;
   towerId: string;
   apt: UnitRef;
+  onPrev?: () => void;
   onSaved: () => void;
   onClose: () => void;
 }
 
 type Phase = 'opening' | 'live' | 'preview' | 'error';
 
-export default function CameraOverlay({ campaignId, towerId, apt, onSaved, onClose }: Props) {
+export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSaved, onClose }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -111,7 +113,7 @@ export default function CameraOverlay({ campaignId, towerId, apt, onSaved, onClo
     [],
   );
 
-  return (
+  return createPortal(
     <div className={`camera-overlay${flash ? ' cam-flash' : ''}`}>
       <div className="cam-top">
         <button className="icon-btn glass" onClick={onClose} aria-label="Fechar câmera">
@@ -121,7 +123,13 @@ export default function CameraOverlay({ campaignId, towerId, apt, onSaved, onClo
           <span className="cam-apt mono">{apt.aptCode}</span>
           <span className="cam-tower">Torre {towerId} · Andar {pad2(apt.floor)}</span>
         </div>
-        <span className="cam-spacer" />
+        {onPrev ? (
+          <button className="icon-btn glass" onClick={onPrev} aria-label="Voltar para o apt anterior">
+            <Undo2 size={20} />
+          </button>
+        ) : (
+          <span className="cam-spacer" />
+        )}
       </div>
 
       {phase === 'live' || phase === 'opening' ? (
@@ -191,6 +199,7 @@ export default function CameraOverlay({ campaignId, towerId, apt, onSaved, onClo
           if (f) void handleFile(f);
         }}
       />
-    </div>
+    </div>,
+    document.body,
   );
 }

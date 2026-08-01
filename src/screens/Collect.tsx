@@ -63,6 +63,7 @@ export default function Collect({ campaignId, towerId: initialTower, go, toast }
       if (!floorCfg) return [];
       return SIDE_ORDER[side]
         .filter((u) => floorCfg.units.includes(u))
+        .reverse()
         .map((u) => ({ floor, unit: u, aptCode: aptCode(floor, u), side }));
     },
     [tower, floor],
@@ -83,11 +84,10 @@ export default function Collect({ campaignId, towerId: initialTower, go, toast }
   );
 
   const handleSaved = useCallback(async () => {
-    const fresh = await listTowerRecords(campaignId, towerId);
-    const has = new Set(fresh.filter((r) => r.photo).map((r) => r.aptCode));
     const side = camApt?.side ?? 'left';
     const seq = columnSequence(tower, side);
-    const next = seq.find((u) => !has.has(u.aptCode));
+    const idx = camApt ? seq.findIndex((u) => u.aptCode === camApt.aptCode) : -1;
+    const next = seq[idx + 1];
     if (next) {
       setFloor(next.floor);
       setCamApt(next);
@@ -95,7 +95,25 @@ export default function Collect({ campaignId, towerId: initialTower, go, toast }
       setCamApt(null);
       toast(`Torre ${towerId} completa!`);
     }
-  }, [campaignId, towerId, tower, camApt, toast]);
+  }, [camApt, tower, towerId, toast]);
+
+  const handlePrev = useCallback(() => {
+    if (!camApt) return;
+    const seq = columnSequence(tower, camApt.side);
+    const idx = seq.findIndex((u) => u.aptCode === camApt.aptCode);
+    const prev = idx > 0 ? seq[idx - 1] : null;
+    if (prev) {
+      setFloor(prev.floor);
+      setCamApt(prev);
+    }
+  }, [camApt, tower]);
+
+  const camPrev = useMemo(() => {
+    if (!camApt) return null;
+    const seq = columnSequence(tower, camApt.side);
+    const idx = seq.findIndex((u) => u.aptCode === camApt.aptCode);
+    return idx > 0 ? seq[idx - 1] : null;
+  }, [camApt, tower]);
 
   const floorComplete = useMemo(() => {
     const floorCfg = tower.floors.find((f) => f.floor === floor);
@@ -224,6 +242,7 @@ export default function Collect({ campaignId, towerId: initialTower, go, toast }
           campaignId={campaignId}
           towerId={towerId}
           apt={camApt}
+          onPrev={camPrev ? handlePrev : undefined}
           onSaved={() => void handleSaved()}
           onClose={() => setCamApt(null)}
         />

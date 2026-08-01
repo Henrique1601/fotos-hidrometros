@@ -69,11 +69,11 @@ export function towerTotalUnits(tower: TowerConfig): number {
 }
 
 export function columnSequence(tower: TowerConfig, side: Side): UnitRef[] {
-  const order = SIDE_ORDER[side];
+  const order = [...SIDE_ORDER[side]].reverse();
   const out: UnitRef[] = [];
   for (const f of tower.floors) {
-    for (const u of f.units) {
-      if (order.includes(u)) {
+    for (const u of order) {
+      if (f.units.includes(u)) {
         out.push({ floor: f.floor, unit: u, aptCode: aptCode(f.floor, u), side });
       }
     }
