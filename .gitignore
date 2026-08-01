@@ -1,0 +1,9 @@
+node_modules/
+dist/
+*.local
+.vercel/
+.vite/
+.playwright-mcp/
+*.tsbuildinfo
+.DS_Store
+Thumbs.db
