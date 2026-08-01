@@ -18,7 +18,7 @@ PWA mobile-first (React 18 + Vite 5 + TypeScript) para fotografia de hidrômetro
 - `npm run preview` — serve build (flag `-- --host` p/ testar no celular da rede)
 - `npm run icons` — regenera ícones PWA (scripts/generate-icons.ps1)
 - Deploy: use a skill `deploy-to-vercel` (CLI já autenticado como `henrique1601`)
-- Git: repositório `Henrique1601/fotos-hidrometros` (privado), conectado à Vercel → push na `main` dispara deploy automático de produção
+- Git: repositório `Henrique1601/fotos-hidrometros` (público), conectado à Vercel → push na `main` dispara deploy automático de produção
 
 ## Stack
 
@@ -41,7 +41,8 @@ Dexie + dexie-react-hooks (IndexedDB local), GSAP + @gsap/react (animações), l
 - Andar 03: torres A/B/D/F = unidades 1–4; torres C/E/G/H = unidades 1–5. Andares 04–25 = unidades 1–8.
 - Lado: unidade 3–6 → esquerda; 1/2/7/8 → direita.
 - Pendência aberta: Torre E pode não ter o apt `236` — confirmar com o cliente.
-- Fluxo: criar campanha mensal → fotografar por coluna (Esq/Dir) com auto-avanço → preencher índices (Enter avança e salva) → exportar.
+- Fluxo: criar campanha mensal → fotografar **por andar** (03→25; lado esquerdo descendente, depois direito descendente — ex.: `46→45→44→43→48→47→42→41`) com auto-avanço → preencher índices (foto em destaque, input abaixo, Enter salva e avança) → exportar.
+- Ordem de captura e navegação vêm de `floorSequence(tower)` em `src/lib/towers.ts` (usada em Collect e Indices).
 
 ## Exports
 
@@ -57,6 +58,18 @@ Paleta "visor de medidor": fundo oceano escuro `#071822`, ciano `#5eead4`, glass
 ## Cérebro do projeto (Obsidian)
 
 Vault Obsidian em `Cerebro_Projeto/Hidrometros_Web/` (raiz do projeto). Manter as notas numeradas `NN - Nome.md` atualizadas (Visão Geral, Arquitetura, Estrutura, Banco, Deploy, Design, Changelog...). Sempre que este AGENTS.md mudar de forma relevante, refletir no cérebro.
+
+## Skills disponíveis
+
+Skills relevantes para este projeto (carregadas de `C:\Users\henri\.agents\skills` e MCPs). Carregue a skill **antes** de executar o trabalho guiado por ela:
+
+- **deploy-to-vercel** — deploy na Vercel (CLI já autenticado como `henrique1601`).
+- **webapp-testing / playwright** — testes de UI locais (interação, screenshots, console logs).
+- **context7** (MCP) — documentação atual de libs/frameworks.
+- **gh_grep** (MCP) — exemplos de código reais no GitHub.
+- **pencil** (MCP) — edição/validação de designs `.pen`.
+- **browser-qa / canary-watch** — verificação pós-deploy do site público.
+- **lighthouse** — auditoria de performance/a11y/SEO do PWA.
 
 ## Convenções de código
 

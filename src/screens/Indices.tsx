@@ -1,12 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import gsap from 'gsap';
-import { useGSAP } from '@gsap/react';
-import { ArrowLeft, Check } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, ImageOff } from 'lucide-react';
 import { db } from '../db/db';
 import { listTowerRecords, upsertRecord } from '../db/records';
-import { towerById, UnitRef } from '../lib/towers';
-import { campaignLabel, formatIndex, parseIndex } from '../lib/utils';
+import { floorSequence, towerById, UnitRef } from '../lib/towers';
+import { campaignLabel, formatIndex, pad2, parseIndex, sideLabel } from '../lib/utils';
 import GlassCard from '../components/GlassCard';
 import { usePhotoUrl } from '../hooks/usePhotoUrl';
 import { Screen } from '../nav';
@@ -18,53 +16,67 @@ interface Props {
 
 export default function Indices({ campaignId, go }: Props) {
   const [towerId, setTowerId] = useState('A');
+  const [pos, setPos] = useState(0);
+  const [value, setValue] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
   const campaign = useLiveQuery(() => db.campaigns.get(campaignId), [campaignId]);
   const tower = useMemo(() => towerById(towerId), [towerId]);
   const records =
     useLiveQuery(() => listTowerRecords(campaignId, towerId), [campaignId, towerId]) ?? [];
 
-  const units = useMemo<UnitRef[]>(
-    () =>
-      tower.floors.flatMap((f) =>
-        f.units.map((u) => ({
-          floor: f.floor,
-          unit: u,
-          aptCode: `${f.floor * 10 + u}`,
-          side: (u >= 3 && u <= 6 ? 'left' : 'right') as 'left' | 'right',
-        })),
-      ),
-    [tower],
-  );
-
   const recordByApt = useMemo(() => new Map(records.map((r) => [r.aptCode, r])), [records]);
 
-  const [values, setValues] = useState<Record<string, string>>({});
-  useEffect(() => {
-    const next: Record<string, string> = {};
-    for (const r of records) {
-      if (r.index !== null && r.index !== undefined) next[r.aptCode] = formatIndex(r.index);
-    }
-    setValues(next);
-  }, [towerId, records]);
-
-  const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
-
-  const indexDone = useMemo(
-    () => units.filter((u) => recordByApt.get(u.aptCode)?.index !== null && recordByApt.get(u.aptCode)?.index !== undefined).length,
-    [units, recordByApt],
+  const photoUnits = useMemo(
+    () => floorSequence(tower).filter((u) => Boolean(recordByApt.get(u.aptCode)?.photo)),
+    [tower, recordByApt],
   );
 
+  const indexDone = useMemo(
+    () =>
+      photoUnits.filter((u) => {
+        const idx = recordByApt.get(u.aptCode)?.index;
+        return idx !== null && idx !== undefined;
+      }).length,
+    [photoUnits, recordByApt],
+  );
+
+  const apt = photoUnits[pos];
+
+  useEffect(() => {
+    const firstMissing = photoUnits.findIndex((u) => {
+      const idx = recordByApt.get(u.aptCode)?.index;
+      return idx === null || idx === undefined;
+    });
+    setPos(firstMissing >= 0 ? firstMissing : 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [towerId]);
+
+  useEffect(() => {
+    if (!apt) {
+      setValue('');
+      return;
+    }
+    const idx = recordByApt.get(apt.aptCode)?.index;
+    setValue(idx !== null && idx !== undefined ? formatIndex(idx) : '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apt?.aptCode, records]);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, [apt?.aptCode]);
+
   const save = useCallback(
-    async (apt: UnitRef, raw: string) => {
+    async (u: UnitRef, raw: string) => {
       const parsed = parseIndex(raw);
       if (parsed === null) return false;
       await upsertRecord({
         campaignId,
         towerId,
-        floor: apt.floor,
-        unit: apt.unit,
-        side: apt.side,
-        aptCode: apt.aptCode,
+        floor: u.floor,
+        unit: u.unit,
+        side: u.side,
+        aptCode: u.aptCode,
         index: parsed,
         indexedAt: Date.now(),
       });
@@ -73,26 +85,22 @@ export default function Indices({ campaignId, go }: Props) {
     [campaignId, towerId],
   );
 
-  useGSAP(
-    () => {
-      gsap.fromTo('.gs-index-row', { opacity: 0, x: -12 }, { opacity: 1, x: 0, stagger: 0.02, duration: 0.3, ease: 'power2.out' });
-      const firstMissing = units.find(
-        (u) => recordByApt.get(u.aptCode)?.photo && (recordByApt.get(u.aptCode)?.index === null || recordByApt.get(u.aptCode)?.index === undefined),
-      );
-      const el = firstMissing ? inputRefs.current[firstMissing.aptCode] : null;
-      if (el) el.focus();
-    },
-    { dependencies: [towerId, records] },
-  );
+  const handleNext = useCallback(async () => {
+    if (!apt) return;
+    if (value.trim()) await save(apt, value);
+    if (pos < photoUnits.length - 1) setPos(pos + 1);
+  }, [apt, value, save, pos, photoUnits.length]);
 
-  const handleKeyDown = async (apt: UnitRef, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key !== 'Enter') return;
-    const ok = await save(apt, (e.target as HTMLInputElement).value);
+  const handleBack = useCallback(() => {
+    if (pos > 0) setPos(pos - 1);
+  }, [pos]);
+
+  const handleEnter = useCallback(async () => {
+    if (!apt) return;
+    const ok = await save(apt, value);
     if (!ok) return;
-    const idx = units.findIndex((u) => u.aptCode === apt.aptCode);
-    const next = units[idx + 1];
-    if (next) inputRefs.current[next.aptCode]?.focus();
-  };
+    if (pos < photoUnits.length - 1) setPos(pos + 1);
+  }, [apt, value, save, pos, photoUnits.length]);
 
   return (
     <div>
@@ -105,7 +113,7 @@ export default function Indices({ campaignId, go }: Props) {
             {campaign ? campaignLabel(campaign.name, campaign.month, campaign.year) : ''}
           </h2>
           <span className="header-sub">
-            Índices {indexDone}/{units.length}
+            Índices {indexDone}/{photoUnits.length}
           </span>
         </div>
         <span className="header-spacer" />
@@ -124,55 +132,77 @@ export default function Indices({ campaignId, go }: Props) {
         ))}
       </div>
 
-      <GlassCard className="indices-card">
-        <p className="hint">
-          Digite o índice da foto. Enter avança para o próximo.
-        </p>
-        <ul className="index-list">
-          {units.map((u) => {
-            const rec = recordByApt.get(u.aptCode);
-            const hasPhoto = Boolean(rec?.photo);
-            const filled = rec?.index !== null && rec?.index !== undefined;
-            return (
-              <li key={u.aptCode} className="index-row gs-index-row">
-                <div className="index-apt">
-                  <span className="index-thumb">
-                    <AptThumb photo={rec?.photo ?? undefined} />
-                  </span>
-                  <span className="index-code">
-                    {u.aptCode}
-                    <small className="index-side">
-                      {u.floor}º · {u.side === 'left' ? 'Esq' : 'Dir'}
-                    </small>
-                  </span>
-                </div>
-                <input
-                  ref={(el) => {
-                    inputRefs.current[u.aptCode] = el;
-                  }}
-                  className={`index-input${filled ? ' index-filled' : ''}`}
-                  inputMode="numeric"
-                  autoComplete="off"
-                  disabled={!hasPhoto}
-                  placeholder={hasPhoto ? '—' : 'sem foto'}
-                  value={values[u.aptCode] ?? ''}
-                  onChange={(e) => setValues((v) => ({ ...v, [u.aptCode]: e.target.value }))}
-                  onBlur={(e) => void save(u, e.target.value)}
-                  onKeyDown={(e) => void handleKeyDown(u, e)}
-                  aria-label={`Índice do apartamento ${u.aptCode}`}
-                />
-                {filled && <Check size={16} className="index-ok" />}
-              </li>
-            );
-          })}
-        </ul>
-      </GlassCard>
+      {apt ? (
+        <div className="iv">
+          <div className="iv-photo-wrap">
+            <AptPhoto blob={recordByApt.get(apt.aptCode)?.photo} aptCode={apt.aptCode} />
+            <span className="iv-badge mono">{apt.aptCode}</span>
+            <span className="iv-meta">
+              Andar {pad2(apt.floor)} · {sideLabel(apt.side)}
+            </span>
+            {recordByApt.get(apt.aptCode)?.index !== null &&
+              recordByApt.get(apt.aptCode)?.index !== undefined && (
+                <span className="iv-filled">
+                  <Check size={12} /> Salvo
+                </span>
+              )}
+          </div>
+
+          <div className="iv-panel">
+            <label className="field-label" htmlFor="iv-input">
+              Índice do hidrômetro
+            </label>
+            <input
+              id="iv-input"
+              ref={inputRef}
+              className="iv-input"
+              inputMode="decimal"
+              autoComplete="off"
+              placeholder="Digite o índice"
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') void handleEnter();
+              }}
+              onBlur={() => {
+                if (value.trim()) void save(apt, value);
+              }}
+              aria-label={`Índice do apartamento ${apt.aptCode}`}
+            />
+            <div className="iv-nav">
+              <button
+                className="btn-ghost"
+                onClick={handleBack}
+                disabled={pos === 0}
+                aria-label="Voltar para o índice anterior"
+              >
+                <ArrowLeft size={18} /> Voltar
+              </button>
+              <span className="iv-pos mono">
+                {pos + 1}/{photoUnits.length}
+              </span>
+              <button
+                className="btn-primary"
+                onClick={() => void handleNext()}
+                aria-label="Avançar para o próximo índice"
+              >
+                Avançar <ArrowRight size={18} />
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <GlassCard className="empty-state">
+          <ImageOff size={26} />
+          <p>Nenhuma foto nesta torre. Capture as fotos primeiro.</p>
+        </GlassCard>
+      )}
     </div>
   );
 }
 
-function AptThumb({ photo }: { photo?: Blob }) {
-  const url = usePhotoUrl(photo);
-  if (!url) return null;
-  return <img src={url} alt="" loading="lazy" />;
+function AptPhoto({ blob, aptCode }: { blob?: Blob | null; aptCode: string }) {
+  const url = usePhotoUrl(blob);
+  if (!url) return <div className="iv-photo-placeholder" aria-label={`Foto ${aptCode}`} />;
+  return <img src={url} alt={`Foto ${aptCode}`} className="iv-photo" />;
 }

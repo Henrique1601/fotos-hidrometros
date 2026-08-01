@@ -80,3 +80,17 @@ export function columnSequence(tower: TowerConfig, side: Side): UnitRef[] {
   }
   return out;
 }
+
+export function floorSequence(tower: TowerConfig): UnitRef[] {
+  const out: UnitRef[] = [];
+  for (const f of tower.floors) {
+    for (const side of ['left', 'right'] as Side[]) {
+      for (const u of [...SIDE_ORDER[side]].reverse()) {
+        if (f.units.includes(u)) {
+          out.push({ floor: f.floor, unit: u, aptCode: aptCode(f.floor, u), side });
+        }
+      }
+    }
+  }
+  return out;
+}

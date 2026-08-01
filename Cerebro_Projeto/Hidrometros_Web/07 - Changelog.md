@@ -28,6 +28,40 @@
 - Fluxo completo validado em Chrome headless (playwright-core): criar campanha → coleta 0/180 → upload de foto → contador 1/180 → preencher índice com Enter → exportar XLSX/ZIP/PDF com zero erros JS.
 - Overlay de câmera: após salvar `33`, abre `34` limpo (sem preview velho).
 
+## 2026-07-31 — Ordem decrescente, botão voltar e overlay full-screen
+
+### Feito
+
+- **Coleta em ordem decrescente** dentro de cada andar: `columnSequence` em `towers.ts` agora inverte a ordem de unidades (`108 → 107 → ... → 101`), com auto-avanço por índice e grid em `Collect.tsx` exibido também decrescente.
+- **Botão voltar** no topo do overlay da câmera (`Undo2`): retorna ao ap anterior da sequência; `handlePrev` + memo `camPrev` em `Collect.tsx`, prop `onPrev` em `CameraOverlay`.
+- **Overlay da câmera full-screen**: era quebrado pelo `transform` que o GSAP deixa no `ScreenSwitch` (ancestral vira containing block do `position: fixed`). Corrigido renderizando o `CameraOverlay` via **portal** para `document.body`. Agora preview cobre a tela (390×685 em viewport 390×844) e `.cam-actions` fica abaixo da foto com fundo semi-opaco.
+
+### Testes
+
+- `test_order.py` (Playwright): grid em ordem decrescente, auto-avanço `108 → 107`, voltar `107 → 108`, registro `108:photo` persistido, zero erros JS.
+- `check_layout.py`: preview full-bleed, botões abaixo da foto, sem sobreposição.
+- `npm run build` passa.
+
+### Pendências
+
+- [ ] Confirmar com o cliente se a Torre E tem o ap `236`.
+- [ ] Testar câmera real em celular (Chrome Android, HTTPS) em https://fotos-hidrometros.vercel.app.
+- [ ] Teste offline completo (PWA).
+
+## 2026-08-01 — Ordem por andar, Índices foto-primeiro, repo público e bug da tela preta
+
+### Feito
+
+- **Captura por andar inteiro** (item 1): `floorSequence(tower)` em `towers.ts` — andares ascendentes (03→25) e, dentro de cada andar, lado esquerdo descendente e depois direito descendente (`46→45→44→43→48→47→42→41`). `Collect.tsx` usa essa sequência no auto-avanço (`handleSaved`), no voltar (`handlePrev`/`camPrev`) e no grid.
+- **Índices redesenhado** (item 2): `Indices.tsx` reescrito como viewer foto-primeiro — foto em destaque (objeto `iv-photo`), badge com código do apt, meta andar/lado, selo "Salvo", input de índice abaixo com Enter salvando e avançando, botões Voltar/Avançar e contador posição; chips de torre A–H; auto-posiciona no primeiro índice faltante. Novos estilos `.iv-*`/`.chip-*` em `styles.css`.
+- **Repo público** (item 3): `Henrique1601/fotos-hidrometros` agora é **público** (`gh repo edit --visibility public`); criado `README.md` detalhado (fluxo, layout do condomínio, stack, exports, privacidade) e seção "Skills disponíveis" no `AGENTS.md`.
+- **Bug tela preta ao refazer** (item 4): `CameraOverlay` agora mantém o `<video>` sempre montado; `beginCamera` renomeado para `start` (lança erro em vez de `return` silencioso); `handleRetake` chama `start()` novamente e volta para `live`.
+
+### Testes
+
+- `test_flow.py` (Playwright, câmera fake via `canvas.captureStream`): grid do andar 04 em ordem, refazer volta ao vivo sem tela preta, auto-avanço `46→45→44→43→48→47→42→41→56` cruzando para o andar 05, chip ativo `05`, 8 registros com foto, Índices abrindo no primeiro faltante (46), layout foto > painel, Enter salva e avança, voltar/avançar, índice `1234` persistido e exibido formatado (`1.234`), zero erros JS.
+- `npm run build` passa (tsc + vite).
+
 ### Pendências
 
 - [ ] Confirmar com o cliente se a Torre E tem o ap `236`.

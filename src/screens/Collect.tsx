@@ -7,7 +7,7 @@ import { db } from '../db/db';
 import { listTowerRecords } from '../db/records';
 import {
   aptCode,
-  columnSequence,
+  floorSequence,
   SIDE_ORDER,
   Side,
   towerById,
@@ -84,8 +84,7 @@ export default function Collect({ campaignId, towerId: initialTower, go, toast }
   );
 
   const handleSaved = useCallback(async () => {
-    const side = camApt?.side ?? 'left';
-    const seq = columnSequence(tower, side);
+    const seq = floorSequence(tower);
     const idx = camApt ? seq.findIndex((u) => u.aptCode === camApt.aptCode) : -1;
     const next = seq[idx + 1];
     if (next) {
@@ -99,7 +98,7 @@ export default function Collect({ campaignId, towerId: initialTower, go, toast }
 
   const handlePrev = useCallback(() => {
     if (!camApt) return;
-    const seq = columnSequence(tower, camApt.side);
+    const seq = floorSequence(tower);
     const idx = seq.findIndex((u) => u.aptCode === camApt.aptCode);
     const prev = idx > 0 ? seq[idx - 1] : null;
     if (prev) {
@@ -110,7 +109,7 @@ export default function Collect({ campaignId, towerId: initialTower, go, toast }
 
   const camPrev = useMemo(() => {
     if (!camApt) return null;
-    const seq = columnSequence(tower, camApt.side);
+    const seq = floorSequence(tower);
     const idx = seq.findIndex((u) => u.aptCode === camApt.aptCode);
     return idx > 0 ? seq[idx - 1] : null;
   }, [camApt, tower]);

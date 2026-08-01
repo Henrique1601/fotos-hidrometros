@@ -34,12 +34,11 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
     if (videoRef.current) videoRef.current.srcObject = null;
   }, []);
 
-  const beginCamera = useCallback(async () => {
-    startedRef.current = true;
+  const start = useCallback(async () => {
     setPhase('opening');
     setErrorMsg('');
     try {
-      if (!videoRef.current) return;
+      if (!videoRef.current) throw new Error('Câmera não disponível');
       const stream = await startCamera(videoRef.current);
       streamRef.current = stream;
       setPhase('live');
@@ -54,12 +53,12 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
 
   useEffect(() => {
     if (startedRef.current) return;
-    void beginCamera();
+    void start();
     return () => {
       stop();
       startedRef.current = false;
     };
-  }, [beginCamera, stop]);
+  }, [start, stop]);
 
   const handleCapture = useCallback(async () => {
     if (!videoRef.current) return;
@@ -82,8 +81,8 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
     if (preview) URL.revokeObjectURL(preview);
     setPreview(null);
     setBlob(null);
-    void beginCamera();
-  }, [beginCamera, preview]);
+    void start();
+  }, [preview, start]);
 
   const handleSave = useCallback(async () => {
     if (!blob) return;
@@ -132,25 +131,24 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
         )}
       </div>
 
-      {phase === 'live' || phase === 'opening' ? (
-        <>
-          <video
-            ref={videoRef}
-            className="cam-video"
-            playsInline
-            muted
-            autoPlay
-            aria-label="Câmera"
-          />
-          <div className="reticle" aria-hidden="true">
-            <span className="rc rc-tl" />
-            <span className="rc rc-tr" />
-            <span className="rc rc-bl" />
-            <span className="rc rc-br" />
-            <span className="reticle-hint">Centralize o hidrômetro</span>
-          </div>
-        </>
-      ) : null}
+      <video
+        ref={videoRef}
+        className="cam-video"
+        playsInline
+        muted
+        autoPlay
+        aria-label="Câmera"
+      />
+
+      {phase === 'live' && (
+        <div className="reticle" aria-hidden="true">
+          <span className="rc rc-tl" />
+          <span className="rc rc-tr" />
+          <span className="rc rc-bl" />
+          <span className="rc rc-br" />
+          <span className="reticle-hint">Centralize o hidrômetro</span>
+        </div>
+      )}
 
       {phase === 'preview' && preview && (
         <div className="cam-preview-wrap">
