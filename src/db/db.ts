@@ -7,6 +7,7 @@ export interface Campaign {
   month: number;
   year: number;
   createdAt: number;
+  updatedAt: number;
   status: 'collecting' | 'indexing' | 'done';
 }
 
@@ -22,6 +23,7 @@ export interface MeterRecord {
   index?: number | null;
   capturedAt?: number | null;
   indexedAt?: number | null;
+  updatedAt: number;
 }
 
 class MedicaoDB extends Dexie {

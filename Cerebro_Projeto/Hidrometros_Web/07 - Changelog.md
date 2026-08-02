@@ -1,5 +1,28 @@
 # 07 - Changelog
 
+## 2026-08-02 — Rodada funcionalidades: backup, sync, torch/zoom, validação, export completo e CI
+
+### Feito
+
+- **Backup/Restore local** (`src/lib/backup.ts`): card "Seus dados" no Home com botões Backup (baixa JSON com campanhas + registros e fotos base64) e Restaurar (substitui tudo após `confirm()`).
+- **Sync Supabase** (`src/lib/sync.ts` + `supabase/schema.sql`): login e-mail/senha, `pushAll` (upsert em lotes de 50, fotos em base64), `pullAll` (merge LWW por `updatedAt`), `syncAll` = push → pull → push se houve pull; RLS por `auth.uid()`; sem `.env.local` o app degrada com aviso e segue 100% local.
+- **Câmera torch + zoom** (`camera.ts` + `CameraOverlay.tsx`): capabilities (`isTorchSupported`/`isZoomSupported`), `setTorch`/`setZoom`, botão de luz e controles de zoom (+/− e pinch).
+- **Validação de índices + rascunho automático** (`validate.ts` + `Indices.tsx`): `validateIndex` (decimal pt-BR, outliers por desvio padrão com avisos `IV_NEGATIVE`/`IV_HIGH`/`IV_LOW`), input com aviso de inválido e dica de índice provável; validação não bloqueia (salva no blur se válido).
+- **Export completo + Compartilhar** (`exportZip/exportPdf/exportExcel.ts` + `Export.tsx`): `build*` retornam `NamedBlob` reutilizados no botão Compartilhar (`navigator.share` com PDF+Excel, fallback download + toast); ZIP organizado `Torre {id}/Andar {pad}/ap_{aptCode}.jpg`; resumo por torre com fotos+índices vs. total e pills de status.
+- **CI** (`.github/workflows/ci.yml`): job `test` (vitest + build) e job `e2e` (Playwright chromium em servidor dev).
+- **Estrutura de testes:** Vitest (5 arquivos, 30 testes: towers, utils, camera, validate, backup) + Playwright (`e2e/app.spec.ts`, 3 testes: fluxo completo com auto-avanço e resumo no export, backup+restore, índice inválido).
+
+### Testes
+
+- `npm run test`: 30 testes verdes. `npm run build`: passa (tsc + vite). `npx playwright test`: 3 testes verdes (viewport 390×844).
+
+### Pendências
+
+- [ ] Confirmar com o cliente se a Torre E tem o ap `236`.
+- [ ] Testar câmera real (torch/zoom) em celular (Chrome Android, HTTPS) em https://fotos-hidrometros.vercel.app.
+- [ ] Teste offline completo (PWA).
+- [ ] Testar sync com credenciais reais (`.env.local` + schema aplicado no Supabase).
+
 ## 2026-07-31 — Implementação v1.0.0
 
 ### Feito

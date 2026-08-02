@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { ArrowLeft, ArrowRight, Check, ImageOff } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ArrowRight, Check, ImageOff } from 'lucide-react';
 import { db } from '../db/db';
 import { listTowerRecords, upsertRecord } from '../db/records';
 import { floorSequence, towerById, UnitRef } from '../lib/towers';
 import { campaignLabel, formatIndex, pad2, parseIndex, sideLabel } from '../lib/utils';
+import { IndexWarning, validateIndex } from '../lib/validate';
 import GlassCard from '../components/GlassCard';
 import { usePhotoUrl } from '../hooks/usePhotoUrl';
 import { Screen } from '../nav';
@@ -18,6 +19,8 @@ export default function Indices({ campaignId, go }: Props) {
   const [towerId, setTowerId] = useState('A');
   const [pos, setPos] = useState(0);
   const [value, setValue] = useState('');
+  const [warnings, setWarnings] = useState<IndexWarning[]>([]);
+  const [invalid, setInvalid] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const campaign = useLiveQuery(() => db.campaigns.get(campaignId), [campaignId]);
@@ -55,10 +58,14 @@ export default function Indices({ campaignId, go }: Props) {
   useEffect(() => {
     if (!apt) {
       setValue('');
+      setWarnings([]);
+      setInvalid(false);
       return;
     }
     const idx = recordByApt.get(apt.aptCode)?.index;
     setValue(idx !== null && idx !== undefined ? formatIndex(idx) : '');
+    setWarnings([]);
+    setInvalid(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [apt?.aptCode, records]);
 
@@ -67,9 +74,13 @@ export default function Indices({ campaignId, go }: Props) {
   }, [apt?.aptCode]);
 
   const save = useCallback(
-    async (u: UnitRef, raw: string) => {
+    async (u: UnitRef, raw: string): Promise<boolean> => {
       const parsed = parseIndex(raw);
       if (parsed === null) return false;
+      const prev = recordByApt.get(u.aptCode)?.index;
+      const peerList = records
+        .filter((r) => r.index !== null && r.index !== undefined && r.aptCode !== u.aptCode)
+        .map((r) => r.index as number);
       await upsertRecord({
         campaignId,
         towerId,
@@ -80,14 +91,27 @@ export default function Indices({ campaignId, go }: Props) {
         index: parsed,
         indexedAt: Date.now(),
       });
+      setWarnings(validateIndex(parsed, prev, peerList));
+      setInvalid(false);
       return true;
     },
-    [campaignId, towerId],
+    [campaignId, towerId, records, recordByApt],
   );
+
+  const canGo = useCallback((): boolean => {
+    if (!value.trim()) return true;
+    if (parseIndex(value) === null) {
+      setInvalid(true);
+      return false;
+    }
+    return true;
+  }, [value]);
 
   const handleNext = useCallback(async () => {
     if (!apt) return;
-    if (value.trim()) await save(apt, value);
+    if (value.trim()) {
+      if (!(await save(apt, value))) return;
+    }
     if (pos < photoUnits.length - 1) setPos(pos + 1);
   }, [apt, value, save, pos, photoUnits.length]);
 
@@ -97,10 +121,10 @@ export default function Indices({ campaignId, go }: Props) {
 
   const handleEnter = useCallback(async () => {
     if (!apt) return;
-    const ok = await save(apt, value);
-    if (!ok) return;
+    if (!canGo()) return;
+    if (value.trim()) await save(apt, value);
     if (pos < photoUnits.length - 1) setPos(pos + 1);
-  }, [apt, value, save, pos, photoUnits.length]);
+  }, [apt, value, save, canGo, pos, photoUnits.length]);
 
   return (
     <div>
@@ -155,20 +179,34 @@ export default function Indices({ campaignId, go }: Props) {
             <input
               id="iv-input"
               ref={inputRef}
-              className="iv-input"
+              className={`iv-input${invalid ? ' iv-input-invalid' : ''}`}
               inputMode="decimal"
               autoComplete="off"
               placeholder="Digite o índice"
               value={value}
-              onChange={(e) => setValue(e.target.value)}
+              onChange={(e) => {
+                setValue(e.target.value);
+                setInvalid(false);
+                setWarnings([]);
+              }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') void handleEnter();
               }}
               onBlur={() => {
-                if (value.trim()) void save(apt, value);
+                if (value.trim() && parseIndex(value) !== null) void save(apt, value);
               }}
               aria-label={`Índice do apartamento ${apt.aptCode}`}
             />
+            {invalid && (
+              <div className="iv-warn" role="alert">
+                <AlertTriangle size={14} /> Índice inválido. Use apenas números, vírgula ou ponto.
+              </div>
+            )}
+            {warnings.map((w) => (
+              <div key={w.code} className="iv-warn" role="alert">
+                <AlertTriangle size={14} /> {w.message}
+              </div>
+            ))}
             <div className="iv-nav">
               <button
                 className="btn-ghost"

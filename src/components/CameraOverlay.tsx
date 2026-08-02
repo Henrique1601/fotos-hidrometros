@@ -1,7 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Camera, RotateCcw, Undo2, Upload, X } from 'lucide-react';
-import { captureFrame, startCamera, stopCamera } from '../lib/camera';
+import { Camera, Plus, RotateCcw, Undo2, Upload, X, Zap, ZapOff, Minus } from 'lucide-react';
+import {
+  ActiveCamera,
+  CameraCapabilities,
+  captureFrame,
+  setTorch,
+  setZoom,
+  startCamera,
+  stopCamera,
+} from '../lib/camera';
 import { upsertRecord } from '../db/records';
 import { pad2 } from '../lib/utils';
 import { UnitRef } from '../lib/towers';
@@ -20,18 +28,26 @@ type Phase = 'opening' | 'live' | 'preview' | 'error';
 export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSaved, onClose }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
+  const camRef = useRef<ActiveCamera | null>(null);
   const startedRef = useRef(false);
   const [phase, setPhase] = useState<Phase>('opening');
   const [preview, setPreview] = useState<string | null>(null);
   const [blob, setBlob] = useState<Blob | null>(null);
   const [flash, setFlash] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [torchOn, setTorchOn] = useState(false);
+  const [torchSupported, setTorchSupported] = useState(false);
+  const [zoom, setZoomState] = useState(1);
+  const [zoomCaps, setZoomCaps] = useState({ min: 1, max: 1, step: 0.1 });
+  const [zoomSupported, setZoomSupported] = useState(false);
+
+  const pinches = useRef<{ start: number; startZoom: number } | null>(null);
 
   const stop = useCallback(() => {
-    stopCamera(streamRef.current);
-    streamRef.current = null;
+    stopCamera(camRef.current?.stream ?? null);
+    camRef.current = null;
     if (videoRef.current) videoRef.current.srcObject = null;
+    setTorchOn(false);
   }, []);
 
   const start = useCallback(async () => {
@@ -39,14 +55,16 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
     setErrorMsg('');
     try {
       if (!videoRef.current) throw new Error('Câmera não disponível');
-      const stream = await startCamera(videoRef.current);
-      streamRef.current = stream;
+      const cam = await startCamera(videoRef.current);
+      camRef.current = cam;
+      setTorchSupported(cam.caps.torchSupported);
+      setZoomSupported(cam.caps.zoomSupported);
+      setZoomCaps({ min: cam.caps.zoomMin, max: cam.caps.zoomMax, step: cam.caps.zoomStep });
+      setZoomState(cam.caps.zoomMin);
       setPhase('live');
     } catch (e) {
       console.warn('Câmera indisponível, usando arquivo', e);
-      setErrorMsg(
-        'Não foi possível abrir a câmera integrada. Use a câmera nativa tocando abaixo.',
-      );
+      setErrorMsg('Não foi possível abrir a câmera integrada. Use a câmera nativa tocando abaixo.');
       setPhase('error');
     }
   }, []);
@@ -84,6 +102,57 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
     void start();
   }, [preview, start]);
 
+  const toggleTorch = useCallback(async () => {
+    const cam = camRef.current;
+    if (!cam) return;
+    const next = !torchOn;
+    try {
+      await setTorch(cam, next);
+      setTorchOn(next);
+    } catch {
+      setTorchOn(false);
+    }
+  }, [torchOn]);
+
+  const changeZoom = useCallback(
+    async (delta: number) => {
+      const cam = camRef.current;
+      if (!cam) return;
+      const next = await setZoom(cam, clampDisplay(zoom + delta, cam.caps));
+      setZoomState(next);
+    },
+    [zoom],
+  );
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      const start = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY,
+      );
+      pinches.current = { start, startZoom: zoom };
+    }
+  }, [zoom]);
+
+  const handleTouchMove = useCallback(
+    async (e: React.TouchEvent) => {
+      const cam = camRef.current;
+      if (!cam || !pinches.current || e.touches.length !== 2) return;
+      const d = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY,
+      );
+      const ratio = d / pinches.current.start;
+      const next = await setZoom(cam, pinches.current.startZoom * ratio);
+      setZoomState(next);
+    },
+    [],
+  );
+
+  const handleTouchEnd = useCallback(() => {
+    pinches.current = null;
+  }, []);
+
   const handleSave = useCallback(async () => {
     if (!blob) return;
     await upsertRecord({
@@ -99,18 +168,14 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
     onSaved();
   }, [blob, campaignId, towerId, apt, onSaved]);
 
-  const handleFile = useCallback(
-    async (file: File) => {
-      const b = file;
-      setBlob(b);
-      const url = URL.createObjectURL(b);
-      setPreview(url);
-      setFlash(true);
-      setTimeout(() => setFlash(false), 350);
-      setPhase('preview');
-    },
-    [],
-  );
+  const handleFile = useCallback((file: File) => {
+    setBlob(file);
+    const url = URL.createObjectURL(file);
+    setPreview(url);
+    setFlash(true);
+    setTimeout(() => setFlash(false), 350);
+    setPhase('preview');
+  }, []);
 
   return createPortal(
     <div className={`camera-overlay${flash ? ' cam-flash' : ''}`}>
@@ -137,17 +202,45 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
         playsInline
         muted
         autoPlay
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
         aria-label="Câmera"
       />
 
       {phase === 'live' && (
-        <div className="reticle" aria-hidden="true">
-          <span className="rc rc-tl" />
-          <span className="rc rc-tr" />
-          <span className="rc rc-bl" />
-          <span className="rc rc-br" />
-          <span className="reticle-hint">Centralize o hidrômetro</span>
-        </div>
+        <>
+          <div className="reticle" aria-hidden="true">
+            <span className="rc rc-tl" />
+            <span className="rc rc-tr" />
+            <span className="rc rc-bl" />
+            <span className="rc rc-br" />
+            <span className="reticle-hint">Centralize o hidrômetro</span>
+          </div>
+          <div className="cam-controls">
+            {torchSupported && (
+              <button
+                className={`cam-tool glass${torchOn ? ' is-on' : ''}`}
+                onClick={toggleTorch}
+                aria-label={torchOn ? 'Desligar luz' : 'Ligar luz'}
+                aria-pressed={torchOn}
+              >
+                {torchOn ? <Zap size={20} /> : <ZapOff size={20} />}
+              </button>
+            )}
+            {zoomSupported && (
+              <div className="cam-zoom glass">
+                <button className="cam-zoom-btn" onClick={() => changeZoom(-zoomCaps.step)} aria-label="Diminuir zoom">
+                  <Minus size={18} />
+                </button>
+                <span className="cam-zoom-val mono">{zoom.toFixed(1)}×</span>
+                <button className="cam-zoom-btn" onClick={() => changeZoom(zoomCaps.step)} aria-label="Aumentar zoom">
+                  <Plus size={18} />
+                </button>
+              </div>
+            )}
+          </div>
+        </>
       )}
 
       {phase === 'preview' && preview && (
@@ -159,11 +252,7 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
       {phase === 'error' && (
         <div className="cam-error glass">
           <p>{errorMsg}</p>
-          <button
-            className="btn-primary"
-            onClick={() => fileRef.current?.click()}
-            aria-label="Abrir câmera nativa"
-          >
+          <button className="btn-primary" onClick={() => fileRef.current?.click()} aria-label="Abrir câmera nativa">
             <Upload size={18} /> Abrir câmera nativa
           </button>
         </div>
@@ -194,10 +283,15 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
         className="hidden-input"
         onChange={(e) => {
           const f = e.target.files?.[0];
-          if (f) void handleFile(f);
+          if (f) handleFile(f);
         }}
       />
     </div>,
     document.body,
   );
+}
+
+function clampDisplay(value: number, caps: CameraCapabilities): number {
+  const snapped = Math.round(value / caps.zoomStep) * caps.zoomStep;
+  return Math.min(caps.zoomMax, Math.max(caps.zoomMin, snapped));
 }

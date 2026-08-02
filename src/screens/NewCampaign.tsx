@@ -29,11 +29,13 @@ export default function NewCampaign({ go, toast }: Props) {
   }, []);
 
   const handleSelectTower = async (towerId: string) => {
+    const nowTs = Date.now();
     const id = await db.campaigns.add({
       name: name.trim() || undefined,
       month,
       year,
-      createdAt: Date.now(),
+      createdAt: nowTs,
+      updatedAt: nowTs,
       status: 'collecting',
     });
     toast('Medição criada! Escolha a torre para fotografar.');

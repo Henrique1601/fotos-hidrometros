@@ -1,8 +1,10 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { saveAs } from 'file-saver';
 import { db, Campaign, MeterRecord } from '../db/db';
 import { TOWERS } from './towers';
 import { campaignLabel, formatIndex, sideLabel } from './utils';
+import { NamedBlob } from './exportZip';
 
 interface Resized {
   dataUrl: string;
@@ -38,7 +40,7 @@ function blobToImage(blob: Blob, maxW = 640): Promise<Resized> {
   });
 }
 
-export async function exportPdf(campaign: Campaign, includePhotos: boolean): Promise<void> {
+export async function buildPdf(campaign: Campaign, includePhotos: boolean): Promise<NamedBlob> {
   const records = await db.records.where('campaignId').equals(campaign.id!).toArray();
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
   const W = 297;
@@ -137,5 +139,11 @@ export async function exportPdf(campaign: Campaign, includePhotos: boolean): Pro
     }
   }
 
-  doc.save(`${name}-relatorio.pdf`);
+  const blob = doc.output('blob');
+  return { blob, name: `${name}-relatorio.pdf` };
+}
+
+export async function exportPdf(campaign: Campaign, includePhotos: boolean): Promise<void> {
+  const { blob, name } = await buildPdf(campaign, includePhotos);
+  saveAs(blob, name);
 }

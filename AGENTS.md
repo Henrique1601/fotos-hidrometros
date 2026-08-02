@@ -16,24 +16,29 @@ PWA mobile-first (React 18 + Vite 5 + TypeScript) para fotografia de hidrômetro
 - `npm run dev` — dev server
 - `npm run build` — typecheck (`tsc -b`) + build Vite
 - `npm run preview` — serve build (flag `-- --host` p/ testar no celular da rede)
+- `npm run test` — testes unitários (Vitest, `src/**/*.test.ts`)
+- `npm run test:watch` — Vitest watch
+- `npm run test:e2e` — testes E2E (Playwright, pasta `e2e/`, usa dev server)
 - `npm run icons` — regenera ícones PWA (scripts/generate-icons.ps1)
 - Deploy: use a skill `deploy-to-vercel` (CLI já autenticado como `henrique1601`)
 - Git: repositório `Henrique1601/fotos-hidrometros` (público), conectado à Vercel → push na `main` dispara deploy automático de produção
 
 ## Stack
 
-Dexie + dexie-react-hooks (IndexedDB local), GSAP + @gsap/react (animações), lucide-react (ícones), jspdf + jspdf-autotable (PDF), xlsx (Excel), jszip + file-saver (ZIP). PWA via vite-plugin-pwa, `registerType: 'prompt'` (banner de atualização com recarregar).
+Dexie + dexie-react-hooks (IndexedDB local), GSAP + @gsap/react (animações), lucide-react (ícones), jspdf + jspdf-autotable (PDF), xlsx (Excel), jszip + file-saver (ZIP), @supabase/supabase-js (sync). PWA via vite-plugin-pwa, `registerType: 'prompt'` (banner de atualização com recarregar). Testes: Vitest (`src/**/*.test.ts`) + Playwright (`e2e/`), CI em `.github/workflows/ci.yml`.
 
 ## Arquitetura
 
 - `src/nav.ts` — tipo `Screen` (home | new-campaign | collect | indices | export)
 - `src/App.tsx` — troca de telas com transição GSAP, toast global, banner de atualização PWA
-- `src/screens/` — Home (campanhas + progresso + deletar), NewCampaign (nome/mês/ano + grid de torres), Collect (fotos), Indices (leitura dos índices), Export (PDF/Excel/ZIP)
-- `src/components/` — CameraOverlay (câmera + fallback de arquivo + auto-avanço), AptButton, ProgressRing, GlassCard, Background
-- `src/db/db.ts` — schema Dexie (`fotos-hidrometros`, v1), tabelas `campaigns` e `records`
+- `src/screens/` — Home (campanhas + progresso + deletar + backup/restore + login sync), NewCampaign (nome/mês/ano + grid de torres), Collect (fotos), Indices (leitura dos índices com validação), Export (resumo por torre + PDF/Excel/ZIP + compartilhar)
+- `src/components/` — CameraOverlay (câmera + torch + zoom + fallback de arquivo + auto-avanço), AptButton, ProgressRing, GlassCard, Background
+- `src/db/db.ts` — schema Dexie (`fotos-hidrometros`, v1), tabelas `campaigns` e `records` (ambas com `updatedAt`)
 - `src/db/records.ts` — CRUD incluindo `upsertRecord` (preserva índice ao refotografar)
-- `src/lib/` — `towers.ts` (config do condomínio), `utils.ts`, `camera.ts`, exportadores `exportPdf.ts` / `exportExcel.ts` / `exportZip.ts`
+- `src/lib/` — `towers.ts` (config do condomínio), `utils.ts`, `camera.ts` (capabilities + torch/zoom), `validate.ts` (validação de índices), `backup.ts` (backup/restore JSON), `sync.ts` (push/pull Supabase), exportadores `exportPdf.ts` / `exportExcel.ts` / `exportZip.ts` (retornam `NamedBlob` via `build*`)
+- `supabase/schema.sql` — schema remoto (tabelas `campaigns`/`records` com RLS por `auth.uid()`)
 - `src/hooks/usePhotoUrl.ts` — Blob → ObjectURL com revogação
+- `e2e/app.spec.ts` + `playwright.config.ts` — testes E2E (dev server, viewport 390×844)
 
 ## Regras de negócio (não alterar sem consultar a spec)
 
@@ -50,6 +55,15 @@ Assinaturas recebem a campanha (objeto), NÃO `{campaignId}`:
 - `exportPdf(campaign, includePhotos?)` → `${label}-relatorio.pdf`
 - `exportExcel(campaign)` → `${label}-indices.xlsx`
 - `exportPhotosZip(campaign)` → `${label}-fotos.zip`
+
+Os `build*` (`buildPdf`/`buildExcel`/`buildPhotosZip`) retornam `NamedBlob` (`{blob, name}`) e são reutilizados no botão Compartilhar (`navigator.share` + fallback download).
+
+## Sync & Backup
+
+- Sync Supabase usa e-mail + senha (`src/lib/sync.ts`). Sem `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` (`.env.local`, já gitignored) o sync degrada com aviso — o app funciona 100% local com Backup/Restaurar.
+- `pushAll` envia campanhas + fotos em base64 (lotes de 50); `pullAll` faz merge LWW por `updatedAt`; `syncAll` = push → pull → push se houve pull.
+- Backup/Restore: `src/lib/backup.ts` — backup baixa JSON (campanhas + registros com fotos base64); restore substitui tudo com `confirm()`.
+- Schema remoto em `supabase/schema.sql` (RLS por `auth.uid()`).
 
 ## Design
 

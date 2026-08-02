@@ -1,12 +1,12 @@
 import { useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { ArrowLeft, FileSpreadsheet, FileText, FolderDown } from 'lucide-react';
+import { ArrowLeft, FileSpreadsheet, FileText, FolderDown, Share2 } from 'lucide-react';
 import { db } from '../db/db';
 import { TOWERS, towerTotalUnits } from '../lib/towers';
 import { campaignLabel } from '../lib/utils';
-import { exportExcel } from '../lib/exportExcel';
-import { exportPdf } from '../lib/exportPdf';
-import { exportPhotosZip } from '../lib/exportZip';
+import { buildExcel, exportExcel } from '../lib/exportExcel';
+import { buildPdf, exportPdf } from '../lib/exportPdf';
+import { exportPhotosZip, NamedBlob } from '../lib/exportZip';
 import GlassCard from '../components/GlassCard';
 import { Screen } from '../nav';
 
@@ -65,6 +65,38 @@ export default function Export({ campaignId, go, toast }: Props) {
     }
   };
 
+  const handleShare = async () => {
+    if (busy || !campaign) return;
+    setBusy('share');
+    try {
+      const files: NamedBlob[] = [await buildPdf(campaign, withPhotos), await buildExcel(campaign)];
+      const shareFiles = files.map((f) => new File([f.blob], f.name, { type: f.blob.type }));
+      if (navigator.share && navigator.canShare?.({ files: shareFiles })) {
+        await navigator.share({
+          title: campaignLabel(campaign.name, campaign.month, campaign.year),
+          files: shareFiles,
+        });
+      } else {
+        for (const f of files) {
+          const url = URL.createObjectURL(f.blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = f.name;
+          a.click();
+          URL.revokeObjectURL(url);
+        }
+        toast('Arquivos baixados para compartilhar.');
+      }
+    } catch (e) {
+      if ((e as Error).name !== 'AbortError') {
+        console.error(e);
+        toast('Falha ao compartilhar.');
+      }
+    } finally {
+      setBusy(null);
+    }
+  };
+
   return (
     <div>
       <header className="app-header">
@@ -95,6 +127,31 @@ export default function Export({ campaignId, go, toast }: Props) {
       </div>
 
       <GlassCard className="export-card">
+        <h3 className="display-small">Resumo por torre</h3>
+        <div className="tower-detail">
+          {TOWERS.map((t) => {
+            const s = byTower.get(t.id)!;
+            const total = towerTotalUnits(t);
+            const photosDone = s.photos === total;
+            const idxDone = s.indices === s.photos;
+            return (
+              <div key={t.id} className={`tower-detail-row${photosDone ? ' is-done' : ''}`}>
+                <span className="mono tower-detail-id">Torre {t.id}</span>
+                <span className="tower-detail-stats">
+                  {s.photos}/{total} fotos
+                  <span className="tower-detail-dot" aria-hidden="true" />
+                  {idxDone ? s.indices : `${s.indices}/${s.photos}`} índices
+                </span>
+              </div>
+            );
+          })}
+        </div>
+        <p className="hint">
+          {photos} fotos capturadas · {indices} índices preenchidos.
+        </p>
+      </GlassCard>
+
+      <GlassCard className="export-card">
         <h3 className="display-small">Exportar</h3>
 
         <label className="check-row">
@@ -116,6 +173,16 @@ export default function Export({ campaignId, go, toast }: Props) {
             {busy === 'zip' ? 'Gerando…' : 'Fotos (ZIP)'}
           </button>
         </div>
+
+        <button
+          className="btn-ghost btn-share"
+          disabled={busy !== null}
+          onClick={() => void handleShare()}
+          aria-label="Compartilhar campanha"
+        >
+          <Share2 size={16} />
+          {busy === 'share' ? 'Compartilhando…' : 'Compartilhar'}
+        </button>
 
         <p className="hint">Os arquivos são salvos na pasta de downloads do seu dispositivo.</p>
       </GlassCard>

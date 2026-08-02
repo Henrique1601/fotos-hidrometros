@@ -12,7 +12,8 @@ export async function listTowerRecords(campaignId: number, towerId: string): Pro
     .toArray();
 }
 
-export async function upsertRecord(rec: MeterRecord): Promise<number> {
+export async function upsertRecord(rec: Omit<MeterRecord, 'updatedAt'>): Promise<number> {
+  const now = Date.now();
   const existing = await db.records
     .where('campaignId')
     .equals(rec.campaignId)
@@ -24,12 +25,13 @@ export async function upsertRecord(rec: MeterRecord): Promise<number> {
       ...rec,
       photo: rec.photo ?? existing.photo,
       index: rec.index !== undefined ? rec.index : existing.index,
+      updatedAt: now,
       id: existing.id,
     };
     await db.records.update(existing.id!, merged);
     return existing.id!;
   }
-  return db.records.add(rec);
+  return db.records.add({ ...rec, updatedAt: now });
 }
 
 export async function deleteCampaign(campaignId: number): Promise<void> {

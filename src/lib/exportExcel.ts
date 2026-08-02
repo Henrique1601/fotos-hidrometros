@@ -1,8 +1,10 @@
 import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
 import { db, Campaign } from '../db/db';
 import { campaignLabel, sideLabel } from './utils';
+import { NamedBlob } from './exportZip';
 
-export async function exportExcel(campaign: Campaign): Promise<void> {
+export async function buildExcel(campaign: Campaign): Promise<NamedBlob> {
   const records = await db.records.where('campaignId').equals(campaign.id!).toArray();
   records.sort((a, b) => a.towerId.localeCompare(b.towerId) || a.floor - b.floor || a.unit - b.unit);
 
@@ -40,5 +42,14 @@ export async function exportExcel(campaign: Campaign): Promise<void> {
   XLSX.utils.book_append_sheet(wb, sumSheet, 'Resumo');
 
   const name = campaignLabel(campaign.name, campaign.month, campaign.year);
-  XLSX.writeFile(wb, `${name}-indices.xlsx`);
+  const out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+  const blob = new Blob([out], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
+  return { blob, name: `${name}-indices.xlsx` };
+}
+
+export async function exportExcel(campaign: Campaign): Promise<void> {
+  const { blob, name } = await buildExcel(campaign);
+  saveAs(blob, name);
 }

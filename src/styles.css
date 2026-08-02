@@ -833,8 +833,83 @@ select.text-input {
   color: var(--text-dim);
 }
 
+.cam-controls {
+  position: absolute;
+  z-index: 4;
+  top: calc(env(safe-area-inset-top, 0px) + 84px);
+  right: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.cam-tool {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--text-dim);
+}
+
+.cam-tool.is-on {
+  color: #fff;
+  background: rgba(94, 234, 212, 0.28);
+  border-color: rgba(94, 234, 212, 0.6);
+}
+
+.cam-zoom {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border-radius: 999px;
+  padding: 4px;
+}
+
+.cam-zoom-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.cam-zoom-val {
+  min-width: 46px;
+  text-align: center;
+  font-size: 0.82rem;
+  color: var(--cyan);
+}
+
 .hidden-input {
   display: none;
+}
+
+.sync-box {
+  margin-top: 4px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.sync-auth {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sync-auth .text-input {
+  width: 100%;
+}
+
+.sync-email {
+  font-size: 0.85rem;
+  color: var(--cyan);
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 /* ---------- Indices viewer ---------- */
@@ -952,6 +1027,25 @@ select.text-input {
   font-weight: 400;
 }
 
+.iv-input-invalid,
+.iv-input-invalid:focus {
+  border-color: rgba(251, 191, 36, 0.7);
+  box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.12);
+}
+
+.iv-warn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  color: #fcd34d;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
 .iv-nav {
   display: flex;
   align-items: center;
@@ -1032,6 +1126,56 @@ select.text-input {
 
 .export-buttons .btn-primary:last-child {
   grid-column: 1 / -1;
+}
+
+.btn-share {
+  width: 100%;
+  justify-content: center;
+}
+
+.tower-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tower-detail-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(94, 234, 212, 0.04);
+  border: 1px solid var(--border);
+}
+
+.tower-detail-id {
+  font-size: 0.82rem;
+  color: var(--text);
+}
+
+.tower-detail-stats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+.tower-detail-dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--border-strong);
+}
+
+.tower-detail-row.is-done .tower-detail-id {
+  color: var(--cyan);
+}
+
+.tower-detail-row.is-done .tower-detail-stats {
+  color: var(--cyan);
 }
 
 /* ---------- Toast ---------- */
