@@ -30,6 +30,7 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
   const fileRef = useRef<HTMLInputElement>(null);
   const camRef = useRef<ActiveCamera | null>(null);
   const startedRef = useRef(false);
+  const photoTakenRef = useRef(false);
   const [phase, setPhase] = useState<Phase>('opening');
   const [preview, setPreview] = useState<string | null>(null);
   const [blob, setBlob] = useState<Blob | null>(null);
@@ -56,6 +57,10 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
     try {
       if (!videoRef.current) throw new Error('Câmera não disponível');
       const cam = await startCamera(videoRef.current);
+      if (photoTakenRef.current) {
+        stopCamera(cam.stream);
+        return;
+      }
       camRef.current = cam;
       setTorchSupported(cam.caps.torchSupported);
       setZoomSupported(cam.caps.zoomSupported);
@@ -63,6 +68,7 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
       setZoomState(cam.caps.zoomMin);
       setPhase('live');
     } catch (e) {
+      if (photoTakenRef.current) return;
       console.warn('Câmera indisponível, usando arquivo', e);
       setErrorMsg('Não foi possível abrir a câmera integrada. Use a câmera nativa tocando abaixo.');
       setPhase('error');
@@ -82,6 +88,7 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
     if (!videoRef.current) return;
     try {
       const b = await captureFrame(videoRef.current);
+      photoTakenRef.current = true;
       setBlob(b);
       stop();
       const url = URL.createObjectURL(b);
@@ -97,6 +104,7 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
 
   const handleRetake = useCallback(() => {
     if (preview) URL.revokeObjectURL(preview);
+    photoTakenRef.current = false;
     setPreview(null);
     setBlob(null);
     void start();
@@ -169,6 +177,7 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
   }, [blob, campaignId, towerId, apt, onSaved]);
 
   const handleFile = useCallback((file: File) => {
+    photoTakenRef.current = true;
     setBlob(file);
     const url = URL.createObjectURL(file);
     setPreview(url);
