@@ -12,3 +12,9 @@ Thumbs.db
 playwright-report/
 test-results/
 
+# Obsidian vault: local UI state (não versionar)
+Cerebro_Projeto/Hidrometros_Web/.obsidian/workspace.json
+Cerebro_Projeto/Hidrometros_Web/.obsidian/workspace-mobile.json
+Cerebro_Projeto/Hidrometros_Web/.obsidian/graph.json
+Cerebro_Projeto/Hidrometros_Web/.obsidian/workspace
+
