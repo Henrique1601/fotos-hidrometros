@@ -16,6 +16,13 @@
 
 - `npm run test`: 30 testes verdes. `npm run build`: passa (tsc + vite). `npx playwright test`: 3 testes verdes (viewport 390×844).
 
+### Correções pós-CI
+
+- **Lockfile consistente no `npm ci`**: `vitest@4.1.10` exigia `vite ^6||^7||^8` → instalava `vite 8.2.0` aninhado com peer opcional `esbuild ^0.27||^0.28` que no Linux resolvia para `esbuild@0.28.1` (ausente no lock gerado no Windows). Downgrade para `vitest@^3.2.4` (compatível com vite 5) elimina o vite aninhado e o peer problemático.
+- **Actions CI**: `actions/checkout@v4`/`actions/setup-node@v4` → `@v5` (fim do aviso de depreciação do Node 20; `upload-artifact@v4` segue, sem warning bloqueante).
+- **Race na câmera (causa de E2E flaky)**: quando o `getUserMedia` falhava **depois** da foto já ter sido tirada via arquivo (fallback), o `catch` de `start()` reescrevia `phase` para `'error'` e destruía o preview/"Salvar e próximo". Fix: ref `photoTakenRef` impede `start()` (sucesso ou falha tardia) de sobrescrever o estado de preview; E2E subiu de 3m30s para 1m no CI e está estável.
+- **E2E mais robusto**: timeout global 60s + `expect` 15s no `playwright.config.ts`.
+
 ### Pendências
 
 - [ ] Confirmar com o cliente se a Torre E tem o ap `236`.
