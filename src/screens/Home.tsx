@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import gsap from 'gsap';
-import { Camera, Cloud, CloudOff, Download, Droplets, FolderDown, ListOrdered, Plus, Trash2, Upload } from 'lucide-react';
+import { Camera, Cloud, CloudOff, Download, Droplets, FolderDown, ListOrdered, Play, Plus, Trash2, Upload } from 'lucide-react';
 import { db } from '../db/db';
 import { deleteCampaign } from '../db/records';
 import { createBackupFileName, restoreBackup, serializeBackup } from '../lib/backup';
@@ -9,6 +9,7 @@ import { isSupabaseConfigured, getSession, signIn, signOut, syncAll } from '../l
 import { TOWERS, towerTotalUnits } from '../lib/towers';
 import { campaignLabel } from '../lib/utils';
 import GlassCard from '../components/GlassCard';
+import ConfirmModal from '../components/ConfirmModal';
 import { Screen } from '../nav';
 
 interface Props {
@@ -26,6 +27,13 @@ export default function Home({ go, toast }: Props) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [syncBusy, setSyncBusy] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmCfg, setConfirmCfg] = useState<{
+    title: string;
+    message: string;
+    danger?: boolean;
+    onConfirm: () => void;
+  } | null>(null);
 
   useEffect(() => {
     void getSession().then(setSession);
@@ -51,11 +59,19 @@ export default function Home({ go, toast }: Props) {
     return () => ctx.revert();
   }, []);
 
-  const handleDelete = async (c: { id?: number; month: number; year: number }) => {
+  const handleDelete = (c: { id?: number; name?: string; month: number; year: number }) => {
     if (!c.id) return;
-    if (!window.confirm('Excluir esta medição e todas as fotos dela?')) return;
-    await deleteCampaign(c.id);
-    toast('Medição excluída.');
+    const label = campaignLabel(c.name, c.month, c.year);
+    setConfirmCfg({
+      title: 'Excluir medição?',
+      message: `Excluir "${label}" e todas as fotos dela? Essa ação não pode ser desfeita.`,
+      danger: true,
+      onConfirm: async () => {
+        await deleteCampaign(c.id!);
+        toast('Medição excluída.');
+      },
+    });
+    setConfirmOpen(true);
   };
 
   const handleBackup = async () => {
@@ -84,15 +100,20 @@ export default function Home({ go, toast }: Props) {
       toast('Arquivo de backup inválido.');
       return;
     }
-    if (!window.confirm('Restaurar substitui TODOS os dados atuais (medições e fotos). Continuar?')) {
-      return;
-    }
-    try {
-      const r = await restoreBackup(data);
-      toast(`Backup restaurado: ${r.campaigns} medições, ${r.records} registros.`);
-    } catch (e) {
-      toast((e as Error).message);
-    }
+    setConfirmCfg({
+      title: 'Restaurar backup?',
+      message: 'Restaurar substitui TODOS os dados atuais (medições e fotos). Continuar?',
+      danger: true,
+      onConfirm: async () => {
+        try {
+          const r = await restoreBackup(data);
+          toast(`Backup restaurado: ${r.campaigns} medições, ${r.records} registros.`);
+        } catch (e) {
+          toast((e as Error).message);
+        }
+      },
+    });
+    setConfirmOpen(true);
   };
 
   const handleLogin = async () => {
@@ -184,6 +205,14 @@ export default function Home({ go, toast }: Props) {
                 <span className="campaign-bar-fill" style={{ width: `${pct}%` }} />
               </div>
               <div className="campaign-actions">
+                {c.lastTower && (
+                  <button
+                    className="resume-btn"
+                    onClick={() => go({ name: 'collect', campaignId: c.id!, towerId: c.lastTower })}
+                  >
+                    <Play size={14} /> Torre {c.lastTower}{c.lastFloor ? ` · andar ${String(c.lastFloor).padStart(2, '0')}` : ''}
+                  </button>
+                )}
                 <button className="btn-ghost" onClick={() => go({ name: 'collect', campaignId: c.id! })}>
                   <Camera size={16} /> Fotos
                 </button>
@@ -284,6 +313,19 @@ export default function Home({ go, toast }: Props) {
           )}
         </GlassCard>
       </aside>
+
+      <ConfirmModal
+        open={confirmOpen}
+        title={confirmCfg?.title ?? ''}
+        message={confirmCfg?.message ?? ''}
+        danger={confirmCfg?.danger}
+        confirmLabel={confirmCfg?.danger ? 'Excluir' : 'Confirmar'}
+        onConfirm={() => {
+          confirmCfg?.onConfirm();
+          setConfirmOpen(false);
+        }}
+        onCancel={() => setConfirmOpen(false)}
+      />
     </div>
   );
 }

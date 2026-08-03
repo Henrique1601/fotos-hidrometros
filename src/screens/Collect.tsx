@@ -60,6 +60,11 @@ export default function Collect({ campaignId, towerId: initialTower, go, toast }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [towerId]);
 
+  useEffect(() => {
+    if (!campaign) return;
+    db.campaigns.update(campaignId, { lastTower: towerId, lastFloor: floor });
+  }, [towerId, floor, campaignId, campaign]);
+
   const columnApts = useCallback(
     (side: Side): UnitRef[] => {
       const floorCfg = tower.floors.find((f) => f.floor === floor);

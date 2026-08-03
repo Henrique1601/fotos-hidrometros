@@ -1433,6 +1433,84 @@ select.text-input {
   background: rgba(94, 234, 212, 0.16);
 }
 
+/* ---------- Modal ---------- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  background: rgba(2, 8, 13, 0.72);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  padding: 24px;
+}
+
+.modal-panel {
+  width: 100%;
+  max-width: 380px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.modal-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.05rem;
+  margin: 0;
+}
+
+.modal-msg {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.modal-actions .btn-primary {
+  flex: 1;
+}
+
+.modal-actions .btn-ghost {
+  flex-shrink: 0;
+}
+
+.btn-danger {
+  background: linear-gradient(135deg, var(--danger), #dc2626) !important;
+  box-shadow: 0 10px 26px rgba(248, 113, 113, 0.3) !important;
+}
+
+/* ---------- Campaign resume ---------- */
+.resume-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border-strong);
+  background: rgba(94, 234, 212, 0.08);
+  color: var(--cyan);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.resume-btn:active {
+  transform: scale(0.96);
+  background: rgba(94, 234, 212, 0.16);
+}
+
 @media (min-width: 520px) {
   .app-main {
     padding-top: 28px;

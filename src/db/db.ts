@@ -9,6 +9,8 @@ export interface Campaign {
   createdAt: number;
   updatedAt: number;
   status: 'collecting' | 'indexing' | 'done';
+  lastTower?: string;
+  lastFloor?: number;
 }
 
 export interface MeterRecord {
