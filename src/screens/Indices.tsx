@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { FormEvent } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { AlertTriangle, ArrowLeft, ArrowRight, Check, ImageOff } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ArrowRight, Check, ImageOff, Search } from 'lucide-react';
 import { db } from '../db/db';
 import { listTowerRecords, upsertRecord } from '../db/records';
 import { floorSequence, towerById, UnitRef } from '../lib/towers';
@@ -21,6 +22,8 @@ export default function Indices({ campaignId, go }: Props) {
   const [value, setValue] = useState('');
   const [warnings, setWarnings] = useState<IndexWarning[]>([]);
   const [invalid, setInvalid] = useState(false);
+  const [jump, setJump] = useState('');
+  const [jumpMsg, setJumpMsg] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const campaign = useLiveQuery(() => db.campaigns.get(campaignId), [campaignId]);
@@ -52,6 +55,7 @@ export default function Indices({ campaignId, go }: Props) {
       return idx === null || idx === undefined;
     });
     setPos(firstMissing >= 0 ? firstMissing : 0);
+    setJumpMsg(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [towerId]);
 
@@ -126,6 +130,19 @@ export default function Indices({ campaignId, go }: Props) {
     if (pos < photoUnits.length - 1) setPos(pos + 1);
   }, [apt, value, save, canGo, pos, photoUnits.length]);
 
+  const handleJump = (e: FormEvent) => {
+    e.preventDefault();
+    const code = jump.trim();
+    if (!code) return;
+    const idx = photoUnits.findIndex((u) => u.aptCode === code);
+    if (idx >= 0) {
+      setPos(idx);
+      setJumpMsg(null);
+    } else {
+      setJumpMsg('Apt não encontrado nesta torre.');
+    }
+  };
+
   return (
     <div>
       <header className="app-header">
@@ -155,6 +172,19 @@ export default function Indices({ campaignId, go }: Props) {
           </button>
         ))}
       </div>
+
+      <form className="apt-jump" onSubmit={handleJump} role="search">
+        <Search size={16} aria-hidden="true" />
+        <input
+          value={jump}
+          onChange={(e) => setJump(e.target.value)}
+          placeholder="Ir para apt (ex.: 258)"
+          inputMode="numeric"
+          autoComplete="off"
+          aria-label="Buscar apartamento"
+        />
+        {jumpMsg && <span className="apt-jump-msg">{jumpMsg}</span>}
+      </form>
 
       {apt ? (
         <div className="iv">

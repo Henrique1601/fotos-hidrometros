@@ -1,6 +1,12 @@
 import { useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { ArrowLeft, FileSpreadsheet, FileText, FolderDown, Share2 } from 'lucide-react';
+import {
+  ArrowLeft,
+  FileSpreadsheet,
+  FileText,
+  FolderDown,
+  Share2,
+} from 'lucide-react';
 import { db } from '../db/db';
 import { TOWERS, towerTotalUnits } from '../lib/towers';
 import { campaignLabel } from '../lib/utils';
@@ -21,6 +27,8 @@ const TOTAL_UNITS = TOWERS.reduce((acc, t) => acc + towerTotalUnits(t), 0);
 export default function Export({ campaignId, go, toast }: Props) {
   const [busy, setBusy] = useState<string | null>(null);
   const [withPhotos, setWithPhotos] = useState(true);
+  const [towerId, setTowerId] = useState<string>('');
+  const [watermark, setWatermark] = useState(false);
   const campaign = useLiveQuery(() => db.campaigns.get(campaignId), [campaignId]);
   const records =
     useLiveQuery(
@@ -48,13 +56,13 @@ export default function Export({ campaignId, go, toast }: Props) {
     setBusy(kind);
     try {
       if (kind === 'pdf') {
-        await exportPdf(campaign, withPhotos);
+        await exportPdf(campaign, withPhotos, { towerId: towerId || undefined, watermark });
         toast('PDF exportado.');
       } else if (kind === 'excel') {
-        await exportExcel(campaign);
+        await exportExcel(campaign, { towerId: towerId || undefined });
         toast('Excel exportado.');
       } else {
-        await exportPhotosZip(campaign);
+        await exportPhotosZip(campaign, { towerId: towerId || undefined, watermark });
         toast('ZIP com fotos exportado.');
       }
     } catch (e) {
@@ -69,7 +77,10 @@ export default function Export({ campaignId, go, toast }: Props) {
     if (busy || !campaign) return;
     setBusy('share');
     try {
-      const files: NamedBlob[] = [await buildPdf(campaign, withPhotos), await buildExcel(campaign)];
+      const files: NamedBlob[] = [
+        await buildPdf(campaign, withPhotos, { towerId: towerId || undefined, watermark }),
+        await buildExcel(campaign, { towerId: towerId || undefined }),
+      ];
       const shareFiles = files.map((f) => new File([f.blob], f.name, { type: f.blob.type }));
       if (navigator.share && navigator.canShare?.({ files: shareFiles })) {
         await navigator.share({
@@ -159,6 +170,30 @@ export default function Export({ campaignId, go, toast }: Props) {
           Incluir fotos no PDF
         </label>
 
+        <label className="check-row">
+          <input type="checkbox" checked={watermark} onChange={(e) => setWatermark(e.target.checked)} />
+          Marca d'água com apt e data nas fotos
+        </label>
+
+        <p className="section-label">Torre</p>
+        <div className="chip-row">
+          <button
+            className={`chip${towerId === '' ? ' chip-active' : ''}`}
+            onClick={() => setTowerId('')}
+          >
+            Todas
+          </button>
+          {TOWERS.map((t) => (
+            <button
+              key={t.id}
+              className={`chip${towerId === t.id ? ' chip-active' : ''}`}
+              onClick={() => setTowerId(t.id)}
+            >
+              {t.id}
+            </button>
+          ))}
+        </div>
+
         <div className="export-buttons">
           <button className="btn-primary" disabled={busy !== null} onClick={() => void run('pdf')}>
             <FileText size={18} />
@@ -184,7 +219,10 @@ export default function Export({ campaignId, go, toast }: Props) {
           {busy === 'share' ? 'Compartilhando…' : 'Compartilhar'}
         </button>
 
-        <p className="hint">Os arquivos são salvos na pasta de downloads do seu dispositivo.</p>
+        <p className="hint">
+          {towerId ? `Exportando apenas a Torre ${towerId}.` : 'Exportando todas as torres.'} Os
+          arquivos são salvos na pasta de downloads do seu dispositivo.
+        </p>
       </GlassCard>
     </div>
   );

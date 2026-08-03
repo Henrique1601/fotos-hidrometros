@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { FormEvent } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
-import { ArrowLeft, ArrowRight, Check, Trophy } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Search, Trophy } from 'lucide-react';
 import { db } from '../db/db';
 import { listTowerRecords } from '../db/records';
 import {
@@ -31,6 +32,7 @@ export default function Collect({ campaignId, towerId: initialTower, go, toast }
   const [towerId, setTowerId] = useState(initialTower ?? 'A');
   const [floor, setFloor] = useState(3);
   const [camApt, setCamApt] = useState<UnitRef | null>(null);
+  const [jump, setJump] = useState('');
 
   const campaign = useLiveQuery(() => db.campaigns.get(campaignId), [campaignId]);
   const tower = useMemo(() => towerById(towerId), [towerId]);
@@ -119,6 +121,20 @@ export default function Collect({ campaignId, towerId: initialTower, go, toast }
     return floorCfg ? floorCfg.units.every((u) => photoSet.has(aptCode(floor, u))) : false;
   }, [tower, floor, photoSet]);
 
+  const handleJump = (e: FormEvent) => {
+    e.preventDefault();
+    const code = jump.trim();
+    if (!code) return;
+    const u = floorSequence(tower).find((x) => x.aptCode === code);
+    if (u) {
+      setFloor(u.floor);
+      setCamApt(u);
+      toast(`Abrindo ${code}…`);
+    } else {
+      toast('Apt não encontrado nesta torre.');
+    }
+  };
+
   return (
     <div>
       <header className="app-header">
@@ -166,6 +182,18 @@ export default function Collect({ campaignId, towerId: initialTower, go, toast }
           );
         })}
       </div>
+
+      <form className="apt-jump" onSubmit={handleJump} role="search">
+        <Search size={16} aria-hidden="true" />
+        <input
+          value={jump}
+          onChange={(e) => setJump(e.target.value)}
+          placeholder="Ir para apt (ex.: 258)"
+          inputMode="numeric"
+          autoComplete="off"
+          aria-label="Buscar apartamento"
+        />
+      </form>
 
       <div className="floor-heading">
         <h3 className="display-small">Andar {pad2(floor)}</h3>

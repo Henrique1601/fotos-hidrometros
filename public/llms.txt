@@ -1,0 +1,6 @@
+# Fotos Hidrômetros
+
+PWA mobile-first para fotografia e leitura de hidrômetros por condomínio. Coleta fotos por torre/andar/unidade com auto-avanço, preenchimento de índices e exportação de relatório PDF, planilha Excel e ZIP das fotos.
+
+- [Repositório (GitHub)](https://github.com/Henrique1601/fotos-hidrometros)
+- [Projeto em produção (Vercel)](https://fotos-hidrometros.vercel.app)

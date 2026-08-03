@@ -1,5 +1,29 @@
 # 07 - Changelog
 
+## 2026-08-02 — Consumo, marca d'água, export por torre e busca de apt
+
+### Feito
+
+- **Consumo vs. mês anterior** (`src/lib/consumption.ts` + `consumption.test.ts`): `selectPreviousCampaign` escolhe a campanha imediatamente anterior (cruzando ano — janeiro → dezembro anterior); `computeConsumption` calcula `consumo = atual - anterior` com status `ok`/`anomaly` (fora de `0..30 m³` ou regressão negativa)/`no-base` (sem campanha ou índice anterior); `loadConsumption` monta `Map<torre:apt, Consumo>`. 9 testes.
+- **Marca d'água nas fotos** (`src/lib/watermark.ts`): `watermarkPhoto(blob, text)` redimensiona para `maxW=1280`, desenha barra `rgba(7,24,34,0.72)` com texto branco em JetBrains Mono (label `${aptCode} · dd/mm/aaaa HH:mm`), salva JPEG 0.85; usada no PDF e no ZIP quando a opção está ativa.
+- **Export por torre + consumo** (`exportPdf/exportExcel/exportZip.ts`): opções `{ towerId?, watermark? }`; PDF com coluna "Consumo" e anomalias destacadas em vermelho/negrito via `didParseCell`; Excel com sheet "Consumo" nova (`Torre/Ap/Índice Anterior/Índice Atual/Consumo/Status`) e coluna Consumo no sheet Índices; ZIP filtra por torre. `Export.tsx` ganhou chips "Todas" + A–H e checkbox de marca d'água.
+- **Busca/atalho por apt** (`Collect.tsx` + `Indices.tsx`): form `.apt-jump` com ícone de busca — no Collect pula para o andar e abre a câmera do apt; no Indices navega direto para o apt fotografado; aviso "Apt não encontrado nesta torre." quando não acha. Estilos `.apt-jump`/`.apt-jump-msg` em `styles.css`.
+- **Deps atualizadas** (npm audit): `jspdf@^4.2.1`, `jspdf-autotable@^5.0.8`, `xlsx@0.20.3` (cdn SheetJS). Resta risco aceito: `vite ≤6.4.2` → `esbuild ≤0.24.2` (GHSA-67mh-4wv8-2f99, só dev server; `--force` quebraria com vite 8).
+- **Fix autotable v5**: `doc.getLastAutoTable` não existe em runtime (é do `DocHandler`) → posicionamento das fotos usa `doc.lastAutoTable.finalY` (com narrowing TS); augmentação em `src/lib/jspdf-autotable.d.ts`.
+- **Lighthouse** (dev server): a11y 90→**100**, SEO 82→**100**, Agentic 67→**100**; removido `user-scalable=no` do viewport, meta description, `h1→h3` corrigido para `h1→h2→h2` no Home, criados `public/robots.txt` e `public/llms.txt`. Best Practices 81 é só `is-on-https` (http do dev server; em produção é https).
+
+### Testes
+
+- `npm run test`: 39 testes verdes (6 arquivos — towers, utils, camera, validate, backup, consumption). `npm run build`: passa. `npm run test:e2e`: 3 verdes.
+- Verificação manual: jump `258` no Collect abre Andar 25 + câmera; foto injetada salva e auto-avança para `257`; índice `1.234` preenchido no Indices e **preservado ao refotografar**; jump inválido mostra aviso; exports PDF (com marca d'água)/Excel/ZIP sem erros de console; filtro de torre "Exportando apenas a Torre A.".
+
+### Pendências
+
+- [ ] Sync Supabase: credenciais reais rejeitadas (`AUTH_FAIL invalid_credentials`) — conferir/criar usuário em `wfjbvrneeukfbghhmcqs` (Authentication → Users) antes de liberar o sync.
+- [ ] Confirmar com o cliente se a Torre E tem o ap `236`.
+- [ ] Testar câmera real (torch/zoom) em celular (Chrome Android, HTTPS) em https://fotos-hidrometros.vercel.app.
+- [ ] Teste offline completo (PWA).
+
 ## 2026-08-02 — Rodada funcionalidades: backup, sync, torch/zoom, validação, export completo e CI
 
 ### Feito

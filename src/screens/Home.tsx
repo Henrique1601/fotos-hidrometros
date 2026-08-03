@@ -166,7 +166,7 @@ export default function Home({ go, toast }: Props) {
             <GlassCard key={c.id} className="campaign-card gs-home-item">
               <div className="campaign-head">
                 <div>
-                  <h3 className="campaign-name">{label}</h3>
+                  <h2 className="campaign-name">{label}</h2>
                   <p className="campaign-meta">
                     {photos}/{TOTAL_UNITS} fotos · {idx} índices
                   </p>
@@ -199,7 +199,7 @@ export default function Home({ go, toast }: Props) {
       </section>
 
       <GlassCard className="data-card gs-home-item">
-        <h3 className="display-small">Seus dados</h3>
+        <h2 className="display-small">Seus dados</h2>
         <p className="hint">
           Os dados ficam apenas no seu dispositivo. Faça backups periódicos ou ative a
           sincronização na nuvem.

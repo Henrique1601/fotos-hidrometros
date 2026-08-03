@@ -4,12 +4,19 @@ import { saveAs } from 'file-saver';
 import { db, Campaign, MeterRecord } from '../db/db';
 import { TOWERS } from './towers';
 import { campaignLabel, formatIndex, sideLabel } from './utils';
+import { loadConsumption, keyOf } from './consumption';
+import { watermarkPhoto, formatWatermarkDate } from './watermark';
 import { NamedBlob } from './exportZip';
 
 interface Resized {
   dataUrl: string;
   w: number;
   h: number;
+}
+
+export interface PdfOptions {
+  towerId?: string;
+  watermark?: boolean;
 }
 
 function blobToImage(blob: Blob, maxW = 640): Promise<Resized> {
@@ -40,12 +47,24 @@ function blobToImage(blob: Blob, maxW = 640): Promise<Resized> {
   });
 }
 
-export async function buildPdf(campaign: Campaign, includePhotos: boolean): Promise<NamedBlob> {
-  const records = await db.records.where('campaignId').equals(campaign.id!).toArray();
+function m3Label(n: number | null): string {
+  return n === null ? '—' : `${formatIndex(n)} m³`;
+}
+
+export async function buildPdf(
+  campaign: Campaign,
+  includePhotos: boolean,
+  opts: PdfOptions = {},
+): Promise<NamedBlob> {
+  const all = await db.records.where('campaignId').equals(campaign.id!).toArray();
+  const records = opts.towerId ? all.filter((r) => r.towerId === opts.towerId) : all;
+  const consumption = await loadConsumption(campaign, records);
+
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
   const W = 297;
   const H = 210;
-  const name = campaignLabel(campaign.name, campaign.month, campaign.year);
+  const baseName = campaignLabel(campaign.name, campaign.month, campaign.year);
+  const name = opts.towerId ? `${baseName} · Torre ${opts.towerId}` : baseName;
   const photos = records.filter((r) => r.photo).length;
   const indices = records.filter((r) => r.index !== null && r.index !== undefined).length;
 
@@ -85,17 +104,26 @@ export async function buildPdf(campaign: Campaign, includePhotos: boolean): Prom
 
     autoTable(doc, {
       startY: 19,
-      head: [['Andar', 'Ap', 'Lado', 'Índice', 'Foto']],
+      head: [['Andar', 'Ap', 'Lado', 'Índice', 'Consumo', 'Foto']],
       body: recs.map((r: MeterRecord) => [
         String(r.floor),
         r.aptCode,
         sideLabel(r.side),
         formatIndex(r.index),
+        m3Label(consumption.get(keyOf(r.towerId, r.aptCode))?.consumption ?? null),
         r.photo ? 'Sim' : '—',
       ]),
       styles: { fontSize: 8.5, cellPadding: 1.6, font: 'helvetica' },
       headStyles: { fillColor: [11, 46, 70], textColor: [103, 232, 249], fontStyle: 'bold' },
       alternateRowStyles: { fillColor: [240, 248, 252] },
+      didParseCell: (data) => {
+        if (data.section !== 'body') return;
+        const status = consumption.get(keyOf(recs[data.row.index].towerId, recs[data.row.index].aptCode))?.status;
+        if (status === 'anomaly') {
+          data.cell.styles.textColor = [192, 57, 43];
+          data.cell.styles.fontStyle = 'bold';
+        }
+      },
     });
 
     if (includePhotos) {
@@ -103,8 +131,7 @@ export async function buildPdf(campaign: Campaign, includePhotos: boolean): Prom
       const boxW = 60;
       const boxH = 68;
       let x = 14;
-      let y = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable
-        ?.finalY ?? 24;
+      let y = doc.lastAutoTable ? (doc.lastAutoTable.finalY ?? 24) : 24;
       y += 8;
       let col = 0;
 
@@ -116,7 +143,10 @@ export async function buildPdf(campaign: Campaign, includePhotos: boolean): Prom
           col = 0;
         }
         try {
-          const img = await blobToImage(r.photo!);
+          const photo = opts.watermark
+            ? await watermarkPhoto(r.photo!, `${r.aptCode} · ${formatWatermarkDate(r.capturedAt)}`)
+            : r.photo!;
+          const img = await blobToImage(photo);
           const scale = Math.min(boxW / img.w, boxH / img.h);
           const dw = img.w * scale;
           const dh = img.h * scale;
@@ -143,7 +173,11 @@ export async function buildPdf(campaign: Campaign, includePhotos: boolean): Prom
   return { blob, name: `${name}-relatorio.pdf` };
 }
 
-export async function exportPdf(campaign: Campaign, includePhotos: boolean): Promise<void> {
-  const { blob, name } = await buildPdf(campaign, includePhotos);
+export async function exportPdf(
+  campaign: Campaign,
+  includePhotos: boolean,
+  opts: PdfOptions = {},
+): Promise<void> {
+  const { blob, name } = await buildPdf(campaign, includePhotos, opts);
   saveAs(blob, name);
 }

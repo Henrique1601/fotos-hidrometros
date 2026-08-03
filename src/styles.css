@@ -508,6 +508,56 @@ select.text-input {
   font-size: 0.85rem;
 }
 
+/* ---------- Apt jump ---------- */
+.apt-jump {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding: 0 14px;
+  height: 44px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-dim);
+}
+
+.apt-jump:focus-within {
+  border-color: var(--cyan);
+  box-shadow: 0 0 0 3px rgba(94, 234, 212, 0.15);
+}
+
+.apt-jump input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+}
+
+.apt-jump input::placeholder {
+  color: var(--text-dim);
+  font-family: var(--font-text);
+}
+
+.apt-jump-msg {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #fca5a5;
+  background: rgba(127, 29, 29, 0.35);
+  border: 1px solid rgba(252, 165, 165, 0.25);
+  border-radius: 10px;
+  padding: 6px 10px;
+}
+
 /* ---------- Floor ---------- */
 .floor-heading {
   display: flex;
