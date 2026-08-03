@@ -33,13 +33,23 @@ export default function App() {
   });
 
   const updateSW = useCallback(() => {
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistration().then((reg) => {
-        reg?.waiting?.postMessage({ type: 'SKIP_WAITING' });
-      });
+    if (!('serviceWorker' in navigator)) {
+      window.location.reload();
+      return;
     }
+    navigator.serviceWorker.getRegistration().then((reg) => {
+      if (!reg?.waiting) {
+        window.location.reload();
+        return;
+      }
+      const onControllerChange = () => {
+        navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
+        window.location.reload();
+      };
+      navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);
+      reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+    });
     setNeedRefresh(false);
-    window.location.reload();
   }, []);
 
   return (
