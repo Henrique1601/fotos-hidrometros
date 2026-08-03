@@ -1345,6 +1345,94 @@ select.text-input {
   color: var(--cyan);
 }
 
+/* ---------- OCR ---------- */
+.ocr-badge {
+  position: absolute;
+  bottom: 14px;
+  left: 14px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(2, 8, 13, 0.82);
+  border: 1px solid var(--border-strong);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.ocr-badge-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: var(--cyan);
+  font-weight: 600;
+}
+
+.ocr-badge-text strong {
+  font-size: 1rem;
+  color: #fff;
+}
+
+.ocr-low {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(251, 191, 36, 0.25);
+  color: var(--amber);
+  font-size: 0.7rem;
+  font-weight: 700;
+  margin-left: 4px;
+}
+
+.iv-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.iv-input-row .iv-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.ocr-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border-strong);
+  background: rgba(94, 234, 212, 0.08);
+  color: var(--cyan);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+  white-space: nowrap;
+}
+
+.ocr-btn:active {
+  transform: scale(0.96);
+}
+
+.ocr-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+  transform: none;
+}
+
+.ocr-btn:not(:disabled):hover {
+  background: rgba(94, 234, 212, 0.16);
+}
+
 @media (min-width: 520px) {
   .app-main {
     padding-top: 28px;

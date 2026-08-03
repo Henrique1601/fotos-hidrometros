@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { AlertTriangle, ArrowLeft, ArrowRight, Check, ImageOff, Search } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ArrowRight, Check, ImageOff, ScanText, Search } from 'lucide-react';
 import { db } from '../db/db';
 import { listTowerRecords, upsertRecord } from '../db/records';
 import { floorSequence, towerById, UnitRef } from '../lib/towers';
 import { campaignLabel, formatIndex, pad2, parseIndex, sideLabel } from '../lib/utils';
-import { IndexWarning, validateIndex } from '../lib/validate';
+import { validateIndex } from '../lib/validate';
+import type { IndexWarning } from '../lib/validate';
+import { recognizeMeter } from '../lib/ocr';
 import GlassCard from '../components/GlassCard';
 import { usePhotoUrl } from '../hooks/usePhotoUrl';
 import { Screen } from '../nav';
@@ -24,6 +26,7 @@ export default function Indices({ campaignId, go }: Props) {
   const [invalid, setInvalid] = useState(false);
   const [jump, setJump] = useState('');
   const [jumpMsg, setJumpMsg] = useState<string | null>(null);
+  const [ocrBusy, setOcrBusy] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const campaign = useLiveQuery(() => db.campaigns.get(campaignId), [campaignId]);
@@ -143,6 +146,26 @@ export default function Indices({ campaignId, go }: Props) {
     }
   };
 
+  const handleReadPhoto = async () => {
+    if (!apt || ocrBusy) return;
+    const rec = recordByApt.get(apt.aptCode);
+    if (!rec?.photo) return;
+    setOcrBusy(true);
+    try {
+      const result = await recognizeMeter(rec.photo);
+      if (result.value !== null) {
+        setValue(formatIndex(result.value));
+        setWarnings([]);
+        setInvalid(false);
+        inputRef.current?.focus();
+      }
+    } catch {
+      // OCR failed silently
+    } finally {
+      setOcrBusy(false);
+    }
+  };
+
   return (
     <div>
       <header className="app-header">
@@ -206,27 +229,39 @@ export default function Indices({ campaignId, go }: Props) {
             <label className="field-label" htmlFor="iv-input">
               Índice do hidrômetro
             </label>
-            <input
-              id="iv-input"
-              ref={inputRef}
-              className={`iv-input${invalid ? ' iv-input-invalid' : ''}`}
-              inputMode="decimal"
-              autoComplete="off"
-              placeholder="Digite o índice"
-              value={value}
-              onChange={(e) => {
-                setValue(e.target.value);
-                setInvalid(false);
-                setWarnings([]);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') void handleEnter();
-              }}
-              onBlur={() => {
-                if (value.trim() && parseIndex(value) !== null) void save(apt, value);
-              }}
-              aria-label={`Índice do apartamento ${apt.aptCode}`}
-            />
+            <div className="iv-input-row">
+              <input
+                id="iv-input"
+                ref={inputRef}
+                className={`iv-input${invalid ? ' iv-input-invalid' : ''}`}
+                inputMode="decimal"
+                autoComplete="off"
+                placeholder="Digite o índice"
+                value={value}
+                onChange={(e) => {
+                  setValue(e.target.value);
+                  setInvalid(false);
+                  setWarnings([]);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') void handleEnter();
+                }}
+                onBlur={() => {
+                  if (value.trim() && parseIndex(value) !== null) void save(apt, value);
+                }}
+                aria-label={`Índice do apartamento ${apt.aptCode}`}
+              />
+              <button
+                className="ocr-btn"
+                onClick={() => void handleReadPhoto()}
+                disabled={ocrBusy || !recordByApt.get(apt.aptCode)?.photo}
+                aria-label="Ler índice da foto"
+                title="Ler índice da foto com OCR"
+              >
+                <ScanText size={18} />
+                {ocrBusy ? 'Lendo…' : 'Ler da foto'}
+              </button>
+            </div>
             {invalid && (
               <div className="iv-warn" role="alert">
                 <AlertTriangle size={14} /> Índice inválido. Use apenas números, vírgula ou ponto.

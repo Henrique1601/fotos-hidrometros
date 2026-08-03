@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Camera, Plus, RotateCcw, Undo2, Upload, X, Zap, ZapOff, Minus } from 'lucide-react';
+import { Camera, Plus, RotateCcw, Undo2, Upload, X, Zap, ZapOff, Minus, ScanText } from 'lucide-react';
 import {
   ActiveCamera,
   CameraCapabilities,
@@ -10,6 +10,7 @@ import {
   startCamera,
   stopCamera,
 } from '../lib/camera';
+import { recognizeMeter, OcrResult } from '../lib/ocr';
 import { upsertRecord } from '../db/records';
 import { pad2 } from '../lib/utils';
 import { UnitRef } from '../lib/towers';
@@ -19,7 +20,7 @@ interface Props {
   towerId: string;
   apt: UnitRef;
   onPrev?: () => void;
-  onSaved: () => void;
+  onSaved: (ocrIndex?: number) => void;
   onClose: () => void;
 }
 
@@ -41,6 +42,8 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
   const [zoom, setZoomState] = useState(1);
   const [zoomCaps, setZoomCaps] = useState({ min: 1, max: 1, step: 0.1 });
   const [zoomSupported, setZoomSupported] = useState(false);
+  const [ocr, setOcr] = useState<OcrResult | null>(null);
+  const [ocrBusy, setOcrBusy] = useState(false);
 
   const pinches = useRef<{ start: number; startZoom: number } | null>(null);
 
@@ -96,6 +99,11 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
       setFlash(true);
       setTimeout(() => setFlash(false), 350);
       setPhase('preview');
+      setOcrBusy(true);
+      recognizeMeter(b)
+        .then((r) => { if (r.value !== null) setOcr(r); })
+        .catch(() => {})
+        .finally(() => setOcrBusy(false));
     } catch (e) {
       setErrorMsg('Falha ao capturar a imagem.');
       setPhase('error');
@@ -107,6 +115,8 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
     photoTakenRef.current = false;
     setPreview(null);
     setBlob(null);
+    setOcr(null);
+    setOcrBusy(false);
     void start();
   }, [preview, start]);
 
@@ -173,8 +183,8 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
       photo: blob,
       capturedAt: Date.now(),
     });
-    onSaved();
-  }, [blob, campaignId, towerId, apt, onSaved]);
+    onSaved(ocr?.value ?? undefined);
+  }, [blob, campaignId, towerId, apt, onSaved, ocr]);
 
   const handleFile = useCallback((file: File) => {
     photoTakenRef.current = true;
@@ -184,6 +194,11 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
     setFlash(true);
     setTimeout(() => setFlash(false), 350);
     setPhase('preview');
+    setOcrBusy(true);
+    recognizeMeter(file)
+      .then((r) => { if (r.value !== null) setOcr(r); })
+      .catch(() => {})
+      .finally(() => setOcrBusy(false));
   }, []);
 
   return createPortal(
@@ -255,6 +270,18 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
       {phase === 'preview' && preview && (
         <div className="cam-preview-wrap">
           <img src={preview} alt={`Foto ${apt.aptCode}`} className="cam-preview" />
+          {(ocr || ocrBusy) && (
+            <div className="ocr-badge">
+              {ocrBusy ? (
+                <span className="ocr-badge-text"><ScanText size={14} /> Lendo…</span>
+              ) : ocr ? (
+                <span className="ocr-badge-text">
+                  <ScanText size={14} /> OCR: <strong>{formatOcrValue(ocr.value)}</strong>
+                  {ocr.confidence < 60 && <span className="ocr-low">?</span>}
+                </span>
+              ) : null}
+            </div>
+          )}
         </div>
       )}
 
@@ -279,7 +306,7 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
             <RotateCcw size={18} /> Refazer
           </button>
           <button className="btn-primary" onClick={handleSave}>
-            <Camera size={18} /> Salvar e próximo
+            <Camera size={18} /> {ocr?.value != null ? `Salvar ${formatOcrValue(ocr.value)}` : 'Salvar e próximo'}
           </button>
         </div>
       )}
@@ -303,4 +330,9 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
 function clampDisplay(value: number, caps: CameraCapabilities): number {
   const snapped = Math.round(value / caps.zoomStep) * caps.zoomStep;
   return Math.min(caps.zoomMax, Math.max(caps.zoomMin, snapped));
+}
+
+function formatOcrValue(v: number | null | undefined): string {
+  if (v === null || v === undefined) return '—';
+  return new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 3 }).format(v);
 }

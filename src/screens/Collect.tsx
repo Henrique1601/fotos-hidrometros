@@ -5,7 +5,7 @@ import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { ArrowLeft, ArrowRight, Check, Search, Trophy } from 'lucide-react';
 import { db } from '../db/db';
-import { listTowerRecords } from '../db/records';
+import { listTowerRecords, upsertRecord } from '../db/records';
 import {
   aptCode,
   floorSequence,
@@ -85,7 +85,19 @@ export default function Collect({ campaignId, towerId: initialTower, go, toast }
     { dependencies: [floor, towerId] },
   );
 
-  const handleSaved = useCallback(async () => {
+  const handleSaved = useCallback(async (ocrIndex?: number) => {
+    if (ocrIndex != null && camApt) {
+      await upsertRecord({
+        campaignId,
+        towerId,
+        floor: camApt.floor,
+        unit: camApt.unit,
+        side: camApt.side,
+        aptCode: camApt.aptCode,
+        index: ocrIndex,
+        indexedAt: Date.now(),
+      });
+    }
     const seq = floorSequence(tower);
     const idx = camApt ? seq.findIndex((u) => u.aptCode === camApt.aptCode) : -1;
     const next = seq[idx + 1];
@@ -96,7 +108,7 @@ export default function Collect({ campaignId, towerId: initialTower, go, toast }
       setCamApt(null);
       toast(`Torre ${towerId} completa!`);
     }
-  }, [camApt, tower, towerId, toast]);
+  }, [camApt, tower, towerId, toast, campaignId]);
 
   const handlePrev = useCallback(() => {
     if (!camApt) return;
