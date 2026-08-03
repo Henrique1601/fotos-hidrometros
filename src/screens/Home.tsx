@@ -130,8 +130,9 @@ export default function Home({ go, toast }: Props) {
   };
 
   return (
-    <div ref={introRef}>
-      <header className="app-header gs-home-item">
+    <div ref={introRef} className="home-layout">
+      <div className="home-main-col">
+        <header className="app-header gs-home-item">
         <div className="logo-row">
           <span className="logo-badge">
             <Droplets size={22} />
@@ -197,38 +198,41 @@ export default function Home({ go, toast }: Props) {
           );
         })}
       </section>
+      </div>
 
-      <GlassCard className="data-card gs-home-item">
-        <h2 className="display-small">Seus dados</h2>
-        <p className="hint">
-          Os dados ficam apenas no seu dispositivo. Faça backups periódicos ou ative a
-          sincronização na nuvem.
-        </p>
-        <div className="export-buttons">
-          <button className="btn-ghost" onClick={() => void handleBackup()} aria-label="Fazer backup">
-            <Download size={16} /> Backup
-          </button>
-          <button
-            className="btn-ghost"
-            onClick={() => restoreRef.current?.click()}
-            aria-label="Restaurar backup"
-          >
-            <Upload size={16} /> Restaurar
-          </button>
-        </div>
-        <input
-          ref={restoreRef}
-          type="file"
-          accept="application/json,.json"
-          className="hidden-input"
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) void handleRestore(f);
-            e.target.value = '';
-          }}
-        />
+      <aside className="home-side">
+        <GlassCard className="data-card gs-home-item">
+          <h2 className="display-small">Seus dados</h2>
+          <p className="hint">
+            Os dados ficam apenas no seu dispositivo. Faça backups periódicos para não perder nada.
+          </p>
+          <div className="export-buttons">
+            <button className="btn-ghost" onClick={() => void handleBackup()} aria-label="Fazer backup">
+              <Download size={16} /> Backup
+            </button>
+            <button
+              className="btn-ghost"
+              onClick={() => restoreRef.current?.click()}
+              aria-label="Restaurar backup"
+            >
+              <Upload size={16} /> Restaurar
+            </button>
+          </div>
+          <input
+            ref={restoreRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden-input"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) void handleRestore(f);
+              e.target.value = '';
+            }}
+          />
+        </GlassCard>
 
-        <div className="sync-box">
+        <GlassCard className="data-card gs-home-item">
+          <h2 className="display-small">Sincronização</h2>
           {!isSupabaseConfigured() ? (
             <p className="hint">
               <CloudOff size={14} style={{ verticalAlign: 'text-bottom' }} /> Sincronização não
@@ -278,8 +282,8 @@ export default function Home({ go, toast }: Props) {
               </button>
             </div>
           )}
-        </div>
-      </GlassCard>
+        </GlassCard>
+      </aside>
     </div>
   );
 }

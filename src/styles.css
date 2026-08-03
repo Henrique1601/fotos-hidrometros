@@ -56,6 +56,10 @@ body {
   min-height: 100vh;
 }
 
+.app-main--wide {
+  max-width: 900px;
+}
+
 /* ---------- Background ---------- */
 .bg-orbs {
   position: fixed;
@@ -289,6 +293,41 @@ body {
 .icon-btn.glass {
   background: var(--surface);
   border: 1px solid var(--border);
+}
+
+/* ---------- Home layout ---------- */
+.home-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.home-main-col {
+  min-width: 0;
+}
+
+.home-side {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+@media (min-width: 920px) {
+  .home-layout {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  .home-main-col {
+    flex: 1;
+  }
+
+  .home-side {
+    width: 320px;
+    flex-shrink: 0;
+    position: sticky;
+    top: calc(env(safe-area-inset-top, 0px) + 18px);
+  }
 }
 
 /* ---------- Campaign list ---------- */
@@ -938,10 +977,24 @@ select.text-input {
   display: none;
 }
 
+.data-card {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.hint {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--text-dim);
+}
+
 .sync-box {
-  margin-top: 4px;
-  padding-top: 14px;
-  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .sync-auth {

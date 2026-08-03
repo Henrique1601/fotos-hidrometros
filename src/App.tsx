@@ -45,7 +45,7 @@ export default function App() {
   return (
     <div className="app">
       <Background />
-      <main className="app-main">
+      <main className={screen.name === 'home' ? 'app-main app-main--wide' : 'app-main'}>
         <ScreenSwitch screen={screen} go={go} toast={notify} />
       </main>
       {toast && (
