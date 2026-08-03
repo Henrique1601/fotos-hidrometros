@@ -3,4 +3,6 @@ export type Screen =
   | { name: 'new-campaign' }
   | { name: 'collect'; campaignId: number; towerId?: string }
   | { name: 'indices'; campaignId: number }
-  | { name: 'export'; campaignId: number };
+  | { name: 'export'; campaignId: number }
+  | { name: 'data' }
+  | { name: 'sync' };

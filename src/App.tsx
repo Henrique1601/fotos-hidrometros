@@ -7,6 +7,8 @@ import NewCampaign from './screens/NewCampaign';
 import Collect from './screens/Collect';
 import Indices from './screens/Indices';
 import Export from './screens/Export';
+import DataScreen from './screens/DataScreen';
+import SyncScreen from './screens/SyncScreen';
 import { Screen } from './nav';
 
 export default function App() {
@@ -105,6 +107,8 @@ function ScreenSwitch({ screen, go, toast }: ScreenSwitchProps) {
       )}
       {screen.name === 'indices' && <Indices campaignId={screen.campaignId} go={go} toast={toast} />}
       {screen.name === 'export' && <Export campaignId={screen.campaignId} go={go} toast={toast} />}
+      {screen.name === 'data' && <DataScreen go={go} toast={toast} />}
+      {screen.name === 'sync' && <SyncScreen go={go} toast={toast} />}
     </div>
   );
 }

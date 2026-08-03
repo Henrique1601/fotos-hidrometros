@@ -1,11 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import gsap from 'gsap';
-import { Camera, Cloud, CloudOff, Download, Droplets, FolderDown, ListOrdered, Play, Plus, Trash2, Upload } from 'lucide-react';
+import { Camera, Cloud, Droplets, FolderDown, HardDrive, ListOrdered, Play, Plus, Trash2 } from 'lucide-react';
 import { db } from '../db/db';
 import { deleteCampaign } from '../db/records';
-import { createBackupFileName, restoreBackup, serializeBackup } from '../lib/backup';
-import { isSupabaseConfigured, getSession, signIn, signOut, syncAll } from '../lib/sync';
 import { TOWERS, towerTotalUnits } from '../lib/towers';
 import { campaignLabel } from '../lib/utils';
 import GlassCard from '../components/GlassCard';
@@ -23,10 +21,6 @@ export default function Home({ go, toast }: Props) {
   const campaigns =
     useLiveQuery(() => db.campaigns.orderBy('createdAt').reverse().toArray(), []) ?? [];
   const records = useLiveQuery(() => db.records.toArray(), []) ?? [];
-  const [session, setSession] = useState<Awaited<ReturnType<typeof getSession>>>(null);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [syncBusy, setSyncBusy] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmCfg, setConfirmCfg] = useState<{
     title: string;
@@ -34,10 +28,6 @@ export default function Home({ go, toast }: Props) {
     danger?: boolean;
     onConfirm: () => void;
   } | null>(null);
-
-  useEffect(() => {
-    void getSession().then(setSession);
-  }, []);
 
   const photosByCampaign = new Map<number, number>();
   const idxByCampaign = new Map<number, number>();
@@ -49,7 +39,6 @@ export default function Home({ go, toast }: Props) {
   }
 
   const introRef = useRef<HTMLDivElement>(null);
-  const restoreRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     const el = introRef.current;
     if (!el) return;
@@ -74,86 +63,9 @@ export default function Home({ go, toast }: Props) {
     setConfirmOpen(true);
   };
 
-  const handleBackup = async () => {
-    try {
-      const file = await serializeBackup();
-      const blob = new Blob([JSON.stringify(file)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = createBackupFileName(file.campaigns);
-      a.click();
-      URL.revokeObjectURL(url);
-      toast('Backup salvo.');
-    } catch (e) {
-      console.error(e);
-      toast('Falha ao gerar backup.');
-    }
-  };
-
-  const handleRestore = async (f: File) => {
-    const text = await f.text();
-    let data: unknown;
-    try {
-      data = JSON.parse(text);
-    } catch {
-      toast('Arquivo de backup inválido.');
-      return;
-    }
-    setConfirmCfg({
-      title: 'Restaurar backup?',
-      message: 'Restaurar substitui TODOS os dados atuais (medições e fotos). Continuar?',
-      danger: true,
-      onConfirm: async () => {
-        try {
-          const r = await restoreBackup(data);
-          toast(`Backup restaurado: ${r.campaigns} medições, ${r.records} registros.`);
-        } catch (e) {
-          toast((e as Error).message);
-        }
-      },
-    });
-    setConfirmOpen(true);
-  };
-
-  const handleLogin = async () => {
-    if (!email || !password || syncBusy) return;
-    setSyncBusy(true);
-    try {
-      await signIn(email.trim(), password);
-      setPassword('');
-      setSession(await getSession());
-      toast('Conectado à nuvem.');
-    } catch (e) {
-      toast((e as Error).message);
-    } finally {
-      setSyncBusy(false);
-    }
-  };
-
-  const handleLogout = async () => {
-    await signOut();
-    setSession(null);
-    toast('Sessão encerrada.');
-  };
-
-  const handleSync = async () => {
-    if (syncBusy || !session) return;
-    setSyncBusy(true);
-    try {
-      const s = await syncAll();
-      toast(`Sincronizado: ${s.campaigns} medições, ${s.records} registros.`);
-    } catch (e) {
-      toast((e as Error).message);
-    } finally {
-      setSyncBusy(false);
-    }
-  };
-
   return (
-    <div ref={introRef} className="home-layout">
-      <div className="home-main-col">
-        <header className="app-header gs-home-item">
+    <div ref={introRef}>
+      <header className="app-header gs-home-item">
         <div className="logo-row">
           <span className="logo-badge">
             <Droplets size={22} />
@@ -162,6 +74,22 @@ export default function Home({ go, toast }: Props) {
             <h1 className="display-title">FotoHidro</h1>
             <p className="app-subtitle">Leitura e fotos de hidrômetros</p>
           </div>
+        </div>
+        <div className="home-toolbar">
+          <button
+            className="icon-btn glass"
+            onClick={() => go({ name: 'data' })}
+            aria-label="Dados"
+          >
+            <HardDrive size={18} />
+          </button>
+          <button
+            className="icon-btn glass"
+            onClick={() => go({ name: 'sync' })}
+            aria-label="Sincronização"
+          >
+            <Cloud size={18} />
+          </button>
         </div>
       </header>
 
@@ -172,7 +100,8 @@ export default function Home({ go, toast }: Props) {
         <Plus size={20} /> Nova medição
       </button>
 
-      <section className="campaign-list">        {campaigns.length === 0 && (
+      <section className="campaign-list">
+        {campaigns.length === 0 && (
           <GlassCard className="empty-state gs-home-item">
             <Camera size={28} />
             <p>Nenhuma medição ainda.<br />Toque em "Nova medição" para começar.</p>
@@ -227,92 +156,6 @@ export default function Home({ go, toast }: Props) {
           );
         })}
       </section>
-      </div>
-
-      <aside className="home-side">
-        <GlassCard className="data-card gs-home-item">
-          <h2 className="display-small">Seus dados</h2>
-          <p className="hint">
-            Os dados ficam apenas no seu dispositivo. Faça backups periódicos para não perder nada.
-          </p>
-          <div className="export-buttons">
-            <button className="btn-ghost" onClick={() => void handleBackup()} aria-label="Fazer backup">
-              <Download size={16} /> Backup
-            </button>
-            <button
-              className="btn-ghost"
-              onClick={() => restoreRef.current?.click()}
-              aria-label="Restaurar backup"
-            >
-              <Upload size={16} /> Restaurar
-            </button>
-          </div>
-          <input
-            ref={restoreRef}
-            type="file"
-            accept="application/json,.json"
-            className="hidden-input"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) void handleRestore(f);
-              e.target.value = '';
-            }}
-          />
-        </GlassCard>
-
-        <GlassCard className="data-card gs-home-item">
-          <h2 className="display-small">Sincronização</h2>
-          {!isSupabaseConfigured() ? (
-            <p className="hint">
-              <CloudOff size={14} style={{ verticalAlign: 'text-bottom' }} /> Sincronização não
-              configurada neste aparelho. Use o Backup para guardar os dados.
-            </p>
-          ) : session ? (
-            <div className="sync-auth">
-              <p className="sync-email">
-                <Cloud size={14} style={{ verticalAlign: 'text-bottom' }} /> {session.user.email}
-              </p>
-              <div className="export-buttons">
-                <button className="btn-ghost" onClick={() => void handleSync()} disabled={syncBusy}>
-                  <Cloud size={16} /> {syncBusy ? 'Sincronizando…' : 'Sincronizar'}
-                </button>
-                <button className="btn-ghost" onClick={() => void handleLogout()}>
-                  Sair
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="sync-auth">
-              <label className="field-label">E-mail</label>
-              <input
-                type="email"
-                inputMode="email"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="seu@email.com"
-                className="text-input"
-              />
-              <label className="field-label">Senha</label>
-              <input
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="text-input"
-              />
-              <button
-                className="btn-primary"
-                disabled={syncBusy || !email || !password}
-                onClick={() => void handleLogin()}
-              >
-                <Cloud size={16} /> {syncBusy ? 'Entrando…' : 'Entrar e sincronizar'}
-              </button>
-            </div>
-          )}
-        </GlassCard>
-      </aside>
 
       <ConfirmModal
         open={confirmOpen}
