@@ -106,9 +106,14 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
           if (r.value !== null) {
             setOcr(r);
             toast?.(`OCR detectou: ${formatOcrValue(r.value)}`);
+          } else {
+            toast?.('Não li o índice. Preencha manualmente.');
           }
         })
-        .catch(() => { toast?.('OCR falhou. Preencha manualmente.'); })
+        .catch((e) => {
+          console.warn('OCR erro:', e);
+          toast?.('OCR indisponível. Preencha manualmente.');
+        })
         .finally(() => setOcrBusy(false));
     } catch (e) {
       setErrorMsg('Falha ao capturar a imagem.');
@@ -206,9 +211,14 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
         if (r.value !== null) {
           setOcr(r);
           toast?.(`OCR detectou: ${formatOcrValue(r.value)}`);
+        } else {
+          toast?.('Não li o índice. Preencha manualmente.');
         }
       })
-      .catch(() => { toast?.('OCR falhou. Preencha manualmente.'); })
+      .catch((e) => {
+        console.warn('OCR erro:', e);
+        toast?.('OCR indisponível. Preencha manualmente.');
+      })
       .finally(() => setOcrBusy(false));
   }, []);
 

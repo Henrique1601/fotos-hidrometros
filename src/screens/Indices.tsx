@@ -151,7 +151,10 @@ export default function Indices({ campaignId, go, toast }: Props) {
   const handleReadPhoto = async () => {
     if (!apt || ocrBusy) return;
     const rec = recordByApt.get(apt.aptCode);
-    if (!rec?.photo) return;
+    if (!rec?.photo) {
+      toast('Sem foto para ler.');
+      return;
+    }
     setOcrBusy(true);
     try {
       const result = await recognizeMeter(rec.photo);
@@ -162,10 +165,11 @@ export default function Indices({ campaignId, go, toast }: Props) {
         inputRef.current?.focus();
         toast(`OCR detectou: ${formatIndex(result.value)}`);
       } else {
-        toast('Não foi possível ler o índice. Preencha manualmente.');
+        toast('Não li o índice. Preencha manualmente.');
       }
-    } catch {
-      toast('OCR falhou. Preencha manualmente.');
+    } catch (e) {
+      console.warn('OCR erro:', e);
+      toast('OCR indisponível. Preencha manualmente.');
     } finally {
       setOcrBusy(false);
     }

@@ -14,6 +14,9 @@ function getWorker(): Promise<Worker> {
         preserve_interword_spaces: '1',
       });
       return w;
+    }).catch((err) => {
+      workerPromise = null;
+      throw err;
     });
   }
   return workerPromise;
