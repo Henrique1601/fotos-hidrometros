@@ -93,7 +93,7 @@ function ScreenSwitch({ screen, go, toast }: ScreenSwitchProps) {
           toast={toast}
         />
       )}
-      {screen.name === 'indices' && <Indices campaignId={screen.campaignId} go={go} />}
+      {screen.name === 'indices' && <Indices campaignId={screen.campaignId} go={go} toast={toast} />}
       {screen.name === 'export' && <Export campaignId={screen.campaignId} go={go} toast={toast} />}
     </div>
   );

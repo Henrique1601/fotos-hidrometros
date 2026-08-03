@@ -22,11 +22,12 @@ interface Props {
   onPrev?: () => void;
   onSaved: (ocrIndex?: number) => void;
   onClose: () => void;
+  toast?: (msg: string) => void;
 }
 
 type Phase = 'opening' | 'live' | 'preview' | 'error';
 
-export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSaved, onClose }: Props) {
+export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSaved, onClose, toast }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const camRef = useRef<ActiveCamera | null>(null);
@@ -101,8 +102,13 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
       setPhase('preview');
       setOcrBusy(true);
       recognizeMeter(b)
-        .then((r) => { if (r.value !== null) setOcr(r); })
-        .catch(() => {})
+        .then((r) => {
+          if (r.value !== null) {
+            setOcr(r);
+            toast?.(`OCR detectou: ${formatOcrValue(r.value)}`);
+          }
+        })
+        .catch(() => { toast?.('OCR falhou. Preencha manualmente.'); })
         .finally(() => setOcrBusy(false));
     } catch (e) {
       setErrorMsg('Falha ao capturar a imagem.');
@@ -196,8 +202,13 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
     setPhase('preview');
     setOcrBusy(true);
     recognizeMeter(file)
-      .then((r) => { if (r.value !== null) setOcr(r); })
-      .catch(() => {})
+      .then((r) => {
+        if (r.value !== null) {
+          setOcr(r);
+          toast?.(`OCR detectou: ${formatOcrValue(r.value)}`);
+        }
+      })
+      .catch(() => { toast?.('OCR falhou. Preencha manualmente.'); })
       .finally(() => setOcrBusy(false));
   }, []);
 

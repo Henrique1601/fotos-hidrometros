@@ -5,7 +5,7 @@ import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { ArrowLeft, ArrowRight, Check, Search, Trophy } from 'lucide-react';
 import { db } from '../db/db';
-import { listTowerRecords, upsertRecord } from '../db/records';
+import { upsertRecord } from '../db/records';
 import {
   aptCode,
   floorSequence,
@@ -37,15 +37,16 @@ export default function Collect({ campaignId, towerId: initialTower, go, toast }
   const campaign = useLiveQuery(() => db.campaigns.get(campaignId), [campaignId]);
   const tower = useMemo(() => towerById(towerId), [towerId]);
   const records =
-    useLiveQuery(() => listTowerRecords(campaignId, towerId), [campaignId, towerId]) ?? [];
+    useLiveQuery(() => db.records.where('campaignId').equals(campaignId).toArray(), [campaignId]) ?? [];
+  const towerRecords = useMemo(() => records.filter((r) => r.towerId === towerId), [records, towerId]);
 
   const photoSet = useMemo(
-    () => new Set(records.filter((r) => r.photo).map((r) => r.aptCode)),
-    [records],
+    () => new Set(towerRecords.filter((r) => r.photo).map((r) => r.aptCode)),
+    [towerRecords],
   );
   const indexSet = useMemo(
-    () => new Set(records.filter((r) => r.index !== null && r.index !== undefined).map((r) => r.aptCode)),
-    [records],
+    () => new Set(towerRecords.filter((r) => r.index !== null && r.index !== undefined).map((r) => r.aptCode)),
+    [towerRecords],
   );
 
   const total = useMemo(() => tower.floors.reduce((a, f) => a + f.units.length, 0), [tower]);
@@ -235,7 +236,7 @@ export default function Collect({ campaignId, towerId: initialTower, go, toast }
                 apt={a}
                 hasPhoto={photoSet.has(a.aptCode)}
                 hasIndex={indexSet.has(a.aptCode)}
-                photo={records.find((r) => r.aptCode === a.aptCode)?.photo}
+                photo={towerRecords.find((r) => r.aptCode === a.aptCode)?.photo}
                 onTap={() => setCamApt(a)}
               />
             ))}
@@ -260,7 +261,7 @@ export default function Collect({ campaignId, towerId: initialTower, go, toast }
                 apt={a}
                 hasPhoto={photoSet.has(a.aptCode)}
                 hasIndex={indexSet.has(a.aptCode)}
-                photo={records.find((r) => r.aptCode === a.aptCode)?.photo}
+                photo={towerRecords.find((r) => r.aptCode === a.aptCode)?.photo}
                 onTap={() => setCamApt(a)}
               />
             ))}
@@ -284,6 +285,7 @@ export default function Collect({ campaignId, towerId: initialTower, go, toast }
           onPrev={camPrev ? handlePrev : undefined}
           onSaved={() => void handleSaved()}
           onClose={() => setCamApt(null)}
+          toast={toast}
         />
       )}
     </div>

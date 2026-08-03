@@ -3,7 +3,7 @@ import type { FormEvent } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { AlertTriangle, ArrowLeft, ArrowRight, Check, ImageOff, ScanText, Search } from 'lucide-react';
 import { db } from '../db/db';
-import { listTowerRecords, upsertRecord } from '../db/records';
+import { upsertRecord } from '../db/records';
 import { floorSequence, towerById, UnitRef } from '../lib/towers';
 import { campaignLabel, formatIndex, pad2, parseIndex, sideLabel } from '../lib/utils';
 import { validateIndex } from '../lib/validate';
@@ -16,9 +16,10 @@ import { Screen } from '../nav';
 interface Props {
   campaignId: number;
   go: (s: Screen) => void;
+  toast: (msg: string) => void;
 }
 
-export default function Indices({ campaignId, go }: Props) {
+export default function Indices({ campaignId, go, toast }: Props) {
   const [towerId, setTowerId] = useState('A');
   const [pos, setPos] = useState(0);
   const [value, setValue] = useState('');
@@ -32,9 +33,10 @@ export default function Indices({ campaignId, go }: Props) {
   const campaign = useLiveQuery(() => db.campaigns.get(campaignId), [campaignId]);
   const tower = useMemo(() => towerById(towerId), [towerId]);
   const records =
-    useLiveQuery(() => listTowerRecords(campaignId, towerId), [campaignId, towerId]) ?? [];
+    useLiveQuery(() => db.records.where('campaignId').equals(campaignId).toArray(), [campaignId]) ?? [];
+  const towerRecords = useMemo(() => records.filter((r) => r.towerId === towerId), [records, towerId]);
 
-  const recordByApt = useMemo(() => new Map(records.map((r) => [r.aptCode, r])), [records]);
+  const recordByApt = useMemo(() => new Map(towerRecords.map((r) => [r.aptCode, r])), [towerRecords]);
 
   const photoUnits = useMemo(
     () => floorSequence(tower).filter((u) => Boolean(recordByApt.get(u.aptCode)?.photo)),
@@ -74,7 +76,7 @@ export default function Indices({ campaignId, go }: Props) {
     setWarnings([]);
     setInvalid(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [apt?.aptCode, records]);
+  }, [apt?.aptCode, towerRecords]);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -85,7 +87,7 @@ export default function Indices({ campaignId, go }: Props) {
       const parsed = parseIndex(raw);
       if (parsed === null) return false;
       const prev = recordByApt.get(u.aptCode)?.index;
-      const peerList = records
+      const peerList = towerRecords
         .filter((r) => r.index !== null && r.index !== undefined && r.aptCode !== u.aptCode)
         .map((r) => r.index as number);
       await upsertRecord({
@@ -102,7 +104,7 @@ export default function Indices({ campaignId, go }: Props) {
       setInvalid(false);
       return true;
     },
-    [campaignId, towerId, records, recordByApt],
+    [campaignId, towerId, towerRecords, recordByApt],
   );
 
   const canGo = useCallback((): boolean => {
@@ -158,9 +160,12 @@ export default function Indices({ campaignId, go }: Props) {
         setWarnings([]);
         setInvalid(false);
         inputRef.current?.focus();
+        toast(`OCR detectou: ${formatIndex(result.value)}`);
+      } else {
+        toast('Não foi possível ler o índice. Preencha manualmente.');
       }
     } catch {
-      // OCR failed silently
+      toast('OCR falhou. Preencha manualmente.');
     } finally {
       setOcrBusy(false);
     }
