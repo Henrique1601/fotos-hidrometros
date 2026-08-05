@@ -46,9 +46,12 @@ test('fluxo completo: captura, auto-avanço, índice e resumo no export', async 
 test('backup baixa arquivo com dados e restore restaura', async ({ page }) => {
   await criarCampanhaComFoto(page);
 
+  await page.getByRole('button', { name: 'Dados' }).click();
+  await expect(page.getByRole('heading', { name: 'Dados' })).toBeVisible();
+
   const [download] = await Promise.all([
     page.waitForEvent('download'),
-    page.getByRole('button', { name: 'Fazer backup' }).click(),
+    page.getByRole('button', { name: 'Baixar' }).click(),
   ]);
   const file = await download.path();
   expect(file).toBeTruthy();
@@ -56,7 +59,9 @@ test('backup baixa arquivo com dados e restore restaura', async ({ page }) => {
   expect(data.records.length).toBeGreaterThanOrEqual(1);
 
   page.on('dialog', (d) => d.accept());
-  await page.setInputFiles('.data-card input[type=file]', file!);
+  await page.getByRole('button', { name: 'Restaurar' }).click();
+  await page.setInputFiles('.page-card input[type=file]', file!);
+  await page.getByRole('button', { name: 'Restaurar', exact: true }).click();
   await expect(page.getByText(/Backup restaurado/)).toBeVisible();
 });
 
