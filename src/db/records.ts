@@ -41,6 +41,34 @@ export async function deleteCampaign(campaignId: number): Promise<void> {
   });
 }
 
+export async function deleteRecord(campaignId: number, aptCode: string, towerId: string): Promise<void> {
+  const rec = await db.records
+    .where('campaignId')
+    .equals(campaignId)
+    .and((r) => r.aptCode === aptCode && r.towerId === towerId)
+    .first();
+  if (rec?.id) {
+    await db.records.delete(rec.id);
+  }
+}
+
+export async function resetRecord(campaignId: number, aptCode: string, towerId: string): Promise<void> {
+  const rec = await db.records
+    .where('campaignId')
+    .equals(campaignId)
+    .and((r) => r.aptCode === aptCode && r.towerId === towerId)
+    .first();
+  if (rec?.id) {
+    await db.records.update(rec.id, {
+      photo: null,
+      index: null,
+      capturedAt: null,
+      indexedAt: null,
+      updatedAt: Date.now(),
+    });
+  }
+}
+
 export interface TowerProgress {
   photos: number;
   indices: number;

@@ -98,6 +98,7 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
       const url = URL.createObjectURL(b);
       setPreview(url);
       setFlash(true);
+      navigator.vibrate?.(50);
       setTimeout(() => setFlash(false), 350);
       setPhase('preview');
       setOcrBusy(true);

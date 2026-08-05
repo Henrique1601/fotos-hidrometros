@@ -1,4 +1,4 @@
-import { Check, Gauge } from 'lucide-react';
+import { Check, Clock, Gauge, X } from 'lucide-react';
 import { UnitRef } from '../lib/towers';
 import { usePhotoUrl } from '../hooks/usePhotoUrl';
 
@@ -8,10 +8,12 @@ interface Props {
   hasIndex: boolean;
   photo?: Blob | null;
   onTap: () => void;
+  onDelete?: () => void;
+  onHistory?: () => void;
   active?: boolean;
 }
 
-export default function AptButton({ apt, hasPhoto, hasIndex, photo, onTap, active }: Props) {
+export default function AptButton({ apt, hasPhoto, hasIndex, photo, onTap, onDelete, onHistory, active }: Props) {
   const thumb = usePhotoUrl(photo);
   const state = hasIndex ? 'indexed' : hasPhoto ? 'photo' : 'empty';
 
@@ -28,6 +30,26 @@ export default function AptButton({ apt, hasPhoto, hasIndex, photo, onTap, activ
         {state === 'photo' && <Check size={12} aria-hidden />}
         {state === 'empty' && <span className="apt-dot" aria-hidden />}
       </span>
+      {onHistory && (
+        <span
+          className="apt-history"
+          onClick={(e) => { e.stopPropagation(); onHistory(); }}
+          role="button"
+          aria-label={`Histórico ${apt.aptCode}`}
+        >
+          <Clock size={10} />
+        </span>
+      )}
+      {onDelete && hasPhoto && (
+        <span
+          className="apt-delete"
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          role="button"
+          aria-label={`Remover foto ${apt.aptCode}`}
+        >
+          <X size={12} />
+        </span>
+      )}
     </button>
   );
 }

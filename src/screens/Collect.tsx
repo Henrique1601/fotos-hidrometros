@@ -3,9 +3,10 @@ import type { FormEvent } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
-import { ArrowLeft, ArrowRight, Check, Search, Trophy } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Loader2, ScanText, Search, Trophy } from 'lucide-react';
 import { db } from '../db/db';
-import { upsertRecord } from '../db/records';
+import { upsertRecord, resetRecord } from '../db/records';
+import { batchRecognizeMeters } from '../lib/ocr';
 import {
   aptCode,
   floorSequence,
@@ -19,6 +20,7 @@ import GlassCard from '../components/GlassCard';
 import ProgressRing from '../components/ProgressRing';
 import AptButton from '../components/AptButton';
 import CameraOverlay from '../components/CameraOverlay';
+import ConfirmModal from '../components/ConfirmModal';
 import { Screen } from '../nav';
 
 interface Props {
@@ -33,6 +35,9 @@ export default function Collect({ campaignId, towerId: initialTower, go, toast }
   const [floor, setFloor] = useState(3);
   const [camApt, setCamApt] = useState<UnitRef | null>(null);
   const [jump, setJump] = useState('');
+  const [batchBusy, setBatchBusy] = useState(false);
+  const [batchProgress, setBatchProgress] = useState({ done: 0, total: 0 });
+  const [deleteTarget, setDeleteTarget] = useState<UnitRef | null>(null);
 
   const campaign = useLiveQuery(() => db.campaigns.get(campaignId), [campaignId]);
   const tower = useMemo(() => towerById(towerId), [towerId]);
@@ -153,6 +158,55 @@ export default function Collect({ campaignId, towerId: initialTower, go, toast }
     }
   };
 
+  const handleDeletePhoto = () => {
+    if (!deleteTarget) return;
+    void resetRecord(campaignId, deleteTarget.aptCode, towerId);
+    setDeleteTarget(null);
+    toast(`Foto de ${deleteTarget.aptCode} removida.`);
+  };
+
+  const handleBatchOcr = async () => {
+    const withPhoto = towerRecords.filter((r) => r.photo && (r.index === null || r.index === undefined));
+    if (withPhoto.length === 0) {
+      toast('Nenhuma foto sem índice nesta torre.');
+      return;
+    }
+    setBatchBusy(true);
+    setBatchProgress({ done: 0, total: withPhoto.length });
+    try {
+      const photos = withPhoto.map((r) => ({ aptCode: r.aptCode, photo: r.photo! }));
+      const results = await batchRecognizeMeters(photos, (done, total) =>
+        setBatchProgress({ done, total }),
+      );
+      let filled = 0;
+      for (const { aptCode: code, result } of results) {
+        if (result.value != null) {
+          const rec = withPhoto.find((r) => r.aptCode === code);
+          if (rec) {
+            await upsertRecord({
+              campaignId,
+              towerId: rec.towerId,
+              floor: rec.floor,
+              unit: rec.unit,
+              side: rec.side,
+              aptCode: rec.aptCode,
+              index: result.value,
+              indexedAt: Date.now(),
+            });
+            filled++;
+          }
+        }
+      }
+      toast(`OCR em lote: ${filled}/${withPhoto.length} índices preenchidos.`);
+    } catch (e) {
+      console.warn('Batch OCR error:', e);
+      toast('Erro no OCR em lote.');
+    } finally {
+      setBatchBusy(false);
+      setBatchProgress({ done: 0, total: 0 });
+    }
+  };
+
   return (
     <div>
       <header className="app-header">
@@ -213,6 +267,23 @@ export default function Collect({ campaignId, towerId: initialTower, go, toast }
         />
       </form>
 
+      <div className="collect-toolbar">
+        <button
+          className="btn-ghost"
+          onClick={() => void handleBatchOcr()}
+          disabled={batchBusy}
+        >
+          {batchBusy ? <Loader2 size={16} className="spin" /> : <ScanText size={16} />}
+          {batchBusy ? `OCR ${batchProgress.done}/${batchProgress.total}` : 'OCR em lote'}
+        </button>
+        <button
+          className="btn-ghost"
+          onClick={() => go({ name: 'indices', campaignId })}
+        >
+          <ScanText size={16} /> Preencher índices
+        </button>
+      </div>
+
       <div className="floor-heading">
         <h3 className="display-small">Andar {pad2(floor)}</h3>
         {floorComplete && (
@@ -237,14 +308,16 @@ export default function Collect({ campaignId, towerId: initialTower, go, toast }
           <div className="column-grid">
             {columnApts('left').map((a) => (
               <AptButton
-                key={a.aptCode}
-                apt={a}
-                hasPhoto={photoSet.has(a.aptCode)}
-                hasIndex={indexSet.has(a.aptCode)}
-                photo={towerRecords.find((r) => r.aptCode === a.aptCode)?.photo}
-                onTap={() => setCamApt(a)}
-              />
-            ))}
+                  key={a.aptCode}
+                  apt={a}
+                  hasPhoto={photoSet.has(a.aptCode)}
+                  hasIndex={indexSet.has(a.aptCode)}
+                  photo={towerRecords.find((r) => r.aptCode === a.aptCode)?.photo}
+                  onTap={() => setCamApt(a)}
+                  onDelete={() => setDeleteTarget(a)}
+                  onHistory={() => go({ name: 'history', towerId, aptCode: a.aptCode })}
+                />
+              ))}
           </div>
         </div>
 
@@ -262,14 +335,16 @@ export default function Collect({ campaignId, towerId: initialTower, go, toast }
           <div className="column-grid">
             {columnApts('right').map((a) => (
               <AptButton
-                key={a.aptCode}
-                apt={a}
-                hasPhoto={photoSet.has(a.aptCode)}
-                hasIndex={indexSet.has(a.aptCode)}
-                photo={towerRecords.find((r) => r.aptCode === a.aptCode)?.photo}
-                onTap={() => setCamApt(a)}
-              />
-            ))}
+                  key={a.aptCode}
+                  apt={a}
+                  hasPhoto={photoSet.has(a.aptCode)}
+                  hasIndex={indexSet.has(a.aptCode)}
+                  photo={towerRecords.find((r) => r.aptCode === a.aptCode)?.photo}
+                  onTap={() => setCamApt(a)}
+                  onDelete={() => setDeleteTarget(a)}
+                  onHistory={() => go({ name: 'history', towerId, aptCode: a.aptCode })}
+                />
+              ))}
           </div>
         </div>
       </div>
@@ -293,6 +368,16 @@ export default function Collect({ campaignId, towerId: initialTower, go, toast }
           toast={toast}
         />
       )}
+
+      <ConfirmModal
+        open={!!deleteTarget}
+        title="Remover foto?"
+        message={`Remover a foto e o índice do apartamento ${deleteTarget?.aptCode}?`}
+        danger
+        confirmLabel="Remover"
+        onConfirm={() => void handleDeletePhoto()}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

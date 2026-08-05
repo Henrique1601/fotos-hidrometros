@@ -9,6 +9,8 @@ import Indices from './screens/Indices';
 import Export from './screens/Export';
 import DataScreen from './screens/DataScreen';
 import SyncScreen from './screens/SyncScreen';
+import HistoryScreen from './screens/HistoryScreen';
+import ErrorBoundary from './components/ErrorBoundary';
 import { Screen } from './nav';
 
 export default function App() {
@@ -58,7 +60,9 @@ export default function App() {
     <div className="app">
       <Background />
       <main className={screen.name === 'home' ? 'app-main app-main--wide' : 'app-main'}>
-        <ScreenSwitch screen={screen} go={go} toast={notify} />
+        <ErrorBoundary>
+          <ScreenSwitch screen={screen} go={go} toast={notify} />
+        </ErrorBoundary>
       </main>
       {toast && (
         <div className="toast" role="status">
@@ -109,6 +113,7 @@ function ScreenSwitch({ screen, go, toast }: ScreenSwitchProps) {
       {screen.name === 'export' && <Export campaignId={screen.campaignId} go={go} toast={toast} />}
       {screen.name === 'data' && <DataScreen go={go} toast={toast} />}
       {screen.name === 'sync' && <SyncScreen go={go} toast={toast} />}
+      {screen.name === 'history' && <HistoryScreen towerId={screen.towerId} aptCode={screen.aptCode} go={go} toast={toast} />}
     </div>
   );
 }

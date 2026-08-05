@@ -2,7 +2,11 @@
 
 ## Regra obrigatória: use skills
 
-SEMPRE consulte e use as skills carregadas (`C:\Users\henri\.agents\skills`) e MCPs antes de qualquer tarefa — documentação (context7), busca de código (gh_grep), deploy (deploy-to-vercel), testes de UI (webapp-testing / playwright), design (.pen via pencil). Nunca execute trabalho guiado por skill "do jeito cru" sem carregar a skill primeiro.
+SEMPRE consulte e use as skills carregadas e MCPs antes de qualquer tarefa — documentação (context7), busca de código (gh_grep), deploy (deploy-to-vercel), testes de UI (webapp-testing / playwright), design (.pen via pencil). Nunca execute trabalho guiado por skill "do jeito cru" sem carregar a skill primeiro.
+
+**Caminhos das skills (varia por máquina):**
+- PC pessoal (henri): `C:\Users\henri\.agents\skills`
+- PC trabalho (conta): `C:\Users\conta\.agents\skills`
 
 ## Projeto
 

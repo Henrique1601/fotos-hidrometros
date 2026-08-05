@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { AlertTriangle, ArrowLeft, ArrowRight, Check, ImageOff, ScanText, Search } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ArrowRight, Check, Clock, ImageOff, ScanText, Search } from 'lucide-react';
 import { db } from '../db/db';
 import { upsertRecord } from '../db/records';
 import { floorSequence, towerById, UnitRef } from '../lib/towers';
@@ -9,6 +9,7 @@ import { campaignLabel, formatIndex, pad2, parseIndex, sideLabel } from '../lib/
 import { validateIndex } from '../lib/validate';
 import type { IndexWarning } from '../lib/validate';
 import { recognizeMeter } from '../lib/ocr';
+import { loadConsumption } from '../lib/consumption';
 import GlassCard from '../components/GlassCard';
 import { usePhotoUrl } from '../hooks/usePhotoUrl';
 import { Screen } from '../nav';
@@ -37,6 +38,16 @@ export default function Indices({ campaignId, go, toast }: Props) {
   const towerRecords = useMemo(() => records.filter((r) => r.towerId === towerId), [records, towerId]);
 
   const recordByApt = useMemo(() => new Map(towerRecords.map((r) => [r.aptCode, r])), [towerRecords]);
+
+  const [prevIndexMap, setPrevIndexMap] = useState<Map<string, number | null>>(new Map());
+  useEffect(() => {
+    if (!campaign) return;
+    loadConsumption(campaign, towerRecords).then((consumptionMap) => {
+      const map = new Map<string, number | null>();
+      consumptionMap.forEach((v, k) => map.set(k, v.previousIndex));
+      setPrevIndexMap(map);
+    });
+  }, [campaign, towerRecords]);
 
   const photoUnits = useMemo(
     () => floorSequence(tower).filter((u) => Boolean(recordByApt.get(u.aptCode)?.photo)),
@@ -175,6 +186,8 @@ export default function Indices({ campaignId, go, toast }: Props) {
     }
   };
 
+  const prevIdx = apt ? prevIndexMap.get(apt.aptCode) : null;
+
   return (
     <div>
       <header className="app-header">
@@ -235,6 +248,12 @@ export default function Indices({ campaignId, go, toast }: Props) {
           </div>
 
           <div className="iv-panel">
+            {prevIdx !== null && prevIdx !== undefined && (
+              <div className="iv-prev">
+                <Clock size={14} />
+                <span>Índice anterior: <strong className="mono">{formatIndex(prevIdx)}</strong></span>
+              </div>
+            )}
             <label className="field-label" htmlFor="iv-input">
               Índice do hidrômetro
             </label>

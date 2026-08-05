@@ -152,3 +152,26 @@ export async function terminateOcr(): Promise<void> {
     workerPromise = null;
   }
 }
+
+export interface BatchOcrResult {
+  aptCode: string;
+  result: OcrResult;
+}
+
+export async function batchRecognizeMeters(
+  photos: { aptCode: string; photo: Blob }[],
+  onProgress?: (done: number, total: number) => void,
+): Promise<BatchOcrResult[]> {
+  const results: BatchOcrResult[] = [];
+  for (let i = 0; i < photos.length; i++) {
+    const { aptCode, photo } = photos[i];
+    try {
+      const result = await recognizeMeter(photo);
+      results.push({ aptCode, result });
+    } catch {
+      results.push({ aptCode, result: { raw: '', value: null, confidence: 0 } });
+    }
+    onProgress?.(i + 1, photos.length);
+  }
+  return results;
+}

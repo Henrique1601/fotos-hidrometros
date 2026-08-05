@@ -5,4 +5,5 @@ export type Screen =
   | { name: 'indices'; campaignId: number }
   | { name: 'export'; campaignId: number }
   | { name: 'data' }
-  | { name: 'sync' };
+  | { name: 'sync' }
+  | { name: 'history'; towerId: string; aptCode: string };

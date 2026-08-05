@@ -501,6 +501,90 @@ body {
   margin-top: 2px;
 }
 
+/* ---------- Error boundary ---------- */
+.error-boundary {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--text-dim);
+}
+
+.error-boundary h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.1rem;
+  margin: 0;
+  color: var(--danger);
+}
+
+.error-boundary p {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+/* ---------- History ---------- */
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.history-card {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.history-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.history-label {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.92rem;
+  margin: 0;
+}
+
+.history-index {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--cyan);
+}
+
+.history-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+.history-thumb-wrap {
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  max-height: 180px;
+}
+
+.history-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
 /* ---------- Form ---------- */
 .form-card {
   padding: 16px;
@@ -649,6 +733,26 @@ select.text-input {
 }
 
 /* ---------- Apt jump ---------- */
+.collect-toolbar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.collect-toolbar .btn-ghost {
+  flex: 1;
+  justify-content: center;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 .apt-jump {
   position: relative;
   display: flex;
@@ -826,6 +930,62 @@ select.text-input {
 
 .apt-indexed .apt-code {
   color: var(--cyan);
+}
+
+.apt-delete {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 2;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(248, 113, 113, 0.85);
+  color: #fff;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.apt-btn:hover .apt-delete,
+.apt-btn:active .apt-delete {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .apt-delete {
+    opacity: 1;
+  }
+}
+
+.apt-history {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  z-index: 2;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(94, 234, 212, 0.7);
+  color: #04141d;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.apt-btn:hover .apt-history,
+.apt-btn:active .apt-history {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .apt-history {
+    opacity: 0.7;
+  }
 }
 
 /* ---------- Done banner ---------- */
@@ -1203,6 +1363,22 @@ select.text-input {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
+}
+
+.iv-prev {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(94, 234, 212, 0.06);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-size: 0.82rem;
+}
+
+.iv-prev strong {
+  color: var(--cyan);
 }
 
 .iv-input {
