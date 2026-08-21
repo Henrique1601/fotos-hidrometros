@@ -11,6 +11,7 @@ import {
   stopCamera,
 } from '../lib/camera';
 import { recognizeMeter, OcrResult } from '../lib/ocr';
+import { watermarkPhoto, formatWatermarkDate } from '../lib/watermark';
 import { upsertRecord } from '../db/records';
 import { pad2 } from '../lib/utils';
 import { UnitRef } from '../lib/towers';
@@ -101,6 +102,7 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
       navigator.vibrate?.(50);
       setTimeout(() => setFlash(false), 350);
       setPhase('preview');
+      void downloadWatermarked(b);
       setOcrBusy(true);
       recognizeMeter(b)
         .then((r) => {
@@ -183,6 +185,22 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
     pinches.current = null;
   }, []);
 
+  const downloadWatermarked = useCallback(async (photoBlob: Blob) => {
+    try {
+      const ts = Date.now();
+      const text = `Torre ${towerId} · Apt ${apt.aptCode} · Andar ${pad2(apt.floor)} · ${formatWatermarkDate(ts)}`;
+      const watermarked = await watermarkPhoto(photoBlob, text);
+      const url = URL.createObjectURL(watermarked);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Torre${towerId}-apt${apt.aptCode}-${ts}.jpg`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.warn('Download marca d\'água falhou:', e);
+    }
+  }, [towerId, apt]);
+
   const handleSave = useCallback(async () => {
     if (!blob) return;
     await upsertRecord({
@@ -206,6 +224,7 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
     setFlash(true);
     setTimeout(() => setFlash(false), 350);
     setPhase('preview');
+    void downloadWatermarked(file);
     setOcrBusy(true);
     recognizeMeter(file)
       .then((r) => {
