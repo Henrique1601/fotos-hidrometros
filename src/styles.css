@@ -1788,6 +1788,243 @@ select.text-input {
   background: rgba(94, 234, 212, 0.16);
 }
 
+/* ---------- Offline bar ---------- */
+.offline-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px;
+  background: rgba(251, 191, 36, 0.15);
+  border-bottom: 1px solid rgba(251, 191, 36, 0.3);
+  color: #fbbf24;
+  font-size: 0.78rem;
+  font-weight: 600;
+  backdrop-filter: blur(8px);
+}
+
+/* ---------- Search bar ---------- */
+.search-bar {
+  position: relative;
+  margin-bottom: 14px;
+}
+
+.search-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-dim);
+  pointer-events: none;
+}
+
+.search-input {
+  width: 100%;
+  height: 44px;
+  padding: 0 14px 0 38px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-text);
+  font-size: 0.88rem;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  box-sizing: border-box;
+}
+
+.search-input:focus {
+  border-color: var(--cyan);
+  box-shadow: 0 0 0 3px rgba(94, 234, 212, 0.15);
+}
+
+.search-input::placeholder {
+  color: var(--text-dim);
+}
+
+/* ---------- Campaign head actions ---------- */
+.campaign-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ---------- Edit campaign modal ---------- */
+.edit-campaign-modal {
+  width: 100%;
+  max-width: 380px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.modal-input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  font-family: var(--font-text);
+  font-size: 0.9rem;
+  outline: none;
+  margin-top: 4px;
+  transition: border-color 0.15s ease;
+  box-sizing: border-box;
+}
+
+.modal-input:focus {
+  border-color: var(--cyan);
+}
+
+.modal-row {
+  display: flex;
+  gap: 12px;
+}
+
+/* ---------- Undo button ---------- */
+.iv-undo {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  margin-left: 6px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(94, 234, 212, 0.25);
+  color: #04141d;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  vertical-align: middle;
+}
+
+.iv-undo:hover {
+  background: rgba(94, 234, 212, 0.45);
+}
+
+/* ---------- Consumption screen ---------- */
+.consumption-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.consumption-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 16px;
+}
+
+.consumption-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px;
+  border-radius: 10px;
+  background: rgba(94, 234, 212, 0.04);
+  border: 1px solid var(--border);
+}
+
+.consumption-stat-label {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.consumption-stat-value {
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--cyan);
+}
+
+.consumption-stat-danger {
+  color: #f87171;
+}
+
+.consumption-stat-muted {
+  color: var(--text-dim);
+}
+
+.consumption-range {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px;
+  font-size: 0.82rem;
+  color: var(--text-dim);
+}
+
+.section-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: var(--text);
+  margin: 0;
+}
+
+.tower-consumption-card {
+  padding: 14px;
+}
+
+.tower-consumption-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.tower-consumption-name {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+.tower-consumption-meta {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+.tower-consumption-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.tower-consumption-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--cyan);
+  transition: width 0.3s ease;
+}
+
+.tower-consumption-bar-anomaly {
+  background: #f87171;
+}
+
+.tower-consumption-anomaly {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  font-size: 0.74rem;
+  color: #f87171;
+  font-weight: 600;
+}
+
 @media (min-width: 520px) {
   .app-main {
     padding-top: 28px;

@@ -1,4 +1,4 @@
-import { db, MeterRecord } from './db';
+import { db, Campaign, MeterRecord } from './db';
 
 export async function listCampaignRecords(campaignId: number): Promise<MeterRecord[]> {
   return db.records.where('campaignId').equals(campaignId).toArray();
@@ -81,4 +81,8 @@ export function towerProgress(records: MeterRecord[], total: number): TowerProgr
     indices: records.filter((r) => r.index !== null && r.index !== undefined).length,
     total,
   };
+}
+
+export async function updateCampaign(id: number, changes: Partial<Omit<Campaign, 'id' | 'createdAt'>>): Promise<void> {
+  await db.campaigns.update(id, { ...changes, updatedAt: Date.now() });
 }

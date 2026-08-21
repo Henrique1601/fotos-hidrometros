@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { AlertTriangle, ArrowLeft, ArrowRight, Check, Clock, ImageOff, ScanText, Search } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ArrowRight, Check, Clock, ImageOff, ScanText, Search, Undo2 } from 'lucide-react';
 import { db } from '../db/db';
 import { upsertRecord } from '../db/records';
 import { floorSequence, towerById, UnitRef } from '../lib/towers';
@@ -29,6 +29,7 @@ export default function Indices({ campaignId, go, toast }: Props) {
   const [jump, setJump] = useState('');
   const [jumpMsg, setJumpMsg] = useState<string | null>(null);
   const [ocrBusy, setOcrBusy] = useState(false);
+  const [lastSaved, setLastSaved] = useState<{ aptCode: string; prevIndex: number | null; prevRaw: string } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const campaign = useLiveQuery(() => db.campaigns.get(campaignId), [campaignId]);
@@ -86,6 +87,7 @@ export default function Indices({ campaignId, go, toast }: Props) {
     setValue(idx !== null && idx !== undefined ? formatIndex(idx) : '');
     setWarnings([]);
     setInvalid(false);
+    setLastSaved(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [apt?.aptCode, towerRecords]);
 
@@ -98,6 +100,7 @@ export default function Indices({ campaignId, go, toast }: Props) {
       const parsed = parseIndex(raw);
       if (parsed === null) return false;
       const prev = recordByApt.get(u.aptCode)?.index;
+      const prevRaw = recordByApt.get(u.aptCode)?.index != null ? formatIndex(recordByApt.get(u.aptCode)!.index!) : '';
       const peerList = towerRecords
         .filter((r) => r.index !== null && r.index !== undefined && r.aptCode !== u.aptCode)
         .map((r) => r.index as number);
@@ -111,12 +114,34 @@ export default function Indices({ campaignId, go, toast }: Props) {
         index: parsed,
         indexedAt: Date.now(),
       });
+      setLastSaved({ aptCode: u.aptCode, prevIndex: prev ?? null, prevRaw });
       setWarnings(validateIndex(parsed, prev, peerList));
       setInvalid(false);
       return true;
     },
     [campaignId, towerId, towerRecords, recordByApt],
   );
+
+  const handleUndo = useCallback(async () => {
+    if (!lastSaved || !apt || lastSaved.aptCode !== apt.aptCode) return;
+    const rec = recordByApt.get(apt.aptCode);
+    if (!rec) return;
+    await upsertRecord({
+      campaignId,
+      towerId,
+      floor: apt.floor,
+      unit: apt.unit,
+      side: apt.side,
+      aptCode: apt.aptCode,
+      index: lastSaved.prevIndex,
+      indexedAt: lastSaved.prevIndex !== null ? Date.now() : undefined,
+    });
+    setValue(lastSaved.prevRaw);
+    setWarnings([]);
+    setInvalid(false);
+    setLastSaved(null);
+    toast('Índice desfeito.');
+  }, [lastSaved, apt, campaignId, towerId, recordByApt, toast]);
 
   const canGo = useCallback((): boolean => {
     if (!value.trim()) return true;
@@ -243,6 +268,16 @@ export default function Indices({ campaignId, go, toast }: Props) {
               recordByApt.get(apt.aptCode)?.index !== undefined && (
                 <span className="iv-filled">
                   <Check size={12} /> Salvo
+                  {lastSaved && lastSaved.aptCode === apt.aptCode && (
+                    <button
+                      className="iv-undo"
+                      onClick={() => void handleUndo()}
+                      aria-label="Desfazer índice"
+                      title="Desfazer"
+                    >
+                      <Undo2 size={12} />
+                    </button>
+                  )}
                 </span>
               )}
           </div>

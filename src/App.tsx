@@ -1,6 +1,7 @@
 import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { useRegisterSW } from 'virtual:pwa-register/react';
+import { WifiOff } from 'lucide-react';
 import Background from './components/Background';
 import ErrorBoundary from './components/ErrorBoundary';
 import { Screen } from './nav';
@@ -13,6 +14,7 @@ const Export = lazy(() => import('./screens/Export'));
 const DataScreen = lazy(() => import('./screens/DataScreen'));
 const SyncScreen = lazy(() => import('./screens/SyncScreen'));
 const HistoryScreen = lazy(() => import('./screens/HistoryScreen'));
+const ConsumptionScreen = lazy(() => import('./screens/ConsumptionScreen'));
 
 function ScreenLoader() {
   return (
@@ -22,16 +24,30 @@ function ScreenLoader() {
   );
 }
 
+export type NotifyFn = (msg: string, duration?: number) => void;
+
 export default function App() {
   const [screen, setScreen] = useState<Screen>({ name: 'home' });
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<number | null>(null);
   const [needRefresh, setNeedRefresh] = useState(false);
+  const [online, setOnline] = useState(navigator.onLine);
 
-  const notify = useCallback((msg: string) => {
+  useEffect(() => {
+    const on = () => setOnline(true);
+    const off = () => setOnline(false);
+    window.addEventListener('online', on);
+    window.addEventListener('offline', off);
+    return () => {
+      window.removeEventListener('online', on);
+      window.removeEventListener('offline', off);
+    };
+  }, []);
+
+  const notify = useCallback((msg: string, duration = 2600) => {
     setToast(msg);
     if (toastTimer.current) window.clearTimeout(toastTimer.current);
-    toastTimer.current = window.setTimeout(() => setToast(null), 2600);
+    toastTimer.current = window.setTimeout(() => setToast(null), duration);
   }, []);
 
   const go = useCallback((s: Screen) => {
@@ -68,6 +84,11 @@ export default function App() {
   return (
     <div className="app">
       <Background />
+      {!online && (
+        <div className="offline-bar">
+          <WifiOff size={14} /> Offline
+        </div>
+      )}
       <main className={screen.name === 'home' ? 'app-main app-main--wide' : 'app-main'}>
         <ErrorBoundary>
           <Suspense fallback={<ScreenLoader />}>
@@ -93,7 +114,7 @@ export default function App() {
 interface ScreenSwitchProps {
   screen: Screen;
   go: (s: Screen) => void;
-  toast: (m: string) => void;
+  toast: NotifyFn;
 }
 
 function ScreenSwitch({ screen, go, toast }: ScreenSwitchProps) {
@@ -125,6 +146,7 @@ function ScreenSwitch({ screen, go, toast }: ScreenSwitchProps) {
       {screen.name === 'data' && <DataScreen go={go} toast={toast} />}
       {screen.name === 'sync' && <SyncScreen go={go} toast={toast} />}
       {screen.name === 'history' && <HistoryScreen towerId={screen.towerId} aptCode={screen.aptCode} go={go} toast={toast} />}
+      {screen.name === 'consumption' && <ConsumptionScreen campaignId={screen.campaignId} go={go} toast={toast} />}
     </div>
   );
 }

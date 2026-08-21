@@ -1,18 +1,19 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import gsap from 'gsap';
-import { Camera, Cloud, Droplets, FolderDown, HardDrive, ListOrdered, Play, Plus, Trash2 } from 'lucide-react';
+import { BarChart3, Camera, Cloud, Droplets, FolderDown, HardDrive, ListOrdered, Pencil, Play, Plus, Search, Trash2 } from 'lucide-react';
 import { db } from '../db/db';
-import { deleteCampaign } from '../db/records';
+import { deleteCampaign, updateCampaign } from '../db/records';
 import { TOWERS, towerTotalUnits } from '../lib/towers';
-import { campaignLabel } from '../lib/utils';
+import { campaignLabel, monthName } from '../lib/utils';
 import GlassCard from '../components/GlassCard';
 import ConfirmModal from '../components/ConfirmModal';
 import { Screen } from '../nav';
+import { NotifyFn } from '../App';
 
 interface Props {
   go: (s: Screen) => void;
-  toast: (m: string) => void;
+  toast: NotifyFn;
 }
 
 const TOTAL_UNITS = TOWERS.reduce((acc, t) => acc + towerTotalUnits(t), 0);
@@ -28,6 +29,9 @@ export default function Home({ go, toast }: Props) {
     danger?: boolean;
     onConfirm: () => void;
   } | null>(null);
+  const [search, setSearch] = useState('');
+  const [editOpen, setEditOpen] = useState(false);
+  const [editCampaign, setEditCampaign] = useState<{ id: number; name: string; month: number; year: number } | null>(null);
 
   const photosByCampaign = new Map<number, number>();
   const idxByCampaign = new Map<number, number>();
@@ -37,6 +41,12 @@ export default function Home({ go, toast }: Props) {
       idxByCampaign.set(r.campaignId, (idxByCampaign.get(r.campaignId) ?? 0) + 1);
     }
   }
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return campaigns;
+    const q = search.toLowerCase();
+    return campaigns.filter((c) => campaignLabel(c.name, c.month, c.year).toLowerCase().includes(q));
+  }, [campaigns, search]);
 
   const introRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -61,6 +71,22 @@ export default function Home({ go, toast }: Props) {
       },
     });
     setConfirmOpen(true);
+  };
+
+  const openEdit = (c: { id: number; name?: string; month: number; year: number }) => {
+    setEditCampaign({ id: c.id, name: c.name ?? '', month: c.month, year: c.year });
+    setEditOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editCampaign) return;
+    await updateCampaign(editCampaign.id, {
+      name: editCampaign.name || undefined,
+      month: editCampaign.month,
+      year: editCampaign.year,
+    });
+    toast('Medição atualizada.');
+    setEditOpen(false);
   };
 
   return (
@@ -100,6 +126,18 @@ export default function Home({ go, toast }: Props) {
         <Plus size={20} /> Nova medição
       </button>
 
+      {campaigns.length > 0 && (
+        <div className="search-bar gs-home-item">
+          <Search size={16} className="search-icon" />
+          <input
+            className="search-input"
+            placeholder="Buscar medição…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+      )}
+
       <section className="campaign-list">
         {campaigns.length === 0 && (
           <GlassCard className="empty-state gs-home-item">
@@ -108,7 +146,14 @@ export default function Home({ go, toast }: Props) {
           </GlassCard>
         )}
 
-        {campaigns.map((c) => {
+        {filtered.length === 0 && campaigns.length > 0 && (
+          <GlassCard className="empty-state gs-home-item">
+            <Search size={28} />
+            <p>Nenhuma medição encontrada.</p>
+          </GlassCard>
+        )}
+
+        {filtered.map((c) => {
           const label = campaignLabel(c.name, c.month, c.year);
           const photos = photosByCampaign.get(c.id!) ?? 0;
           const idx = idxByCampaign.get(c.id!) ?? 0;
@@ -122,13 +167,22 @@ export default function Home({ go, toast }: Props) {
                     {photos}/{TOTAL_UNITS} fotos · {idx} índices
                   </p>
                 </div>
-                <button
-                  className="icon-btn danger"
-                  onClick={() => handleDelete(c)}
-                  aria-label="Excluir medição"
-                >
-                  <Trash2 size={16} />
-                </button>
+                <div className="campaign-head-actions">
+                  <button
+                    className="icon-btn"
+                    onClick={() => openEdit({ id: c.id!, name: c.name, month: c.month, year: c.year })}
+                    aria-label="Editar medição"
+                  >
+                    <Pencil size={16} />
+                  </button>
+                  <button
+                    className="icon-btn danger"
+                    onClick={() => handleDelete(c)}
+                    aria-label="Excluir medição"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
               </div>
               <div className="campaign-bar">
                 <span className="campaign-bar-fill" style={{ width: `${pct}%` }} />
@@ -147,6 +201,9 @@ export default function Home({ go, toast }: Props) {
                 </button>
                 <button className="btn-ghost" onClick={() => go({ name: 'indices', campaignId: c.id! })}>
                   <ListOrdered size={16} /> Índices
+                </button>
+                <button className="btn-ghost" onClick={() => go({ name: 'consumption', campaignId: c.id! })}>
+                  <BarChart3 size={16} /> Consumo
                 </button>
                 <button className="btn-ghost" onClick={() => go({ name: 'export', campaignId: c.id! })}>
                   <FolderDown size={16} /> Exportar
@@ -169,6 +226,54 @@ export default function Home({ go, toast }: Props) {
         }}
         onCancel={() => setConfirmOpen(false)}
       />
+
+      {editOpen && editCampaign && (
+        <div className="modal-overlay" onClick={() => setEditOpen(false)}>
+          <GlassCard className="edit-campaign-modal">
+            <div onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+            <h2 className="modal-title">Editar medição</h2>
+            <label className="field-label">
+              Nome
+              <input
+                className="modal-input"
+                placeholder="Ex: Julho 2026"
+                value={editCampaign.name}
+                onChange={(e) => setEditCampaign({ ...editCampaign, name: e.target.value })}
+              />
+            </label>
+            <div className="modal-row">
+              <label className="field-label" style={{ flex: 1 }}>
+                Mês
+                <select
+                  className="modal-input"
+                  value={editCampaign.month}
+                  onChange={(e) => setEditCampaign({ ...editCampaign, month: Number(e.target.value) })}
+                >
+                  {Array.from({ length: 12 }, (_, i) => (
+                    <option key={i + 1} value={i + 1}>{monthName(i + 1)}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="field-label" style={{ flex: 1 }}>
+                Ano
+                <input
+                  className="modal-input"
+                  type="number"
+                  min={2024}
+                  max={2030}
+                  value={editCampaign.year}
+                  onChange={(e) => setEditCampaign({ ...editCampaign, year: Number(e.target.value) })}
+                />
+              </label>
+            </div>
+            <div className="modal-actions">
+              <button className="btn-ghost" onClick={() => setEditOpen(false)}>Cancelar</button>
+              <button className="btn-primary" onClick={handleSaveEdit}>Salvar</button>
+            </div>
+            </div>
+          </GlassCard>
+        </div>
+      )}
     </div>
   );
 }
