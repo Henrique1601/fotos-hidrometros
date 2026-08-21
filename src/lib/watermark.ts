@@ -30,7 +30,7 @@ export async function watermarkPhoto(blob: Blob, text: string, maxW = 1280): Pro
     canvas.toBlob(
       (b) => (b ? resolve(b) : reject(new Error('Falha ao gerar marca d\u2019água'))),
       'image/jpeg',
-      0.85,
+      0.7,
     );
   });
 }

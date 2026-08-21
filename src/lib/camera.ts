@@ -49,8 +49,8 @@ export async function startCamera(video: HTMLVideoElement): Promise<ActiveCamera
   const stream = await navigator.mediaDevices.getUserMedia({
     video: {
       facingMode: { ideal: 'environment' },
-      width: { ideal: 1920 },
-      height: { ideal: 1080 },
+      width: { ideal: 1280 },
+      height: { ideal: 720 },
     },
     audio: false,
   });
@@ -82,26 +82,29 @@ export async function setZoom(camera: ActiveCamera, value: number): Promise<numb
   return next;
 }
 
-export function captureFrame(video: HTMLVideoElement): Promise<Blob> {
+export function captureFrame(video: HTMLVideoElement, maxW = 1280): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const { videoWidth, videoHeight } = video;
     if (!videoWidth || !videoHeight) {
       reject(new Error('Câmera não pronta'));
       return;
     }
+    const scale = Math.min(1, maxW / videoWidth);
+    const w = Math.max(1, Math.round(videoWidth * scale));
+    const h = Math.max(1, Math.round(videoHeight * scale));
     const canvas = document.createElement('canvas');
-    canvas.width = videoWidth;
-    canvas.height = videoHeight;
+    canvas.width = w;
+    canvas.height = h;
     const ctx = canvas.getContext('2d');
     if (!ctx) {
       reject(new Error('Sem canvas'));
       return;
     }
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(video, 0, 0, w, h);
     canvas.toBlob(
       (b) => (b ? resolve(b) : reject(new Error('Falha ao capturar'))),
       'image/jpeg',
-      0.85,
+      0.7,
     );
   });
 }

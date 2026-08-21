@@ -1,20 +1,29 @@
-import Tesseract from 'tesseract.js';
 import type { Worker } from 'tesseract.js';
 
 let workerPromise: Promise<Worker> | null = null;
+let tesseractModule: typeof import('tesseract.js') | null = null;
+
+async function getTesseract() {
+  if (!tesseractModule) {
+    tesseractModule = await import('tesseract.js');
+  }
+  return tesseractModule;
+}
 
 function getWorker(): Promise<Worker> {
   if (!workerPromise) {
-    workerPromise = Tesseract.createWorker('eng+por', Tesseract.OEM.LSTM_ONLY, {
-      logger: () => {},
-    }).then(async (w) => {
+    workerPromise = (async () => {
+      const Tesseract = await getTesseract();
+      const w = await Tesseract.createWorker('eng+por', Tesseract.OEM.LSTM_ONLY, {
+        logger: () => {},
+      });
       await w.setParameters({
         tessedit_pageseg_mode: Tesseract.PSM.SINGLE_LINE,
         tessedit_char_whitelist: '0123456789.,',
         preserve_interword_spaces: '1',
       });
       return w;
-    }).catch((err) => {
+    })().catch((err) => {
       workerPromise = null;
       throw err;
     });
@@ -150,6 +159,7 @@ export async function terminateOcr(): Promise<void> {
     const w = await workerPromise;
     await w.terminate();
     workerPromise = null;
+    tesseractModule = null;
   }
 }
 

@@ -1,17 +1,26 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import Background from './components/Background';
-import Home from './screens/Home';
-import NewCampaign from './screens/NewCampaign';
-import Collect from './screens/Collect';
-import Indices from './screens/Indices';
-import Export from './screens/Export';
-import DataScreen from './screens/DataScreen';
-import SyncScreen from './screens/SyncScreen';
-import HistoryScreen from './screens/HistoryScreen';
 import ErrorBoundary from './components/ErrorBoundary';
 import { Screen } from './nav';
+
+const Home = lazy(() => import('./screens/Home'));
+const NewCampaign = lazy(() => import('./screens/NewCampaign'));
+const Collect = lazy(() => import('./screens/Collect'));
+const Indices = lazy(() => import('./screens/Indices'));
+const Export = lazy(() => import('./screens/Export'));
+const DataScreen = lazy(() => import('./screens/DataScreen'));
+const SyncScreen = lazy(() => import('./screens/SyncScreen'));
+const HistoryScreen = lazy(() => import('./screens/HistoryScreen'));
+
+function ScreenLoader() {
+  return (
+    <div style={{ display: 'grid', placeItems: 'center', minHeight: '40vh' }}>
+      <div className="chip" style={{ opacity: 0.5 }}>Carregando…</div>
+    </div>
+  );
+}
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>({ name: 'home' });
@@ -61,7 +70,9 @@ export default function App() {
       <Background />
       <main className={screen.name === 'home' ? 'app-main app-main--wide' : 'app-main'}>
         <ErrorBoundary>
-          <ScreenSwitch screen={screen} go={go} toast={notify} />
+          <Suspense fallback={<ScreenLoader />}>
+            <ScreenSwitch screen={screen} go={go} toast={notify} />
+          </Suspense>
         </ErrorBoundary>
       </main>
       {toast && (
