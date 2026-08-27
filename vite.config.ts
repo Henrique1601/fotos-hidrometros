@@ -36,7 +36,8 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        globPatterns: ['**/*.{js,css,html,ico,svg,woff2}'],
+        globIgnores: ['**/Export-*.js', '**/index-B*.js', '**/html2canvas*.js', '**/purify*.js'],
         navigateFallback: '/index.html',
         runtimeCaching: [
           {

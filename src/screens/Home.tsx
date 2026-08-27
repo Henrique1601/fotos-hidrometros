@@ -53,7 +53,7 @@ export default function Home({ go, toast }: Props) {
     const el = introRef.current;
     if (!el) return;
     const ctx = gsap.context(() => {
-      gsap.fromTo('.gs-home-item', { opacity: 0, y: 24 }, { opacity: 1, y: 0, stagger: 0.08, duration: 0.5, ease: 'power2.out' });
+      gsap.fromTo('.gs-home-item', { opacity: 0, y: 16 }, { opacity: 1, y: 0, stagger: 0.04, duration: 0.3, ease: 'power2.out' });
     }, el);
     return () => ctx.revert();
   }, []);

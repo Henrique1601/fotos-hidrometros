@@ -13,9 +13,9 @@
   --danger: #f87171;
   --amber: #fbbf24;
   --radius: 18px;
-  --font-display: 'Unbounded', sans-serif;
-  --font-body: 'Outfit', sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  --font-display: 'Unbounded', system-ui, sans-serif;
+  --font-body: 'Outfit', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 }
 
 * {
@@ -70,69 +70,18 @@ body {
     radial-gradient(1200px 700px at 85% -10%, rgba(20, 184, 166, 0.16), transparent 60%),
     radial-gradient(900px 600px at -10% 30%, rgba(45, 212, 191, 0.1), transparent 55%),
     linear-gradient(180deg, #061420 0%, var(--bg) 55%, #04101a 100%);
+  pointer-events: none;
 }
 
-.orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(70px);
-  opacity: 0.5;
-  animation: orb-float 14s ease-in-out infinite;
-}
-
-.orb-1 {
-  width: 260px;
-  height: 260px;
-  background: radial-gradient(circle, rgba(94, 234, 212, 0.35), transparent 65%);
-  top: -60px;
-  right: -80px;
-}
-
-.orb-2 {
-  width: 200px;
-  height: 200px;
-  background: radial-gradient(circle, rgba(20, 184, 166, 0.4), transparent 65%);
-  bottom: 12%;
-  left: -70px;
-  animation-delay: -5s;
-}
-
-.orb-3 {
-  width: 140px;
-  height: 140px;
-  background: radial-gradient(circle, rgba(94, 234, 212, 0.28), transparent 65%);
-  bottom: 38%;
-  right: 12%;
-  animation-delay: -9s;
-}
-
-.bg-wave {
-  position: absolute;
-  left: -20%;
-  right: -20%;
-  bottom: -20%;
-  height: 40%;
-  background: radial-gradient(50% 60% at 50% 100%, rgba(13, 37, 52, 0.9), transparent 70%);
-}
-
-@keyframes orb-float {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0) scale(1);
-  }
-  50% {
-    transform: translate3d(20px, -24px, 0) scale(1.08);
-  }
-}
+.orb { display: none; }
+.bg-wave { display: none; }
 
 /* ---------- Glass ---------- */
 .glass {
-  background: var(--surface);
+  background: var(--surface-strong);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 /* ---------- Typography ---------- */
@@ -1317,12 +1266,11 @@ select.text-input {
   left: 12px;
   padding: 5px 12px;
   border-radius: 999px;
-  background: rgba(2, 8, 13, 0.78);
+  background: rgba(2, 8, 13, 0.92);
   border: 1px solid var(--border-strong);
   color: var(--cyan);
   font-size: 1.05rem;
   font-weight: 700;
-  backdrop-filter: blur(6px);
 }
 
 .iv-meta {
@@ -1331,11 +1279,10 @@ select.text-input {
   right: 12px;
   padding: 4px 10px;
   border-radius: 999px;
-  background: rgba(2, 8, 13, 0.78);
+  background: rgba(2, 8, 13, 0.92);
   border: 1px solid var(--border);
   color: var(--text-dim);
   font-size: 0.74rem;
-  backdrop-filter: blur(6px);
 }
 
 .iv-filled {
@@ -1352,7 +1299,6 @@ select.text-input {
   color: var(--cyan);
   font-size: 0.74rem;
   font-weight: 700;
-  backdrop-filter: blur(6px);
 }
 
 .iv-panel {
@@ -1568,12 +1514,10 @@ select.text-input {
   max-width: min(440px, calc(100vw - 32px));
   padding: 12px 18px;
   border-radius: 14px;
-  background: var(--surface-strong);
+  background: rgba(16, 45, 63, 0.95);
   border: 1px solid var(--border-strong);
   color: var(--text);
   font-size: 0.9rem;
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
   text-align: center;
 }
@@ -1632,10 +1576,8 @@ select.text-input {
   align-items: center;
   padding: 6px 14px;
   border-radius: 999px;
-  background: rgba(2, 8, 13, 0.82);
+  background: rgba(2, 8, 13, 0.92);
   border: 1px solid var(--border-strong);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
 }
 
 .ocr-badge-text {
@@ -1717,9 +1659,7 @@ select.text-input {
   z-index: 90;
   display: grid;
   place-items: center;
-  background: rgba(2, 8, 13, 0.72);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: rgba(2, 8, 13, 0.85);
   padding: 24px;
 }
 
@@ -1800,12 +1740,11 @@ select.text-input {
   justify-content: center;
   gap: 6px;
   padding: 8px;
-  background: rgba(251, 191, 36, 0.15);
+  background: rgba(251, 191, 36, 0.2);
   border-bottom: 1px solid rgba(251, 191, 36, 0.3);
   color: #fbbf24;
   font-size: 0.78rem;
   font-weight: 600;
-  backdrop-filter: blur(8px);
 }
 
 /* ---------- Search bar ---------- */

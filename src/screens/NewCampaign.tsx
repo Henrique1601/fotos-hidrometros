@@ -25,7 +25,7 @@ export default function NewCampaign({ go, toast }: Props) {
   }, [now]);
 
   useGSAP(() => {
-    gsap.fromTo('.gs-new-item', { opacity: 0, y: 20 }, { opacity: 1, y: 0, stagger: 0.06, duration: 0.45, ease: 'power2.out' });
+    gsap.fromTo('.gs-new-item', { opacity: 0, y: 12 }, { opacity: 1, y: 0, stagger: 0.03, duration: 0.25, ease: 'power2.out' });
   }, []);
 
   const handleSelectTower = async (towerId: string) => {

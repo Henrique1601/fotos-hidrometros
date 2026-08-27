@@ -124,8 +124,8 @@ function ScreenSwitch({ screen, go, toast }: ScreenSwitchProps) {
     if (!el) return;
     gsap.fromTo(
       el,
-      { opacity: 0, y: 12 },
-      { opacity: 1, y: 0, duration: 0.35, ease: 'power2.out' },
+      { opacity: 0, y: 8 },
+      { opacity: 1, y: 0, duration: 0.2, ease: 'power2.out' },
     );
   }, [screen]);
 
