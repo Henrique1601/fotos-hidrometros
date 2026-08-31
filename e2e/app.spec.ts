@@ -47,7 +47,7 @@ test('backup baixa arquivo com dados e restore restaura', async ({ page }) => {
   await criarCampanhaComFoto(page);
 
   await page.getByRole('button', { name: 'Dados' }).click();
-  await expect(page.getByRole('heading', { name: 'Dados' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Dados', exact: true })).toBeVisible();
 
   const [download] = await Promise.all([
     page.waitForEvent('download'),
@@ -58,10 +58,8 @@ test('backup baixa arquivo com dados e restore restaura', async ({ page }) => {
   const data = JSON.parse(readFileSync(file!, 'utf8'));
   expect(data.records.length).toBeGreaterThanOrEqual(1);
 
-  page.on('dialog', (d) => d.accept());
-  await page.getByRole('button', { name: 'Restaurar' }).click();
   await page.setInputFiles('.page-card input[type=file]', file!);
-  await page.getByRole('button', { name: 'Restaurar', exact: true }).click();
+  await page.locator('.modal-panel').getByRole('button', { name: 'Restaurar' }).click();
   await expect(page.getByText(/Backup restaurado/)).toBeVisible();
 });
 
