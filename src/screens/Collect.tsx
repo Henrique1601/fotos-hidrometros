@@ -361,7 +361,7 @@ export default function Collect({ campaignId, towerId: initialTower, go, toast }
           towerId={towerId}
           apt={camApt}
           onPrev={camPrev ? handlePrev : undefined}
-          onSaved={() => void handleSaved()}
+          onSaved={(ocr) => void handleSaved(ocr)}
           onClose={() => setCamApt(null)}
           toast={toast}
         />

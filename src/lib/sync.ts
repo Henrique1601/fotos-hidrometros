@@ -182,12 +182,16 @@ export async function pullAll(): Promise<SyncStats> {
   let recCount = 0;
   for (const row of recRes.data as RemoteRecord[]) {
     const local = localRecs.find(
-      (r) => r.campaignId === row.campaign_client_id && r.aptCode === row.apt_code,
+      (r) =>
+        r.campaignId === row.campaign_client_id &&
+        r.towerId === row.tower_id &&
+        r.aptCode === row.apt_code,
     );
     if (!local || row.updated_at > local.updatedAt) {
       const remote = fromRemoteRecord(row);
       await db.records.put({
         ...remote,
+        id: local?.id,
         photo: local?.photo ?? remote.photo,
       });
       recCount++;

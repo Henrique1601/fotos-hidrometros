@@ -521,17 +521,40 @@ body {
 }
 
 .history-thumb-wrap {
+  position: relative;
   border-radius: 12px;
   overflow: hidden;
   border: 1px solid var(--border);
-  max-height: 180px;
+  background: #030b10;
+  max-height: 280px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
 }
 
 .history-thumb {
   width: 100%;
-  height: 100%;
-  object-fit: cover;
+  max-height: 280px;
+  object-fit: contain;
   display: block;
+}
+
+.history-thumb-hint {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 500;
+  background: rgba(7, 24, 34, 0.78);
+  border: 1px solid var(--border);
+  color: var(--cyan);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  pointer-events: none;
 }
 
 /* ---------- Form ---------- */

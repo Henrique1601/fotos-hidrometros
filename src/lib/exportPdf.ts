@@ -90,13 +90,13 @@ export async function buildPdf(
   doc.setFontSize(10);
   doc.text('Leitura organizada por torre, andar e lado.', W / 2, 122, { align: 'center' });
 
-  for (const [ti, tower] of TOWERS.entries()) {
+  for (const tower of TOWERS) {
     const recs = records
       .filter((r) => r.towerId === tower.id)
       .sort((a, b) => a.floor - b.floor || a.unit - b.unit);
     if (!recs.length) continue;
 
-    if (ti > 0) doc.addPage();
+    doc.addPage();
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(16);
     doc.setTextColor(7, 24, 34);

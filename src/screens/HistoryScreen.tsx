@@ -1,6 +1,6 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { ArrowLeft, Gauge, ImageOff } from 'lucide-react';
+import { ArrowLeft, Gauge, ImageOff, Maximize2, X } from 'lucide-react';
 import { db } from '../db/db';
 import { campaignLabel, formatIndex, pad2, sideLabel } from '../lib/utils';
 import GlassCard from '../components/GlassCard';
@@ -17,6 +17,7 @@ interface Props {
 export default function HistoryScreen({ towerId, aptCode, go }: Props) {
   const campaigns = useLiveQuery(() => db.campaigns.orderBy('createdAt').reverse().toArray(), []) ?? [];
   const allRecords = useLiveQuery(() => db.records.toArray(), []) ?? [];
+  const [zoomPhoto, setZoomPhoto] = useState<{ blob: Blob; label: string } | null>(null);
 
   const records = useMemo(
     () => allRecords.filter((r) => r.towerId === towerId && r.aptCode === aptCode),
@@ -79,22 +80,51 @@ export default function HistoryScreen({ towerId, aptCode, go }: Props) {
                 )}
               </div>
               {r.photo && (
-                <HistoryThumb blob={r.photo} aptCode={r.aptCode} />
+                <HistoryThumb
+                  blob={r.photo}
+                  aptCode={r.aptCode}
+                  onClick={() => setZoomPhoto({ blob: r.photo!, label: `${campaignLabel(c!.name, c!.month, c!.year)} · Apt ${r.aptCode}` })}
+                />
               )}
             </GlassCard>
           ))}
+        </div>
+      )}
+
+      {zoomPhoto && (
+        <div className="photo-lightbox" onClick={() => setZoomPhoto(null)}>
+          <div className="photo-lightbox-content" onClick={(e) => e.stopPropagation()}>
+            <button
+              className="icon-btn glass photo-lightbox-close"
+              onClick={() => setZoomPhoto(null)}
+              aria-label="Fechar ampliação"
+            >
+              <X size={24} />
+            </button>
+            <HistoryModalPhoto blob={zoomPhoto.blob} label={zoomPhoto.label} />
+            <span className="photo-lightbox-badge mono">{zoomPhoto.label}</span>
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-function HistoryThumb({ blob, aptCode }: { blob: Blob; aptCode: string }) {
+function HistoryThumb({ blob, aptCode, onClick }: { blob: Blob; aptCode: string; onClick?: () => void }) {
   const url = usePhotoUrl(blob);
   if (!url) return null;
   return (
-    <div className="history-thumb-wrap">
+    <div className="history-thumb-wrap" onClick={onClick} role="button" tabIndex={0} aria-label={`Ampliar foto do apt ${aptCode}`}>
       <img src={url} alt={`Foto ${aptCode}`} className="history-thumb" />
+      <span className="history-thumb-hint">
+        <Maximize2 size={12} /> Ampliar
+      </span>
     </div>
   );
+}
+
+function HistoryModalPhoto({ blob, label }: { blob: Blob; label: string }) {
+  const url = usePhotoUrl(blob);
+  if (!url) return null;
+  return <img src={url} alt={label} className="iv-photo" />;
 }

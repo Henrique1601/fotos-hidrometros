@@ -470,6 +470,7 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
         onChange={(e) => {
           const f = e.target.files?.[0];
           if (f) void handleFile(f);
+          e.target.value = '';
         }}
       />
     </div>,
