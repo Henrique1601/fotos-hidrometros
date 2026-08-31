@@ -53,38 +53,38 @@ describe('towers', () => {
     expect(towerTotalUnits(towerById('C'))).toBe(181);
   });
 
-  it('floorSequence: esq desc depois dir desc por andar, andares ascendentes', () => {
+  it('floorSequence: esq desc depois dir desc por andar, andares descendentes (25 a 3)', () => {
     const t = towerById('A');
     const seq = floorSequence(t);
     const codes = seq.map((u) => u.aptCode);
     const expected = [
-      '34', '33', '32', '31',
-      '46', '45', '44', '43', '48', '47', '42', '41',
-      '56', '55', '54', '53', '58', '57', '52', '51',
-      '66', '65', '64', '63',
+      '256', '255', '254', '253', '252', '251', '258', '257',
+      '246', '245', '244', '243', '242', '241', '248', '247',
+      '236', '235', '234', '233', '232', '231', '238', '237',
     ];
     expect(codes.slice(0, 24)).toEqual(expected);
-    expect(seq[0].floor).toBe(3);
-    expect(seq[3].floor).toBe(3);
-    expect(seq[4].floor).toBe(4);
-    expect(seq[23].floor).toBe(6);
-    expect(seq[seq.length - 1].aptCode).toBe('251');
+    expect(seq[0].floor).toBe(25);
+    expect(seq[0].aptCode).toBe('256');
+    expect(seq[7].aptCode).toBe('257');
+    expect(seq[8].floor).toBe(24);
+    expect(seq[seq.length - 1].aptCode).toBe('31');
+    expect(seq[seq.length - 4].aptCode).toBe('34');
   });
 
-  it('columnSequence mantém o formato antigo (coluna única)', () => {
+  it('columnSequence segue a ordem das colunas do 25 ao 3', () => {
     const t = towerById('A');
     const left = columnSequence(t, 'left').map((u) => u.aptCode);
-    expect(left.slice(0, 4)).toEqual(['34', '33', '46', '45']);
+    expect(left.slice(0, 4)).toEqual(['256', '255', '254', '253']);
   });
 
   it('towerById retorna A para id inválido', () => {
     expect(towerById('ZZ').id).toBe('A');
   });
 
-  it('buildTowers produz torres com floors 3..25', () => {
+  it('buildTowers produz torres com floors descendentes 25..3', () => {
     for (const t of buildTowers()) {
-      expect(t.floors[0].floor).toBe(3);
-      expect(t.floors[t.floors.length - 1].floor).toBe(25);
+      expect(t.floors[0].floor).toBe(25);
+      expect(t.floors[t.floors.length - 1].floor).toBe(3);
       expect(t.floors).toHaveLength(23);
     }
   });

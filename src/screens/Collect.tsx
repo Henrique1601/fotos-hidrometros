@@ -32,7 +32,7 @@ interface Props {
 
 export default function Collect({ campaignId, towerId: initialTower, go, toast }: Props) {
   const [towerId, setTowerId] = useState(initialTower ?? 'A');
-  const [floor, setFloor] = useState(3);
+  const [floor, setFloor] = useState(25);
   const [camApt, setCamApt] = useState<UnitRef | null>(null);
   const [jump, setJump] = useState('');
   const [batchBusy, setBatchBusy] = useState(false);
@@ -76,7 +76,6 @@ export default function Collect({ campaignId, towerId: initialTower, go, toast }
       if (!floorCfg) return [];
       return SIDE_ORDER[side]
         .filter((u) => floorCfg.units.includes(u))
-        .reverse()
         .map((u) => ({ floor, unit: u, aptCode: aptCode(floor, u), side }));
     },
     [tower, floor],
@@ -358,7 +357,6 @@ export default function Collect({ campaignId, towerId: initialTower, go, toast }
 
       {camApt && (
         <CameraOverlay
-          key={camApt.aptCode}
           campaignId={campaignId}
           towerId={towerId}
           apt={camApt}

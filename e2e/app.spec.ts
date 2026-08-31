@@ -13,14 +13,14 @@ async function criarCampanhaComFoto(page: Page) {
   await expect(page.locator('.apt-btn').first()).toBeVisible();
 
   await page.locator('.apt-btn').first().click();
-  await expect(page.locator('.cam-apt')).toHaveText('34');
+  await expect(page.locator('.cam-apt')).toHaveText('256');
   await page.setInputFiles('.camera-overlay input[type=file]', {
     name: 'foto.jpg',
     mimeType: 'image/jpeg',
     buffer: TINY_PNG,
   });
   await page.getByRole('button', { name: 'Salvar e próximo' }).click();
-  await expect(page.locator('.cam-apt')).toHaveText('33');
+  await expect(page.locator('.cam-apt')).toHaveText('255');
   await page.getByRole('button', { name: 'Fechar câmera' }).click();
   await page.getByRole('button', { name: 'Voltar', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Nova medição' })).toBeVisible();

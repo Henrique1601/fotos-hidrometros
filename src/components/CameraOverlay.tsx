@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Camera, Plus, RotateCcw, Undo2, Upload, X, Zap, ZapOff, Minus, ScanText } from 'lucide-react';
+import { Camera, Layers, Minus, Plus, RotateCcw, ScanText, Undo2, Upload, X, Zap, ZapOff } from 'lucide-react';
 import {
   ActiveCamera,
   CameraCapabilities,
@@ -34,13 +34,31 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
   const camRef = useRef<ActiveCamera | null>(null);
   const startedRef = useRef(false);
   const photoTakenRef = useRef(false);
+
   const [phase, setPhase] = useState<Phase>('opening');
   const [preview, setPreview] = useState<string | null>(null);
   const [blob, setBlob] = useState<Blob | null>(null);
   const [flash, setFlash] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
-  const [torchOn, setTorchOn] = useState(false);
+
+  const [torchOn, setTorchOn] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('foto-hidro:torch') === 'true';
+    } catch {
+      return false;
+    }
+  });
   const [torchSupported, setTorchSupported] = useState(false);
+
+  const [burstMode, setBurstMode] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('foto-hidro:burst') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const [saving, setSaving] = useState(false);
   const [zoom, setZoomState] = useState(1);
   const [zoomCaps, setZoomCaps] = useState({ min: 1, max: 1, step: 0.1 });
   const [zoomSupported, setZoomSupported] = useState(false);
@@ -53,7 +71,6 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
     stopCamera(camRef.current?.stream ?? null);
     camRef.current = null;
     if (videoRef.current) videoRef.current.srcObject = null;
-    setTorchOn(false);
   }, []);
 
   const start = useCallback(async () => {
@@ -71,6 +88,11 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
       setZoomSupported(cam.caps.zoomSupported);
       setZoomCaps({ min: cam.caps.zoomMin, max: cam.caps.zoomMax, step: cam.caps.zoomStep });
       setZoomState(cam.caps.zoomMin);
+
+      if (cam.caps.torchSupported && torchOn) {
+        void setTorch(cam, true);
+      }
+
       setPhase('live');
     } catch (e) {
       if (photoTakenRef.current) return;
@@ -78,10 +100,11 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
       setErrorMsg('Não foi possível abrir a câmera integrada. Use a câmera nativa tocando abaixo.');
       setPhase('error');
     }
-  }, []);
+  }, [torchOn]);
 
   useEffect(() => {
     if (startedRef.current) return;
+    startedRef.current = true;
     void start();
     return () => {
       stop();
@@ -89,40 +112,94 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
     };
   }, [start, stop]);
 
-  const handleCapture = useCallback(async () => {
-    if (!videoRef.current) return;
+  useEffect(() => {
+    if (preview) {
+      URL.revokeObjectURL(preview);
+      setPreview(null);
+    }
+    setBlob(null);
+    photoTakenRef.current = false;
+    if (camRef.current && phase !== 'error') {
+      setPhase('live');
+      if (torchOn && camRef.current.caps.torchSupported) {
+        void setTorch(camRef.current, true);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apt.aptCode]);
+
+  const downloadWatermarked = useCallback(async (photoBlob: Blob) => {
     try {
-      const b = await captureFrame(videoRef.current);
-      photoTakenRef.current = true;
-      setBlob(b);
-      stop();
-      const url = URL.createObjectURL(b);
-      setPreview(url);
+      const ts = Date.now();
+      const text = `Torre ${towerId} · Apt ${apt.aptCode} · Andar ${pad2(apt.floor)} · ${formatWatermarkDate(ts)}`;
+      const watermarked = await watermarkPhoto(photoBlob, text);
+      const url = URL.createObjectURL(watermarked);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Torre${towerId}-apt${apt.aptCode}-${ts}.jpg`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.warn('Download marca d\'água falhou:', e);
+    }
+  }, [towerId, apt]);
+
+  const handleCapture = useCallback(async () => {
+    if (!videoRef.current || saving) return;
+    try {
       setFlash(true);
       navigator.vibrate?.(50);
-      setTimeout(() => setFlash(false), 350);
-      setPhase('preview');
-      void downloadWatermarked(b);
-      setOcrBusy(true);
-      recognizeMeter(b)
-        .then((r) => {
-          if (r.value !== null) {
-            setOcr(r);
-            toast?.(`OCR detectou: ${formatOcrValue(r.value)}`);
-          } else {
-            toast?.('Não li o índice. Preencha manualmente.');
-          }
-        })
-        .catch((e) => {
-          console.warn('OCR erro:', e);
-          toast?.('OCR indisponível. Preencha manualmente.');
-        })
-        .finally(() => setOcrBusy(false));
+      setTimeout(() => setFlash(false), 220);
+
+      const b = await captureFrame(videoRef.current);
+
+      if (burstMode) {
+        setSaving(true);
+        try {
+          await upsertRecord({
+            campaignId,
+            towerId,
+            floor: apt.floor,
+            unit: apt.unit,
+            side: apt.side,
+            aptCode: apt.aptCode,
+            photo: b,
+            capturedAt: Date.now(),
+          });
+          onSaved();
+        } finally {
+          setSaving(false);
+        }
+      } else {
+        photoTakenRef.current = true;
+        setBlob(b);
+        stop();
+        const url = URL.createObjectURL(b);
+        setPreview(url);
+        setPhase('preview');
+        void downloadWatermarked(b);
+        setOcrBusy(true);
+        recognizeMeter(b)
+          .then((r) => {
+            if (r.value !== null) {
+              setOcr(r);
+              toast?.(`OCR detectou: ${formatOcrValue(r.value)}`);
+            } else {
+              toast?.('Não li o índice. Preencha manualmente.');
+            }
+          })
+          .catch((e) => {
+            console.warn('OCR erro:', e);
+            toast?.('OCR indisponível. Preencha manualmente.');
+          })
+          .finally(() => setOcrBusy(false));
+      }
     } catch (e) {
+      console.error('Falha ao capturar a imagem:', e);
       setErrorMsg('Falha ao capturar a imagem.');
       setPhase('error');
     }
-  }, [stop]);
+  }, [burstMode, campaignId, towerId, apt, onSaved, stop, saving, downloadWatermarked, toast]);
 
   const handleRetake = useCallback(() => {
     if (preview) URL.revokeObjectURL(preview);
@@ -136,15 +213,29 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
 
   const toggleTorch = useCallback(async () => {
     const cam = camRef.current;
-    if (!cam) return;
     const next = !torchOn;
+    setTorchOn(next);
     try {
-      await setTorch(cam, next);
-      setTorchOn(next);
+      localStorage.setItem('foto-hidro:torch', String(next));
     } catch {
-      setTorchOn(false);
+      // ignore
+    }
+    if (cam) {
+      await setTorch(cam, next);
     }
   }, [torchOn]);
+
+  const toggleBurst = useCallback(() => {
+    setBurstMode((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('foto-hidro:burst', String(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }, []);
 
   const changeZoom = useCallback(
     async (delta: number) => {
@@ -158,11 +249,11 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (e.touches.length === 2) {
-      const start = Math.hypot(
+      const startDist = Math.hypot(
         e.touches[0].clientX - e.touches[1].clientX,
         e.touches[0].clientY - e.touches[1].clientY,
       );
-      pinches.current = { start, startZoom: zoom };
+      pinches.current = { start: startDist, startZoom: zoom };
     }
   }, [zoom]);
 
@@ -185,22 +276,6 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
     pinches.current = null;
   }, []);
 
-  const downloadWatermarked = useCallback(async (photoBlob: Blob) => {
-    try {
-      const ts = Date.now();
-      const text = `Torre ${towerId} · Apt ${apt.aptCode} · Andar ${pad2(apt.floor)} · ${formatWatermarkDate(ts)}`;
-      const watermarked = await watermarkPhoto(photoBlob, text);
-      const url = URL.createObjectURL(watermarked);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `Torre${towerId}-apt${apt.aptCode}-${ts}.jpg`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      console.warn('Download marca d\'água falhou:', e);
-    }
-  }, [towerId, apt]);
-
   const handleSave = useCallback(async () => {
     if (!blob) return;
     await upsertRecord({
@@ -216,31 +291,48 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
     onSaved(ocr?.value ?? undefined);
   }, [blob, campaignId, towerId, apt, onSaved, ocr]);
 
-  const handleFile = useCallback((file: File) => {
-    photoTakenRef.current = true;
-    setBlob(file);
-    const url = URL.createObjectURL(file);
-    setPreview(url);
-    setFlash(true);
-    setTimeout(() => setFlash(false), 350);
-    setPhase('preview');
-    void downloadWatermarked(file);
-    setOcrBusy(true);
-    recognizeMeter(file)
-      .then((r) => {
-        if (r.value !== null) {
-          setOcr(r);
-          toast?.(`OCR detectou: ${formatOcrValue(r.value)}`);
-        } else {
-          toast?.('Não li o índice. Preencha manualmente.');
-        }
-      })
-      .catch((e) => {
-        console.warn('OCR erro:', e);
-        toast?.('OCR indisponível. Preencha manualmente.');
-      })
-      .finally(() => setOcrBusy(false));
-  }, []);
+  const handleFile = useCallback(
+    async (file: File) => {
+      if (burstMode) {
+        await upsertRecord({
+          campaignId,
+          towerId,
+          floor: apt.floor,
+          unit: apt.unit,
+          side: apt.side,
+          aptCode: apt.aptCode,
+          photo: file,
+          capturedAt: Date.now(),
+        });
+        onSaved();
+      } else {
+        photoTakenRef.current = true;
+        setBlob(file);
+        const url = URL.createObjectURL(file);
+        setPreview(url);
+        setFlash(true);
+        setTimeout(() => setFlash(false), 220);
+        setPhase('preview');
+        void downloadWatermarked(file);
+        setOcrBusy(true);
+        recognizeMeter(file)
+          .then((r) => {
+            if (r.value !== null) {
+              setOcr(r);
+              toast?.(`OCR detectou: ${formatOcrValue(r.value)}`);
+            } else {
+              toast?.('Não li o índice. Preencha manualmente.');
+            }
+          })
+          .catch((e) => {
+            console.warn('OCR erro:', e);
+            toast?.('OCR indisponível. Preencha manualmente.');
+          })
+          .finally(() => setOcrBusy(false));
+      }
+    },
+    [burstMode, campaignId, towerId, apt, onSaved, downloadWatermarked, toast],
+  );
 
   return createPortal(
     <div className={`camera-overlay${flash ? ' cam-flash' : ''}`}>
@@ -282,17 +374,29 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
             <span className="rc rc-br" />
             <span className="reticle-hint">Centralize o hidrômetro</span>
           </div>
+
           <div className="cam-controls">
             {torchSupported && (
               <button
                 className={`cam-tool glass${torchOn ? ' is-on' : ''}`}
                 onClick={toggleTorch}
-                aria-label={torchOn ? 'Desligar luz' : 'Ligar luz'}
+                aria-label={torchOn ? 'Desligar lanterna' : 'Ligar lanterna contínua'}
                 aria-pressed={torchOn}
               >
                 {torchOn ? <Zap size={20} /> : <ZapOff size={20} />}
               </button>
             )}
+
+            <button
+              className={`cam-tool glass${burstMode ? ' is-burst-on' : ''}`}
+              onClick={toggleBurst}
+              aria-label={burstMode ? 'Desativar modo rápido (Burst)' : 'Ativar modo rápido (Burst)'}
+              aria-pressed={burstMode}
+            >
+              <Layers size={20} />
+              <span className="cam-tool-sub">BURST</span>
+            </button>
+
             {zoomSupported && (
               <div className="cam-zoom glass">
                 <button className="cam-zoom-btn" onClick={() => changeZoom(-zoomCaps.step)} aria-label="Diminuir zoom">
@@ -336,7 +440,12 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
       )}
 
       {phase === 'live' && (
-        <button className="capture-btn" onClick={handleCapture} aria-label="Tirar foto">
+        <button
+          className={`capture-btn${burstMode ? ' capture-btn--burst' : ''}`}
+          onClick={handleCapture}
+          disabled={saving}
+          aria-label={burstMode ? 'Tirar foto e avançar instantaneamente' : 'Tirar foto'}
+        >
           <Camera size={30} />
         </button>
       )}
@@ -360,7 +469,7 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
         className="hidden-input"
         onChange={(e) => {
           const f = e.target.files?.[0];
-          if (f) handleFile(f);
+          if (f) void handleFile(f);
         }}
       />
     </div>,

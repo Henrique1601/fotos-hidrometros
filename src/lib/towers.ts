@@ -25,8 +25,8 @@ const FLOOR_MAX = 25;
 const UNITS_FULL = [1, 2, 3, 4, 5, 6, 7, 8];
 
 export const SIDE_ORDER: Record<Side, number[]> = {
-  left: [3, 4, 5, 6],
-  right: [1, 2, 7, 8],
+  left: [6, 5, 4, 3],
+  right: [2, 1, 8, 7],
 };
 
 export function unitSide(unit: number): Side {
@@ -40,7 +40,7 @@ export function aptCode(floor: number, unit: number): string {
 export function buildTowers(): TowerConfig[] {
   return TOWER_IDS.map((id) => {
     const floors: FloorConfig[] = [];
-    for (let f = FLOOR_MIN; f <= FLOOR_MAX; f++) {
+    for (let f = FLOOR_MAX; f >= FLOOR_MIN; f--) {
       const units = f === 3 ? (EXTRA_UNIT_ON_FLOOR_3.has(id) ? [1, 2, 3, 4, 5] : [1, 2, 3, 4]) : UNITS_FULL;
       floors.push({ floor: f, units });
     }
@@ -69,7 +69,7 @@ export function towerTotalUnits(tower: TowerConfig): number {
 }
 
 export function columnSequence(tower: TowerConfig, side: Side): UnitRef[] {
-  const order = [...SIDE_ORDER[side]].reverse();
+  const order = SIDE_ORDER[side];
   const out: UnitRef[] = [];
   for (const f of tower.floors) {
     for (const u of order) {
@@ -85,7 +85,7 @@ export function floorSequence(tower: TowerConfig): UnitRef[] {
   const out: UnitRef[] = [];
   for (const f of tower.floors) {
     for (const side of ['left', 'right'] as Side[]) {
-      for (const u of [...SIDE_ORDER[side]].reverse()) {
+      for (const u of SIDE_ORDER[side]) {
         if (f.units.includes(u)) {
           out.push({ floor: f.floor, unit: u, aptCode: aptCode(f.floor, u), side });
         }

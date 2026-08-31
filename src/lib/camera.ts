@@ -67,9 +67,19 @@ export function stopCamera(stream: MediaStream | null): void {
 
 export async function setTorch(camera: ActiveCamera, on: boolean): Promise<void> {
   if (!camera.track || !camera.caps.torchSupported) return;
-  await camera.track.applyConstraints({
-    advanced: [{ torch: on } as unknown as MediaTrackConstraintSet],
-  });
+  try {
+    await camera.track.applyConstraints({
+      advanced: [{ torch: Boolean(on) } as unknown as MediaTrackConstraintSet],
+    });
+  } catch {
+    try {
+      await camera.track.applyConstraints({
+        advanced: on ? ([{ torch: true } as unknown as MediaTrackConstraintSet]) : [],
+      });
+    } catch (err) {
+      console.warn('Falha ao alternar lanterna:', err);
+    }
+  }
 }
 
 export async function setZoom(camera: ActiveCamera, value: number): Promise<number> {

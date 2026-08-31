@@ -1,5 +1,22 @@
 # 07 - Changelog
 
+## 2026-08-31 — Modo Burst, Lanterna persistente, nova ordem física (25→03 e 6,5,4,3,2,1,8,7) e Lightbox
+
+### Feito
+
+- **Lanterna / Flash persistente e fix de toggle** (`camera.ts` + `CameraOverlay.tsx`): o stream da câmera agora é mantido ativo entre apartamentos (sem unmount/remount), mantendo a lanterna acesa ininterruptamente. `setTorch` ajustado com constraints explícitas e fallback para alternar ligado/desligado com precisão. Preferência persistida no `localStorage`.
+- **Modo Burst (Disparo rápido contínuo)** (`CameraOverlay.tsx` + `Home.tsx`): botão de atalho `BURST` na câmera e opção nas configurações da Home. Ao disparar, salva direto no IndexedDB e avança instantaneamente para o próximo apt sem interrupções.
+- **Nova sequência de apts no andar** (`towers.ts`): ordem física ajustada para `6 → 5 → 4 → 3 → 2 → 1 → 8 → 7` (ex.: `256 → 255 → 254 → 253 → 252 → 251 → 258 → 257`). Andar 03 adaptado para unidades 1-4 ou 1-5.
+- **Andares descendentes** (`towers.ts` + `Collect.tsx`): sequência invertida para iniciar no último andar e descer (`25 → 24 → 23 → ... → 03`).
+- **Responsividade e Lightbox para celulares pequenos** (`Indices.tsx` + `styles.css`): container de foto com `object-fit: contain` e fundo escuro (sem cortes). Adicionado lightbox com toque na foto em Índices para visualização ampliada em tela cheia.
+
+### Testes
+
+- `npm run test`: 39/39 testes unitários aprovados.
+- `npm run build`: typecheck (`tsc -b`) e build Vite concluídos com sucesso.
+
+---
+
 ## 2026-08-02 — Consumo, marca d'água, export por torre e busca de apt
 
 ### Feito

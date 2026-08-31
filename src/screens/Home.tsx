@@ -33,6 +33,41 @@ export default function Home({ go, toast }: Props) {
   const [editOpen, setEditOpen] = useState(false);
   const [editCampaign, setEditCampaign] = useState<{ id: number; name: string; month: number; year: number } | null>(null);
 
+  const [burstSetting, setBurstSetting] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('foto-hidro:burst') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const [torchSetting, setTorchSetting] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('foto-hidro:torch') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleBurstSetting = (checked: boolean) => {
+    setBurstSetting(checked);
+    try {
+      localStorage.setItem('foto-hidro:burst', String(checked));
+    } catch {
+      // ignore
+    }
+    toast(checked ? 'Modo Burst ativado.' : 'Modo Burst desativado.');
+  };
+
+  const toggleTorchSetting = (checked: boolean) => {
+    setTorchSetting(checked);
+    try {
+      localStorage.setItem('foto-hidro:torch', String(checked));
+    } catch {
+      // ignore
+    }
+    toast(checked ? 'Lanterna contínua ativada.' : 'Lanterna contínua desativada.');
+  };
+
   const photosByCampaign = new Map<number, number>();
   const idxByCampaign = new Map<number, number>();
   for (const r of records) {
@@ -226,6 +261,30 @@ export default function Home({ go, toast }: Props) {
         }}
         onCancel={() => setConfirmOpen(false)}
       />
+
+      <GlassCard className="data-card gs-home-item">
+        <h2 className="display-small">Câmera & Captura</h2>
+        <label className="check-row" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <input
+            type="checkbox"
+            checked={burstSetting}
+            onChange={(e) => toggleBurstSetting(e.target.checked)}
+          />
+          <span>
+            <strong>Modo Burst</strong> (disparo rápido e avanço instantâneo)
+          </span>
+        </label>
+        <label className="check-row" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <input
+            type="checkbox"
+            checked={torchSetting}
+            onChange={(e) => toggleTorchSetting(e.target.checked)}
+          />
+          <span>
+            <strong>Lanterna contínua</strong> (manter flash sempre aceso)
+          </span>
+        </label>
+      </GlassCard>
 
       {editOpen && editCampaign && (
         <div className="modal-overlay" onClick={() => setEditOpen(false)}>

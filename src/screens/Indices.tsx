@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { AlertTriangle, ArrowLeft, ArrowRight, Check, Clock, ImageOff, ScanText, Search, Undo2 } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ArrowRight, Check, Clock, ImageOff, Maximize2, ScanText, Search, Undo2, X } from 'lucide-react';
 import { db } from '../db/db';
 import { upsertRecord } from '../db/records';
 import { floorSequence, towerById, UnitRef } from '../lib/towers';
@@ -30,6 +30,7 @@ export default function Indices({ campaignId, go, toast }: Props) {
   const [jumpMsg, setJumpMsg] = useState<string | null>(null);
   const [ocrBusy, setOcrBusy] = useState(false);
   const [lastSaved, setLastSaved] = useState<{ aptCode: string; prevIndex: number | null; prevRaw: string } | null>(null);
+  const [zoomModal, setZoomModal] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const campaign = useLiveQuery(() => db.campaigns.get(campaignId), [campaignId]);
@@ -258,9 +259,12 @@ export default function Indices({ campaignId, go, toast }: Props) {
 
       {apt ? (
         <div className="iv">
-          <div className="iv-photo-wrap">
+          <div className="iv-photo-wrap" onClick={() => setZoomModal(true)}>
             <AptPhoto blob={recordByApt.get(apt.aptCode)?.photo} aptCode={apt.aptCode} />
             <span className="iv-badge mono">{apt.aptCode}</span>
+            <span className="iv-zoom-hint">
+              <Maximize2 size={12} /> Toque p/ ampliar
+            </span>
             <span className="iv-meta">
               Andar {pad2(apt.floor)} · {sideLabel(apt.side)}
             </span>
@@ -362,6 +366,22 @@ export default function Indices({ campaignId, go, toast }: Props) {
           <ImageOff size={26} />
           <p>Nenhuma foto nesta torre. Capture as fotos primeiro.</p>
         </GlassCard>
+      )}
+
+      {zoomModal && apt && recordByApt.get(apt.aptCode)?.photo && (
+        <div className="photo-lightbox" onClick={() => setZoomModal(false)}>
+          <div className="photo-lightbox-content" onClick={(e) => e.stopPropagation()}>
+            <button
+              className="icon-btn glass photo-lightbox-close"
+              onClick={() => setZoomModal(false)}
+              aria-label="Fechar ampliação"
+            >
+              <X size={24} />
+            </button>
+            <AptPhoto blob={recordByApt.get(apt.aptCode)?.photo} aptCode={apt.aptCode} />
+            <span className="photo-lightbox-badge mono">Apt {apt.aptCode} · Torre {towerId}</span>
+          </div>
+        </div>
       )}
     </div>
   );
