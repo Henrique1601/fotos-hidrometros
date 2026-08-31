@@ -1,19 +1,23 @@
 # 07 - Changelog
 
-## 2026-08-31 — Modo Burst, Lanterna persistente, nova ordem física (25→03 e 6,5,4,3,2,1,8,7) e Lightbox
+## 2026-08-31 — Auditoria completa de código, correções de bugs e melhorias
 
 ### Feito
 
-- **Lanterna / Flash persistente e fix de toggle** (`camera.ts` + `CameraOverlay.tsx`): o stream da câmera agora é mantido ativo entre apartamentos (sem unmount/remount), mantendo a lanterna acesa ininterruptamente. `setTorch` ajustado com constraints explícitas e fallback para alternar ligado/desligado com precisão. Preferência persistida no `localStorage`.
-- **Modo Burst (Disparo rápido contínuo)** (`CameraOverlay.tsx` + `Home.tsx`): botão de atalho `BURST` na câmera e opção nas configurações da Home. Ao disparar, salva direto no IndexedDB e avança instantaneamente para o próximo apt sem interrupções.
-- **Nova sequência de apts no andar** (`towers.ts`): ordem física ajustada para `6 → 5 → 4 → 3 → 2 → 1 → 8 → 7` (ex.: `256 → 255 → 254 → 253 → 252 → 251 → 258 → 257`). Andar 03 adaptado para unidades 1-4 ou 1-5.
-- **Andares descendentes** (`towers.ts` + `Collect.tsx`): sequência invertida para iniciar no último andar e descer (`25 → 24 → 23 → ... → 03`).
-- **Responsividade e Lightbox para celulares pequenos** (`Indices.tsx` + `styles.css`): container de foto com `object-fit: contain` e fundo escuro (sem cortes). Adicionado lightbox com toque na foto em Índices para visualização ampliada em tela cheia.
+- **Auditoria de código e correção de bugs**:
+  - **Exportação de PDF** (`src/lib/exportPdf.ts`): corrigida sobreposição da tabela da Torre A em cima da capa escura ao adicionar quebra de página apropriada para cada torre com registros.
+  - **Sincronização Supabase** (`src/lib/sync.ts`): adicionada checagem de `towerId` e preservação do `id` do Dexie ao fazer merge dos registros no `pullAll`, evitando duplicatas de apartamentos de mesmo número em torres diferentes.
+  - **Transmissão de OCR na captura** (`src/screens/Collect.tsx`): corrigido callback `onSaved` no `<CameraOverlay>` que ignorava o valor lido pelo OCR no disparo normal.
+  - **Visualização de fotos no Histórico** (`src/screens/HistoryScreen.tsx` + `src/styles.css`): thumbnails ajustadas para `object-fit: contain` em fundo escuro sem cortes indesejados; adicionado modal de ampliação (lightbox) ao tocar em qualquer foto do histórico.
+  - **Prevenção de vazamento de memória com ObjectURLs** (`src/lib/watermark.ts`): envolvido em bloco `try/finally` para assegurar que `URL.revokeObjectURL` seja sempre chamado mesmo em caso de erro na manipulação do canvas.
+  - **Reset do input file** (`src/components/CameraOverlay.tsx`): limpa `e.target.value = ''` ao selecionar arquivos para permitir re-seleção da mesma foto sem travar o evento `onChange`.
+  - **Ajustes nos testes E2E do Playwright** (`e2e/app.spec.ts`): resolvido conflito de strict mode nos seletores com `{ exact: true }` e escopo do modal de restauração.
 
 ### Testes
 
-- `npm run test`: 39/39 testes unitários aprovados.
-- `npm run build`: typecheck (`tsc -b`) e build Vite concluídos com sucesso.
+- `npm run test`: **54/54** testes unitários aprovados (7 arquivos de teste).
+- `npm run test:e2e`: **3/3** testes E2E Playwright aprovados.
+- `npm run build`: typecheck (`tsc -b`) e build Vite de produção concluídos sem erros.
 
 ---
 
