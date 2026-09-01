@@ -1,8 +1,29 @@
 # 07 - Changelog
 
-## 2026-09-01 — Download direto no Modo Burst, Câmera persistente sem travamento e Backup em streaming para celulares antigos
+## 2026-09-01 — Tempo de Medição & Produtividade, OCR em Segundo Plano e Mira Guia de Enquadramento
 
 ### Feito
+
+- **Mira Guia de Enquadramento no Visor da Câmera** (`src/components/CameraOverlay.tsx` + `src/styles.css`):
+  - Retângulo guia visual com cantos em ciano brilhante, linha central de mira e legendas indicativas para dígitos pretos (m³) e vermelhos (Litros).
+  - Botão de alternância rápida `MIRA` nos controles da câmera com persistência no `localStorage`.
+- **OCR em Segundo Plano (Background Batch OCR)** (`src/lib/bgOcr.ts` + `src/screens/Indices.tsx`):
+  - Fila assíncrona gerenciada por singleton que processa automaticamente todas as fotos pendentes de leitura no banco Dexie sem travar a interface.
+  - Barra de status na tela de Índices com botão "Ler todas" / "Pausar" e contagem em tempo real de fotos processadas e índices reconhecidos.
+  - Feedback de cálculo de consumo instantâneo durante a digitação na tela de Índices com avisos de anomalia (regressão negativa ou consumo alto > 30 m³).
+- **Tempo de Medição & Métricas de Produtividade** (`src/lib/measurementStats.ts` + `Home.tsx` + `Collect.tsx` + `Export.tsx`):
+  - Cálculo de tempo ativo real (descontando pausas longas/almoço > 10 min), ritmo médio por apartamento (ex.: `14s/un`) e velocidade de leitura (ex.: `240 un/h`).
+  - Exibição de tempo e ritmo nos cards da tela inicial (`Home.tsx`).
+  - HUD de tempo da torre ativa no cabeçalho da tela de coleta (`Collect.tsx`).
+  - Card dedicado de "Produtividade & Tempo" com resumo por torre na tela de exportação (`Export.tsx`).
+
+### Testes
+
+- `npm run test`: **61/61** testes unitários aprovados (9 arquivos de teste).
+- `npm run test:e2e`: **3/3** testes E2E Playwright aprovados.
+- `npm run build`: build Vite concluído com sucesso.
+
+---
 
 - **Download automático no Modo Burst** (`src/components/CameraOverlay.tsx`): o disparo rápido agora salva a foto com marca d'água diretamente na pasta de Downloads do dispositivo enquanto avança imediatamente para o próximo apartamento.
 - **Persistência da câmera sem tela preta** (`src/components/CameraOverlay.tsx`): eliminado o fechamento prematuro do stream de vídeo na captura manual. A transição para o próximo apartamento mantém o hardware da câmera pronto e a lanterna ligada, com reinício automático garantido caso o stream precise ser reaberto.

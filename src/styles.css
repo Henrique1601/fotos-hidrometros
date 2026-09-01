@@ -1128,50 +1128,96 @@ select.text-input {
 
 .rc {
   position: absolute;
-  width: 34px;
-  height: 34px;
-  border: 3px solid rgba(94, 234, 212, 0.85);
+  width: 38px;
+  height: 38px;
+  border: 3px solid var(--cyan);
+  filter: drop-shadow(0 0 6px rgba(94, 234, 212, 0.6));
 }
 
 .rc-tl {
-  top: 28%;
-  left: 14%;
+  top: 27%;
+  left: 10%;
   border-right: none;
   border-bottom: none;
-  border-top-left-radius: 12px;
+  border-top-left-radius: 14px;
 }
 
 .rc-tr {
-  top: 28%;
-  right: 14%;
+  top: 27%;
+  right: 10%;
   border-left: none;
   border-bottom: none;
-  border-top-right-radius: 12px;
+  border-top-right-radius: 14px;
 }
 
 .rc-bl {
-  bottom: 28%;
-  left: 14%;
+  bottom: 27%;
+  left: 10%;
   border-right: none;
   border-top: none;
-  border-bottom-left-radius: 12px;
+  border-bottom-left-radius: 14px;
 }
 
 .rc-br {
-  bottom: 28%;
-  right: 14%;
+  bottom: 27%;
+  right: 10%;
   border-left: none;
   border-top: none;
-  border-bottom-right-radius: 12px;
+  border-bottom-right-radius: 14px;
+}
+
+.reticle-center-line {
+  position: absolute;
+  top: 50%;
+  left: 14%;
+  right: 14%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(94, 234, 212, 0.4), var(--cyan), rgba(94, 234, 212, 0.4), transparent);
+}
+
+.reticle-badge {
+  position: absolute;
+  top: 22%;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(7, 24, 34, 0.85);
+  border: 1px solid var(--border-strong);
+  color: var(--cyan);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  backdrop-filter: blur(6px);
 }
 
 .reticle-hint {
   position: absolute;
-  bottom: 24%;
-  color: rgba(230, 246, 244, 0.85);
-  font-size: 0.8rem;
-  letter-spacing: 0.04em;
-  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9);
+  bottom: 21%;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: rgba(7, 24, 34, 0.88);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  backdrop-filter: blur(6px);
+}
+
+.reticle-black {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.reticle-sep {
+  color: var(--text-dim);
+}
+
+.reticle-red {
+  color: #f87171;
+  font-weight: 600;
 }
 
 .capture-btn {
@@ -2180,6 +2226,112 @@ select.text-input {
   font-size: 0.74rem;
   color: #f87171;
   font-weight: 600;
+}
+
+/* ---------- Background OCR Banner ---------- */
+.bg-ocr-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: rgba(13, 37, 52, 0.65);
+  border: 1px solid var(--border-strong);
+  margin-bottom: 8px;
+}
+
+.bg-ocr-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bg-ocr-icon {
+  color: var(--cyan);
+  flex-shrink: 0;
+}
+
+.bg-ocr-title {
+  font-size: 0.85rem;
+  color: var(--text);
+  display: block;
+}
+
+.bg-ocr-sub {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+/* ---------- Live Consumption Feedback in Indices ---------- */
+.iv-live-consumption {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  font-family: var(--font-body);
+  margin-top: 2px;
+}
+
+.iv-live-consumption.ok {
+  background: rgba(94, 234, 212, 0.1);
+  border: 1px solid rgba(94, 234, 212, 0.3);
+  color: var(--cyan);
+}
+
+.iv-live-consumption.warn {
+  background: rgba(248, 113, 113, 0.12);
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  color: #f87171;
+}
+
+/* ---------- Measurement Time Meta ---------- */
+.campaign-meta-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--cyan);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-left: 6px;
+}
+
+/* ---------- Productivity Stats Grid in Export ---------- */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.stats-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 8px;
+  border-radius: 12px;
+  background: rgba(7, 24, 34, 0.5);
+  border: 1px solid var(--border);
+  text-align: center;
+}
+
+.stats-label {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+}
+
+.stats-val {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--cyan);
 }
 
 @media (min-width: 520px) {

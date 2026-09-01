@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
   ArrowLeft,
+  Clock,
   FileSpreadsheet,
   FileText,
   FolderDown,
@@ -10,6 +11,7 @@ import {
 import { db } from '../db/db';
 import { TOWERS, towerTotalUnits } from '../lib/towers';
 import { campaignLabel } from '../lib/utils';
+import { calculateMeasurementStats, formatDuration, formatPace } from '../lib/measurementStats';
 import { buildExcel, exportExcel } from '../lib/exportExcel';
 import { buildPdf, exportPdf } from '../lib/exportPdf';
 import { exportPhotosZip, NamedBlob } from '../lib/exportZip';
@@ -21,8 +23,6 @@ interface Props {
   go: (s: Screen) => void;
   toast: (m: string) => void;
 }
-
-const TOTAL_UNITS = TOWERS.reduce((acc, t) => acc + towerTotalUnits(t), 0);
 
 export default function Export({ campaignId, go, toast }: Props) {
   const [busy, setBusy] = useState<string | null>(null);
@@ -50,6 +50,7 @@ export default function Export({ campaignId, go, toast }: Props) {
 
   const photos = records.filter((r) => r.photo).length;
   const indices = records.filter((r) => r.index !== null && r.index !== undefined).length;
+  const stats = useMemo(() => calculateMeasurementStats(records), [records]);
 
   const run = async (kind: 'pdf' | 'excel' | 'zip') => {
     if (busy || !campaign) return;
@@ -99,10 +100,8 @@ export default function Export({ campaignId, go, toast }: Props) {
         toast('Arquivos baixados para compartilhar.');
       }
     } catch (e) {
-      if ((e as Error).name !== 'AbortError') {
-        console.error(e);
-        toast('Falha ao compartilhar.');
-      }
+      console.error(e);
+      toast('Falha ao compartilhar.');
     } finally {
       setBusy(null);
     }
@@ -118,14 +117,12 @@ export default function Export({ campaignId, go, toast }: Props) {
           <h2 className="header-title">
             {campaign ? campaignLabel(campaign.name, campaign.month, campaign.year) : ''}
           </h2>
-          <span className="header-sub">
-            {photos}/{TOTAL_UNITS} fotos · {indices} índices
-          </span>
+          <span className="header-sub">Resumo e exportação</span>
         </div>
-        <span className="header-spacer" />
+        <div className="header-spacer" />
       </header>
 
-      <div className="tower-summary">
+      <div className="tower-pills">
         {TOWERS.map((t) => {
           const s = byTower.get(t.id)!;
           const done = s.photos === towerTotalUnits(t);
@@ -137,6 +134,28 @@ export default function Export({ campaignId, go, toast }: Props) {
         })}
       </div>
 
+      {stats.activeTimeMs > 0 && (
+        <GlassCard className="export-card">
+          <h3 className="display-small">
+            <Clock size={16} /> Produtividade & Tempo
+          </h3>
+          <div className="stats-grid">
+            <div className="stats-item">
+              <span className="stats-label">Tempo Ativo</span>
+              <strong className="stats-val mono">{formatDuration(stats.activeTimeMs)}</strong>
+            </div>
+            <div className="stats-item">
+              <span className="stats-label">Ritmo Médio</span>
+              <strong className="stats-val mono">{formatPace(stats.avgSecondsPerPhoto)}</strong>
+            </div>
+            <div className="stats-item">
+              <span className="stats-label">Velocidade</span>
+              <strong className="stats-val mono">{stats.photosPerHour} un/h</strong>
+            </div>
+          </div>
+        </GlassCard>
+      )}
+
       <GlassCard className="export-card">
         <h3 className="display-small">Resumo por torre</h3>
         <div className="tower-detail">
@@ -145,6 +164,7 @@ export default function Export({ campaignId, go, toast }: Props) {
             const total = towerTotalUnits(t);
             const photosDone = s.photos === total;
             const idxDone = s.indices === s.photos;
+            const tStat = stats.towerStats[t.id];
             return (
               <div key={t.id} className={`tower-detail-row${photosDone ? ' is-done' : ''}`}>
                 <span className="mono tower-detail-id">Torre {t.id}</span>
@@ -152,6 +172,12 @@ export default function Export({ campaignId, go, toast }: Props) {
                   {s.photos}/{total} fotos
                   <span className="tower-detail-dot" aria-hidden="true" />
                   {idxDone ? s.indices : `${s.indices}/${s.photos}`} índices
+                  {tStat && tStat.activeTimeMs > 0 && (
+                    <>
+                      <span className="tower-detail-dot" aria-hidden="true" />
+                      <span className="mono text-dim">{formatDuration(tStat.activeTimeMs)}</span>
+                    </>
+                  )}
                 </span>
               </div>
             );

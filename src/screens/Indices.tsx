@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { AlertTriangle, ArrowLeft, ArrowRight, Check, Clock, ImageOff, Maximize2, ScanText, Search, Undo2, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ArrowRight, Check, Clock, ImageOff, Maximize2, Pause, Play, ScanText, Search, Sparkles, Undo2, X } from 'lucide-react';
 import { db } from '../db/db';
 import { upsertRecord } from '../db/records';
 import { floorSequence, towerById, UnitRef } from '../lib/towers';
@@ -9,6 +9,7 @@ import { campaignLabel, formatIndex, pad2, parseIndex, sideLabel } from '../lib/
 import { validateIndex } from '../lib/validate';
 import type { IndexWarning } from '../lib/validate';
 import { recognizeMeter } from '../lib/ocr';
+import { useBgOcr } from '../lib/bgOcr';
 import { loadConsumption } from '../lib/consumption';
 import GlassCard from '../components/GlassCard';
 import { usePhotoUrl } from '../hooks/usePhotoUrl';
@@ -31,6 +32,7 @@ export default function Indices({ campaignId, go, toast }: Props) {
   const [ocrBusy, setOcrBusy] = useState(false);
   const [lastSaved, setLastSaved] = useState<{ aptCode: string; prevIndex: number | null; prevRaw: string } | null>(null);
   const [zoomModal, setZoomModal] = useState(false);
+  const bgOcr = useBgOcr(campaignId);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const campaign = useLiveQuery(() => db.campaigns.get(campaignId), [campaignId]);
@@ -63,6 +65,11 @@ export default function Indices({ campaignId, go, toast }: Props) {
         return idx !== null && idx !== undefined;
       }).length,
     [photoUnits, recordByApt],
+  );
+
+  const pendingPhotosCount = useMemo(
+    () => records.filter((r) => r.photo && (r.index === null || r.index === undefined)).length,
+    [records],
   );
 
   const apt = photoUnits[pos];
@@ -244,6 +251,32 @@ export default function Indices({ campaignId, go, toast }: Props) {
         ))}
       </div>
 
+      {pendingPhotosCount > 0 && (
+        <div className="bg-ocr-banner">
+          <div className="bg-ocr-info">
+            <Sparkles size={16} className={`bg-ocr-icon${bgOcr.isRunning ? ' spin' : ''}`} />
+            <div>
+              <strong className="bg-ocr-title">OCR em 2º plano</strong>
+              <p className="bg-ocr-sub">
+                {bgOcr.isRunning
+                  ? `Processando ${bgOcr.currentApt ? `Apt ${bgOcr.currentApt}` : ''} (${bgOcr.processed}/${bgOcr.total})`
+                  : bgOcr.successCount > 0
+                  ? `${bgOcr.successCount} índices lidos automaticamente`
+                  : `${pendingPhotosCount} fotos pendentes de leitura`}
+              </p>
+            </div>
+          </div>
+          <button
+            className={`btn-sm ${bgOcr.isRunning ? 'btn-ghost' : 'btn-primary'}`}
+            onClick={() => (bgOcr.isRunning ? bgOcr.stop() : bgOcr.start(campaignId))}
+            aria-label={bgOcr.isRunning ? 'Pausar OCR' : 'Processar fotos com OCR'}
+          >
+            {bgOcr.isRunning ? <Pause size={14} /> : <Play size={14} />}
+            {bgOcr.isRunning ? 'Pausar' : 'Ler todas'}
+          </button>
+        </div>
+      )}
+
       <form className="apt-jump" onSubmit={handleJump} role="search">
         <Search size={16} aria-hidden="true" />
         <input
@@ -329,6 +362,25 @@ export default function Indices({ campaignId, go, toast }: Props) {
                 {ocrBusy ? 'Lendo…' : 'Ler da foto'}
               </button>
             </div>
+            {(() => {
+              const parsed = parseIndex(value);
+              if (parsed !== null && prevIdx !== null && prevIdx !== undefined) {
+                const diff = Math.round((parsed - prevIdx) * 1000) / 1000;
+                const isNegative = diff < 0;
+                const isHigh = diff > 30;
+                return (
+                  <div className={`iv-live-consumption ${isNegative || isHigh ? 'warn' : 'ok'}`}>
+                    <span>
+                      Consumo calculado: <strong className="mono">{diff >= 0 ? `+${diff}` : diff} m³</strong>
+                      {isNegative && ' ⚠️ Regressão'}
+                      {isHigh && ' ⚠️ Alto consumo'}
+                      {!isNegative && !isHigh && ' ✅'}
+                    </span>
+                  </div>
+                );
+              }
+              return null;
+            })()}
             {invalid && (
               <div className="iv-warn" role="alert">
                 <AlertTriangle size={14} /> Índice inválido. Use apenas números, vírgula ou ponto.

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Camera, Layers, Minus, Plus, RotateCcw, ScanText, Undo2, Upload, X, Zap, ZapOff } from 'lucide-react';
+import { Camera, Focus, Layers, Minus, Plus, RotateCcw, ScanText, Undo2, Upload, X, Zap, ZapOff } from 'lucide-react';
 import {
   ActiveCamera,
   CameraCapabilities,
@@ -46,6 +46,15 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
       return localStorage.getItem('foto-hidro:torch') === 'true';
     } catch {
       return false;
+    }
+  });
+
+  const [reticleOn, setReticleOn] = useState<boolean>(() => {
+    try {
+      const v = localStorage.getItem('foto-hidro:reticle');
+      return v === null ? true : v === 'true';
+    } catch {
+      return true;
     }
   });
   const [torchSupported, setTorchSupported] = useState(false);
@@ -248,6 +257,18 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
     });
   }, []);
 
+  const toggleReticle = useCallback(() => {
+    setReticleOn((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('foto-hidro:reticle', String(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }, []);
+
   const changeZoom = useCallback(
     async (delta: number) => {
       const cam = camRef.current;
@@ -297,6 +318,7 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
       side: apt.side,
       aptCode: apt.aptCode,
       photo: blob,
+      index: ocr?.value ?? undefined,
       capturedAt: Date.now(),
     });
     onSaved(ocr?.value ?? undefined);
@@ -361,16 +383,16 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
             <Undo2 size={20} />
           </button>
         ) : (
-          <span className="cam-spacer" />
+          <div className="cam-top-spacer" />
         )}
       </div>
 
       <video
         ref={videoRef}
-        className="cam-video"
         playsInline
         muted
         autoPlay
+        className="cam-video"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -379,13 +401,21 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
 
       {phase === 'live' && (
         <>
-          <div className="reticle" aria-hidden="true">
-            <span className="rc rc-tl" />
-            <span className="rc rc-tr" />
-            <span className="rc rc-bl" />
-            <span className="rc rc-br" />
-            <span className="reticle-hint">Centralize o hidrômetro</span>
-          </div>
+          {reticleOn && (
+            <div className="reticle" aria-hidden="true">
+              <span className="rc rc-tl" />
+              <span className="rc rc-tr" />
+              <span className="rc rc-bl" />
+              <span className="rc rc-br" />
+              <div className="reticle-center-line" />
+              <div className="reticle-badge">ALINHE OS NÚMEROS AQUI</div>
+              <div className="reticle-hint">
+                <span className="reticle-black">■ Pretos (m³)</span>
+                <span className="reticle-sep">·</span>
+                <span className="reticle-red">■ Vermelhos (L)</span>
+              </div>
+            </div>
+          )}
 
           <div className="cam-controls">
             {torchSupported && (
@@ -396,8 +426,19 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
                 aria-pressed={torchOn}
               >
                 {torchOn ? <Zap size={20} /> : <ZapOff size={20} />}
+                <span className="cam-tool-sub">LUZ</span>
               </button>
             )}
+
+            <button
+              className={`cam-tool glass${reticleOn ? ' is-on' : ''}`}
+              onClick={toggleReticle}
+              aria-label={reticleOn ? 'Ocultar mira guia' : 'Exibir mira guia'}
+              aria-pressed={reticleOn}
+            >
+              <Focus size={20} />
+              <span className="cam-tool-sub">MIRA</span>
+            </button>
 
             <button
               className={`cam-tool glass${burstMode ? ' is-burst-on' : ''}`}

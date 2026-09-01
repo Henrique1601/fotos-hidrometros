@@ -5,17 +5,11 @@ import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { ArrowLeft, ArrowRight, Check, Loader2, ScanText, Search, Trophy } from 'lucide-react';
 import { db } from '../db/db';
-import { upsertRecord, resetRecord } from '../db/records';
+import { resetRecord } from '../db/records';
 import { batchRecognizeMeters } from '../lib/ocr';
-import {
-  aptCode,
-  floorSequence,
-  SIDE_ORDER,
-  Side,
-  towerById,
-  UnitRef,
-} from '../lib/towers';
+import { aptCode, floorSequence, SIDE_ORDER, Side, towerById, UnitRef } from '../lib/towers';
 import { campaignLabel, pad2 } from '../lib/utils';
+import { calculateMeasurementStats, formatDuration, formatPace } from '../lib/measurementStats';
 import GlassCard from '../components/GlassCard';
 import ProgressRing from '../components/ProgressRing';
 import AptButton from '../components/AptButton';
@@ -56,6 +50,19 @@ export default function Collect({ campaignId, towerId: initialTower, go, toast }
 
   const total = useMemo(() => tower.floors.reduce((a, f) => a + f.units.length, 0), [tower]);
   const photosCount = photoSet.size;
+  const towerStats = useMemo(() => calculateMeasurementStats(towerRecords), [towerRecords]);
+
+  const floorComplete = useMemo(() => {
+    const floorCfg = tower.floors.find((f) => f.floor === floor);
+    return floorCfg ? floorCfg.units.every((u) => photoSet.has(aptCode(floor, u))) : false;
+  }, [tower, floor, photoSet]);
+
+  const camPrev = useMemo(() => {
+    if (!camApt) return null;
+    const seq = floorSequence(tower);
+    const idx = seq.findIndex((u) => u.aptCode === camApt.aptCode);
+    return idx > 0 ? seq[idx - 1] : null;
+  }, [camApt, tower]);
 
   useEffect(() => {
     const defaultFloor =
@@ -84,119 +91,110 @@ export default function Collect({ campaignId, towerId: initialTower, go, toast }
   const colRef = useRef<HTMLDivElement>(null);
   useGSAP(
     () => {
-      const el = colRef.current;
-      if (!el) return;
+      if (!colRef.current) return;
       gsap.fromTo(
-        el.querySelectorAll('.apt-btn'),
-        { opacity: 0, y: 12, scale: 0.94 },
-        { opacity: 1, y: 0, scale: 1, stagger: 0.025, duration: 0.32, ease: 'power2.out' },
+        '.apt-btn',
+        { opacity: 0, scale: 0.94 },
+        { opacity: 1, scale: 1, stagger: 0.02, duration: 0.2, ease: 'power2.out' },
       );
     },
-    { dependencies: [floor, towerId] },
+    { dependencies: [floor, towerId], scope: colRef },
   );
 
-  const handleSaved = useCallback(async (ocrIndex?: number) => {
-    if (ocrIndex != null && camApt) {
-      await upsertRecord({
-        campaignId,
-        towerId,
-        floor: camApt.floor,
-        unit: camApt.unit,
-        side: camApt.side,
-        aptCode: camApt.aptCode,
-        index: ocrIndex,
-        indexedAt: Date.now(),
-      });
-    }
-    const seq = floorSequence(tower);
-    const idx = camApt ? seq.findIndex((u) => u.aptCode === camApt.aptCode) : -1;
-    const next = seq[idx + 1];
-    if (next) {
-      setFloor(next.floor);
-      setCamApt(next);
-    } else {
-      setCamApt(null);
-      toast(`Torre ${towerId} completa!`);
-    }
-  }, [camApt, tower, towerId, toast, campaignId]);
-
-  const handlePrev = useCallback(() => {
-    if (!camApt) return;
-    const seq = floorSequence(tower);
-    const idx = seq.findIndex((u) => u.aptCode === camApt.aptCode);
-    const prev = idx > 0 ? seq[idx - 1] : null;
-    if (prev) {
-      setFloor(prev.floor);
-      setCamApt(prev);
-    }
-  }, [camApt, tower]);
-
-  const camPrev = useMemo(() => {
+  const prevApt = useMemo((): UnitRef | null => {
     if (!camApt) return null;
     const seq = floorSequence(tower);
     const idx = seq.findIndex((u) => u.aptCode === camApt.aptCode);
-    return idx > 0 ? seq[idx - 1] : null;
-  }, [camApt, tower]);
+    if (idx <= 0) return null;
+    return seq[idx - 1];
+  }, [tower, camApt]);
 
-  const floorComplete = useMemo(() => {
-    const floorCfg = tower.floors.find((f) => f.floor === floor);
-    return floorCfg ? floorCfg.units.every((u) => photoSet.has(aptCode(floor, u))) : false;
-  }, [tower, floor, photoSet]);
+  const nextApt = useMemo((): UnitRef | null => {
+    if (!camApt) return null;
+    const seq = floorSequence(tower);
+    const idx = seq.findIndex((u) => u.aptCode === camApt.aptCode);
+    if (idx < 0 || idx >= seq.length - 1) return null;
+    return seq[idx + 1];
+  }, [tower, camApt]);
+
+  const handleSaved = (ocrIndex?: number) => {
+    const next = nextApt;
+    if (!next) {
+      toast(
+        ocrIndex !== null && ocrIndex !== undefined
+          ? `Foto salva! OCR: ${ocrIndex}. Torre ${towerId} concluída!`
+          : `Foto salva! Torre ${towerId} concluída!`,
+      );
+      setCamApt(null);
+      return;
+    }
+    toast(
+      ocrIndex !== null && ocrIndex !== undefined
+        ? `Salvo (OCR ${ocrIndex}) → Ap ${next.aptCode}`
+        : `Salvo → Ap ${next.aptCode}`,
+    );
+    if (next.floor !== floor) setFloor(next.floor);
+    setCamApt(next);
+  };
+
+  const handlePrev = () => {
+    if (!prevApt) return;
+    if (prevApt.floor !== floor) setFloor(prevApt.floor);
+    setCamApt(prevApt);
+  };
 
   const handleJump = (e: FormEvent) => {
     e.preventDefault();
-    const code = jump.trim();
-    if (!code) return;
-    const u = floorSequence(tower).find((x) => x.aptCode === code);
-    if (u) {
-      setFloor(u.floor);
-      setCamApt(u);
-      toast(`Abrindo ${code}…`);
+    const query = jump.trim();
+    if (!query) return;
+    const target = floorSequence(tower).find((u) => u.aptCode === query);
+    if (target) {
+      setFloor(target.floor);
+      setCamApt(target);
+      setJump('');
     } else {
-      toast('Apt não encontrado nesta torre.');
+      toast(`Apt ${query} não encontrado na Torre ${towerId}.`);
     }
   };
 
-  const handleDeletePhoto = () => {
+  const handleDeletePhoto = async () => {
     if (!deleteTarget) return;
-    void resetRecord(campaignId, deleteTarget.aptCode, towerId);
+    await resetRecord(campaignId, towerId, deleteTarget.aptCode);
+    toast(`Foto do ap ${deleteTarget.aptCode} removida.`);
     setDeleteTarget(null);
-    toast(`Foto de ${deleteTarget.aptCode} removida.`);
   };
 
   const handleBatchOcr = async () => {
-    const withPhoto = towerRecords.filter((r) => r.photo && (r.index === null || r.index === undefined));
-    if (withPhoto.length === 0) {
-      toast('Nenhuma foto sem índice nesta torre.');
+    const photosToOcr = towerRecords
+      .filter((r) => r.photo && (r.index === null || r.index === undefined))
+      .map((r) => ({ aptCode: r.aptCode, photo: r.photo! }));
+
+    if (photosToOcr.length === 0) {
+      toast('Nenhuma foto pendente de OCR nesta torre.');
       return;
     }
+
     setBatchBusy(true);
-    setBatchProgress({ done: 0, total: withPhoto.length });
+    setBatchProgress({ done: 0, total: photosToOcr.length });
     try {
-      const photos = withPhoto.map((r) => ({ aptCode: r.aptCode, photo: r.photo! }));
-      const results = await batchRecognizeMeters(photos, (done, total) =>
-        setBatchProgress({ done, total }),
-      );
-      let filled = 0;
-      for (const { aptCode: code, result } of results) {
-        if (result.value != null) {
-          const rec = withPhoto.find((r) => r.aptCode === code);
-          if (rec) {
-            await upsertRecord({
-              campaignId,
-              towerId: rec.towerId,
-              floor: rec.floor,
-              unit: rec.unit,
-              side: rec.side,
-              aptCode: rec.aptCode,
-              index: result.value,
+      const results = await batchRecognizeMeters(photosToOcr, (done, total) => {
+        setBatchProgress({ done, total });
+      });
+      let saved = 0;
+      for (const res of results) {
+        if (res.result.value !== null) {
+          const rec = towerRecords.find((r) => r.aptCode === res.aptCode);
+          if (rec?.id) {
+            await db.records.update(rec.id, {
+              index: res.result.value,
               indexedAt: Date.now(),
+              updatedAt: Date.now(),
             });
-            filled++;
+            saved++;
           }
         }
       }
-      toast(`OCR em lote: ${filled}/${withPhoto.length} índices preenchidos.`);
+      toast(`OCR em lote: ${saved}/${photosToOcr.length} índices identificados.`);
     } catch (e) {
       console.warn('Batch OCR error:', e);
       toast('Erro no OCR em lote.');
@@ -217,7 +215,7 @@ export default function Collect({ campaignId, towerId: initialTower, go, toast }
             {campaign ? campaignLabel(campaign.name, campaign.month, campaign.year) : ''}
           </h2>
           <span className="header-sub">
-            {photosCount}/{total} fotos
+            {photosCount}/{total} fotos {towerStats.activeTimeMs > 0 ? `· ⏱️ ${formatDuration(towerStats.activeTimeMs)} (${formatPace(towerStats.avgSecondsPerPhoto)})` : ''}
           </span>
         </div>
         <div className="header-spacer">

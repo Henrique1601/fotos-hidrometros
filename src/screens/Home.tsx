@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import gsap from 'gsap';
-import { BarChart3, Camera, Cloud, Droplets, FolderDown, HardDrive, ListOrdered, Pencil, Play, Plus, Search, Trash2 } from 'lucide-react';
+import { BarChart3, Camera, Clock, Cloud, Droplets, FolderDown, HardDrive, ListOrdered, Pencil, Play, Plus, Search, Trash2 } from 'lucide-react';
 import { db } from '../db/db';
 import { deleteCampaign, updateCampaign } from '../db/records';
 import { TOWERS, towerTotalUnits } from '../lib/towers';
 import { campaignLabel, monthName } from '../lib/utils';
+import { calculateMeasurementStats, formatDuration, formatPace } from '../lib/measurementStats';
 import GlassCard from '../components/GlassCard';
 import ConfirmModal from '../components/ConfirmModal';
 import { Screen } from '../nav';
@@ -193,13 +194,20 @@ export default function Home({ go, toast }: Props) {
           const photos = photosByCampaign.get(c.id!) ?? 0;
           const idx = idxByCampaign.get(c.id!) ?? 0;
           const pct = Math.round((photos / TOTAL_UNITS) * 100);
+          const campRecords = records.filter((r) => r.campaignId === c.id);
+          const stats = calculateMeasurementStats(campRecords);
           return (
             <GlassCard key={c.id} className="campaign-card gs-home-item">
               <div className="campaign-head">
                 <div>
                   <h2 className="campaign-name">{label}</h2>
                   <p className="campaign-meta">
-                    {photos}/{TOTAL_UNITS} fotos · {idx} índices
+                    <span>{photos}/{TOTAL_UNITS} fotos · {idx} índices</span>
+                    {stats.activeTimeMs > 0 && (
+                      <span className="campaign-meta-time">
+                        <Clock size={12} /> {formatDuration(stats.activeTimeMs)} ({formatPace(stats.avgSecondsPerPhoto)})
+                      </span>
+                    )}
                   </p>
                 </div>
                 <div className="campaign-head-actions">
