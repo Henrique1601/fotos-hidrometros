@@ -322,14 +322,70 @@ body {
   transition: width 0.5s ease;
 }
 
-.campaign-actions {
+.campaign-resume-banner {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border-strong);
+  background: rgba(94, 234, 212, 0.1);
+  color: var(--cyan);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.86rem;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+  touch-action: manipulation;
+}
+
+.campaign-resume-banner:active {
+  transform: scale(0.98);
+  background: rgba(94, 234, 212, 0.18);
+}
+
+.campaign-resume-text {
+  display: flex;
+  align-items: center;
   gap: 8px;
 }
 
-.campaign-actions .btn-ghost {
-  flex: 1;
+.campaign-resume-icon {
+  color: var(--cyan);
+  flex-shrink: 0;
+}
+
+.campaign-resume-arrow {
+  font-size: 1rem;
+  font-weight: 700;
+  opacity: 0.8;
+}
+
+.campaign-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  width: 100%;
+}
+
+@media (min-width: 520px) {
+  .campaign-actions-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.campaign-action-btn {
+  display: flex;
+  align-items: center;
   justify-content: center;
+  gap: 6px;
+  padding: 10px 8px;
+  font-size: 0.86rem;
+  font-weight: 600;
+  border-radius: 12px;
+  width: 100%;
+  white-space: nowrap;
 }
 
 /* ---------- Page screens (data, sync) ---------- */

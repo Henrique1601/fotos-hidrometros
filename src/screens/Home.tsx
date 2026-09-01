@@ -222,25 +222,28 @@ export default function Home({ go, toast }: Props) {
               <div className="campaign-bar">
                 <span className="campaign-bar-fill" style={{ width: `${pct}%` }} />
               </div>
-              <div className="campaign-actions">
-                {c.lastTower && (
-                  <button
-                    className="resume-btn"
-                    onClick={() => go({ name: 'collect', campaignId: c.id!, towerId: c.lastTower })}
-                  >
-                    <Play size={14} /> Torre {c.lastTower}{c.lastFloor ? ` · andar ${String(c.lastFloor).padStart(2, '0')}` : ''}
-                  </button>
-                )}
-                <button className="btn-ghost" onClick={() => go({ name: 'collect', campaignId: c.id! })}>
+              {c.lastTower && (
+                <button
+                  className="campaign-resume-banner"
+                  onClick={() => go({ name: 'collect', campaignId: c.id!, towerId: c.lastTower })}
+                >
+                  <span className="campaign-resume-text">
+                    <Play size={15} className="campaign-resume-icon" /> Continuar Torre {c.lastTower}{c.lastFloor ? ` · andar ${String(c.lastFloor).padStart(2, '0')}` : ''}
+                  </span>
+                  <span className="campaign-resume-arrow">→</span>
+                </button>
+              )}
+              <div className="campaign-actions-grid">
+                <button className="btn-ghost campaign-action-btn" onClick={() => go({ name: 'collect', campaignId: c.id! })}>
                   <Camera size={16} /> Fotos
                 </button>
-                <button className="btn-ghost" onClick={() => go({ name: 'indices', campaignId: c.id! })}>
+                <button className="btn-ghost campaign-action-btn" onClick={() => go({ name: 'indices', campaignId: c.id! })}>
                   <ListOrdered size={16} /> Índices
                 </button>
-                <button className="btn-ghost" onClick={() => go({ name: 'consumption', campaignId: c.id! })}>
+                <button className="btn-ghost campaign-action-btn" onClick={() => go({ name: 'consumption', campaignId: c.id! })}>
                   <BarChart3 size={16} /> Consumo
                 </button>
-                <button className="btn-ghost" onClick={() => go({ name: 'export', campaignId: c.id! })}>
+                <button className="btn-ghost campaign-action-btn" onClick={() => go({ name: 'export', campaignId: c.id! })}>
                   <FolderDown size={16} /> Exportar
                 </button>
               </div>
