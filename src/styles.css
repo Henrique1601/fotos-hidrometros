@@ -23,6 +23,18 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+button,
+input,
+select,
+textarea,
+a,
+.apt-btn,
+.chip,
+.cam-tool,
+.capture-btn {
+  touch-action: manipulation;
+}
+
 html,
 body {
   margin: 0;

@@ -118,12 +118,16 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
       setPreview(null);
     }
     setBlob(null);
+    setOcr(null);
+    setOcrBusy(false);
     photoTakenRef.current = false;
     if (camRef.current && phase !== 'error') {
       setPhase('live');
       if (torchOn && camRef.current.caps.torchSupported) {
         void setTorch(camRef.current, true);
       }
+    } else if (phase !== 'error') {
+      void start();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [apt.aptCode]);
@@ -166,6 +170,7 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
             photo: b,
             capturedAt: Date.now(),
           });
+          void downloadWatermarked(b);
           onSaved();
         } finally {
           setSaving(false);
@@ -173,7 +178,6 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
       } else {
         photoTakenRef.current = true;
         setBlob(b);
-        stop();
         const url = URL.createObjectURL(b);
         setPreview(url);
         setPhase('preview');
@@ -199,7 +203,7 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
       setErrorMsg('Falha ao capturar a imagem.');
       setPhase('error');
     }
-  }, [burstMode, campaignId, towerId, apt, onSaved, stop, saving, downloadWatermarked, toast]);
+  }, [burstMode, campaignId, towerId, apt, onSaved, saving, downloadWatermarked, toast]);
 
   const handleRetake = useCallback(() => {
     if (preview) URL.revokeObjectURL(preview);
@@ -208,8 +212,15 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
     setBlob(null);
     setOcr(null);
     setOcrBusy(false);
-    void start();
-  }, [preview, start]);
+    if (camRef.current && phase !== 'error') {
+      setPhase('live');
+      if (torchOn && camRef.current.caps.torchSupported) {
+        void setTorch(camRef.current, true);
+      }
+    } else {
+      void start();
+    }
+  }, [preview, start, torchOn, phase]);
 
   const toggleTorch = useCallback(async () => {
     const cam = camRef.current;
@@ -304,6 +315,7 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
           photo: file,
           capturedAt: Date.now(),
         });
+        void downloadWatermarked(file);
         onSaved();
       } else {
         photoTakenRef.current = true;

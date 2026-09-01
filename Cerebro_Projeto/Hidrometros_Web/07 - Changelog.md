@@ -1,8 +1,27 @@
 # 07 - Changelog
 
-## 2026-08-31 — Auditoria completa de código, correções de bugs e melhorias
+## 2026-09-01 — Download direto no Modo Burst, Câmera persistente sem travamento e Backup em streaming para celulares antigos
 
 ### Feito
+
+- **Download automático no Modo Burst** (`src/components/CameraOverlay.tsx`): o disparo rápido agora salva a foto com marca d'água diretamente na pasta de Downloads do dispositivo enquanto avança imediatamente para o próximo apartamento.
+- **Persistência da câmera sem tela preta** (`src/components/CameraOverlay.tsx`): eliminado o fechamento prematuro do stream de vídeo na captura manual. A transição para o próximo apartamento mantém o hardware da câmera pronto e a lanterna ligada, com reinício automático garantido caso o stream precise ser reaberto.
+- **Backup em streaming de baixo consumo de memória** (`src/lib/backup.ts` + `src/screens/DataScreen.tsx`):
+  - Substituída a conversão byte-a-byte em JavaScript pelo `FileReader.readAsDataURL` nativo do navegador.
+  - Substituído o `JSON.stringify` monolítico por geração de `Blob` em streaming paginado (lotes de 15 registros), evitando picos de consumo de RAM que travavam ou recarregavam navegadores em celulares antigos.
+  - Adicionado indicador visual de progresso (`Gerando (X/Y)...`) no botão de Backup.
+- **Gerenciamento de memória e cache de fotos** (`src/hooks/usePhotoUrl.ts` + `src/lib/camera.ts`):
+  - Adicionado cache LRU com capacidade máxima de 40 URLs e revogação automática (`URL.revokeObjectURL`) das fotos antigas.
+  - Liberação imediata da memória do canvas de captura de fotos.
+  - Adicionado `touch-action: manipulation` para remover atraso de 300ms de toque em navegadores móveis mais antigos.
+
+### Testes
+
+- `npm run test`: **54/54** testes unitários aprovados.
+- `npm run test:e2e`: **3/3** testes E2E Playwright aprovados.
+- `npm run build`: build Vite concluído com sucesso.
+
+---
 
 - **Auditoria de código e correção de bugs**:
   - **Exportação de PDF** (`src/lib/exportPdf.ts`): corrigida sobreposição da tabela da Torre A em cima da capa escura ao adicionar quebra de página apropriada para cada torre com registros.

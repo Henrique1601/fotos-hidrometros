@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
-import { ArrowLeft, Download, HardDrive, Info, Upload } from 'lucide-react';
-import { createBackupFileName, restoreBackup, serializeBackup } from '../lib/backup';
+import { ArrowLeft, Download, HardDrive, Info, Loader2, Upload } from 'lucide-react';
+import { generateBackupBlob, restoreBackup } from '../lib/backup';
 import GlassCard from '../components/GlassCard';
 import ConfirmModal from '../components/ConfirmModal';
 import { Screen } from '../nav';
@@ -14,21 +14,30 @@ export default function DataScreen({ go, toast }: Props) {
   const restoreRef = useRef<HTMLInputElement>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingData, setPendingData] = useState<unknown>(null);
+  const [backupBusy, setBackupBusy] = useState(false);
+  const [backupProgress, setBackupProgress] = useState<{ done: number; total: number } | null>(null);
 
   const handleBackup = async () => {
+    if (backupBusy) return;
+    setBackupBusy(true);
+    setBackupProgress(null);
     try {
-      const file = await serializeBackup();
-      const blob = new Blob([JSON.stringify(file)], { type: 'application/json' });
+      const { blob, fileName } = await generateBackupBlob((done, total) => {
+        setBackupProgress({ done, total });
+      });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = createBackupFileName(file.campaigns);
+      a.download = fileName;
       a.click();
       URL.revokeObjectURL(url);
-      toast('Backup salvo.');
+      toast('Backup salvo com sucesso!');
     } catch (e) {
       console.error(e);
       toast('Falha ao gerar backup.');
+    } finally {
+      setBackupBusy(false);
+      setBackupProgress(null);
     }
   };
 
@@ -90,8 +99,13 @@ export default function DataScreen({ go, toast }: Props) {
                 Baixa um arquivo JSON com todas as campanhas, registros e fotos.
               </p>
             </div>
-            <button className="btn-primary" onClick={() => void handleBackup()}>
-              <Download size={16} /> Baixar
+            <button className="btn-primary" onClick={() => void handleBackup()} disabled={backupBusy}>
+              {backupBusy ? <Loader2 size={16} className="spin" /> : <Download size={16} />}
+              {backupBusy
+                ? backupProgress
+                  ? `Gerando (${backupProgress.done}/${backupProgress.total})`
+                  : 'Gerando…'
+                : 'Baixar'}
             </button>
           </div>
         </GlassCard>

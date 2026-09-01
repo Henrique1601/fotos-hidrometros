@@ -112,9 +112,14 @@ export function captureFrame(video: HTMLVideoElement, maxW = 1280): Promise<Blob
     }
     ctx.drawImage(video, 0, 0, w, h);
     canvas.toBlob(
-      (b) => (b ? resolve(b) : reject(new Error('Falha ao capturar'))),
+      (b) => {
+        canvas.width = 0;
+        canvas.height = 0;
+        if (b) resolve(b);
+        else reject(new Error('Falha ao capturar'));
+      },
       'image/jpeg',
-      0.7,
+      0.72,
     );
   });
 }

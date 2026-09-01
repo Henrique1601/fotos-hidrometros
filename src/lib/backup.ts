@@ -40,15 +40,40 @@ export function isValidBackup(data: unknown): data is BackupFile {
 
 export function deserializePhoto(p: SerializedPhoto | null | undefined): Blob | null {
   if (!p || !p.data) return null;
-  const bytes = Uint8Array.from(atob(p.data), (c) => c.charCodeAt(0));
-  return new Blob([bytes], { type: p.type || 'image/jpeg' });
+  try {
+    const binary = atob(p.data);
+    const len = binary.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return new Blob([bytes], { type: p.type || 'image/jpeg' });
+  } catch (e) {
+    console.warn('Erro ao deserializar foto:', e);
+    return null;
+  }
 }
 
 export async function blobToBase64(blob: Blob): Promise<string> {
+  if (typeof FileReader !== 'undefined') {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const res = (reader.result as string) || '';
+        const comma = res.indexOf(',');
+        resolve(comma >= 0 ? res.slice(comma + 1) : res);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
   const buf = await blob.arrayBuffer();
   const bytes = new Uint8Array(buf);
   let bin = '';
-  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  const chunkSize = 8192;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    bin += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
   return btoa(bin);
 }
 
@@ -63,6 +88,69 @@ function todayStamp(): string {
   return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
 }
 
+export async function generateBackupBlob(
+  onProgress?: (done: number, total: number) => void,
+): Promise<{ blob: Blob; fileName: string }> {
+  const campaigns = await db.campaigns.toArray();
+  const totalRecords = await db.records.count();
+
+  const chunks: BlobPart[] = [];
+  chunks.push(
+    '{\n  "app": "' +
+      BACKUP_APP +
+      '",\n  "version": ' +
+      BACKUP_VERSION +
+      ',\n  "exportedAt": ' +
+      JSON.stringify(new Date().toISOString()) +
+      ',\n  "campaigns": ' +
+      JSON.stringify(campaigns) +
+      ',\n  "records": [\n',
+  );
+
+  const batchSize = 15;
+  let processed = 0;
+  let isFirst = true;
+
+  for (let offset = 0; offset < totalRecords; offset += batchSize) {
+    const batch = await db.records.offset(offset).limit(batchSize).toArray();
+    for (const r of batch) {
+      let photoData: SerializedPhoto | null = null;
+      if (r.photo) {
+        const base64 = await blobToBase64(r.photo);
+        photoData = { type: r.photo.type || 'image/jpeg', data: base64 };
+      }
+      const serializedRec: SerializedRecord = {
+        id: r.id,
+        campaignId: r.campaignId,
+        towerId: r.towerId,
+        floor: r.floor,
+        unit: r.unit,
+        side: r.side,
+        aptCode: r.aptCode,
+        photo: photoData,
+        index: r.index,
+        capturedAt: r.capturedAt,
+        indexedAt: r.indexedAt,
+        updatedAt: r.updatedAt,
+      };
+
+      if (!isFirst) {
+        chunks.push(',\n');
+      } else {
+        isFirst = false;
+      }
+      chunks.push(JSON.stringify(serializedRec));
+      processed++;
+      onProgress?.(processed, totalRecords);
+    }
+  }
+
+  chunks.push('\n  ]\n}');
+  const blob = new Blob(chunks, { type: 'application/json' });
+  const fileName = createBackupFileName(campaigns);
+  return { blob, fileName };
+}
+
 export async function serializeBackup(): Promise<BackupFile> {
   const campaigns = await db.campaigns.toArray();
   const records = await db.records.toArray();
@@ -70,7 +158,7 @@ export async function serializeBackup(): Promise<BackupFile> {
   for (const r of file.records) {
     const src = records.find((x) => x.id === r.id);
     if (src?.photo) {
-      r.photo = { type: src.photo.type, data: await blobToBase64(src.photo) };
+      r.photo = { type: src.photo.type || 'image/jpeg', data: await blobToBase64(src.photo) };
     }
   }
   return file;
