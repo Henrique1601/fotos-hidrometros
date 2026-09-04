@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { AlertTriangle, ArrowLeft, ArrowRight, Check, Clock, ImageOff, Maximize2, Pause, Play, ScanText, Search, Sparkles, Undo2, X } from 'lucide-react';
-import { db } from '../db/db';
+import { db, MeterRecord } from '../db/db';
 import { upsertRecord } from '../db/records';
 import { floorSequence, towerById, UnitRef } from '../lib/towers';
 import { campaignLabel, formatIndex, pad2, parseIndex, sideLabel } from '../lib/utils';
@@ -10,7 +10,7 @@ import { mean, stddev, validateIndex } from '../lib/validate';
 import type { IndexWarning } from '../lib/validate';
 import { recognizeMeter } from '../lib/ocr';
 import { useBgOcr } from '../lib/bgOcr';
-import { loadConsumption } from '../lib/consumption';
+import { selectPreviousCampaign } from '../lib/consumption';
 import GlassCard from '../components/GlassCard';
 import { usePhotoUrl } from '../hooks/usePhotoUrl';
 import { Screen } from '../nav';
@@ -42,17 +42,46 @@ export default function Indices({ campaignId, go, toast }: Props) {
     useLiveQuery(() => db.records.where('campaignId').equals(campaignId).toArray(), [campaignId]) ?? [];
   const towerRecords = useMemo(() => records.filter((r) => r.towerId === towerId), [records, towerId]);
 
-  const recordByApt = useMemo(() => new Map(towerRecords.map((r) => [r.aptCode, r])), [towerRecords]);
+  const recordByApt = useMemo(() => {
+    const map = new Map<string, MeterRecord>();
+    for (const r of towerRecords) {
+      const existing = map.get(r.aptCode);
+      if (!existing) {
+        map.set(r.aptCode, r);
+      } else {
+        map.set(r.aptCode, {
+          ...existing,
+          ...r,
+          photo: r.photo ?? existing.photo,
+          index: r.index !== null && r.index !== undefined ? r.index : existing.index,
+        });
+      }
+    }
+    return map;
+  }, [towerRecords]);
 
   const [prevIndexMap, setPrevIndexMap] = useState<Map<string, number | null>>(new Map());
   useEffect(() => {
     if (!campaign) return;
-    loadConsumption(campaign, towerRecords).then((consumptionMap) => {
+    async function loadPrev() {
+      const allCampaigns = await db.campaigns.toArray();
+      const prev = selectPreviousCampaign(allCampaigns, campaign!);
+      if (!prev || !prev.id) {
+        setPrevIndexMap(new Map());
+        return;
+      }
+      const prevRecords = await db.records.where('campaignId').equals(prev.id).toArray();
       const map = new Map<string, number | null>();
-      consumptionMap.forEach((v, k) => map.set(k, v.previousIndex));
+      for (const r of prevRecords) {
+        map.set(`${r.towerId}:${r.aptCode}`, r.index ?? null);
+        if (r.towerId === towerId) {
+          map.set(r.aptCode, r.index ?? null);
+        }
+      }
       setPrevIndexMap(map);
-    });
-  }, [campaign, towerRecords]);
+    }
+    void loadPrev();
+  }, [campaign, towerId]);
 
   const photoUnits = useMemo(
     () => floorSequence(tower).filter((u) => Boolean(recordByApt.get(u.aptCode)?.photo)),
@@ -148,29 +177,40 @@ export default function Indices({ campaignId, go, toast }: Props) {
 
   const save = useCallback(
     async (u: UnitRef, raw: string): Promise<boolean> => {
-      const parsed = parseIndex(raw);
-      if (parsed === null) return false;
-      const prev = recordByApt.get(u.aptCode)?.index;
-      const prevRaw = recordByApt.get(u.aptCode)?.index != null ? formatIndex(recordByApt.get(u.aptCode)!.index!) : '';
-      const peerList = towerRecords
-        .filter((r) => r.index !== null && r.index !== undefined && r.aptCode !== u.aptCode)
-        .map((r) => r.index as number);
-      await upsertRecord({
-        campaignId,
-        towerId,
-        floor: u.floor,
-        unit: u.unit,
-        side: u.side,
-        aptCode: u.aptCode,
-        index: parsed,
-        indexedAt: Date.now(),
-      });
-      setLastSaved({ aptCode: u.aptCode, prevIndex: prev ?? null, prevRaw });
-      setWarnings(validateIndex(parsed, prevIdx ?? prev, peerList, { maxDiff: 30 }));
-      setInvalid(false);
-      return true;
+      try {
+        const parsed = parseIndex(raw);
+        if (parsed === null) {
+          setInvalid(true);
+          return false;
+        }
+        const prev = recordByApt.get(u.aptCode)?.index;
+        const prevRaw = recordByApt.get(u.aptCode)?.index != null ? formatIndex(recordByApt.get(u.aptCode)!.index!) : '';
+        const peerList = towerRecords
+          .filter((r) => r.index !== null && r.index !== undefined && r.aptCode !== u.aptCode)
+          .map((r) => r.index as number);
+
+        await upsertRecord({
+          campaignId,
+          towerId,
+          floor: u.floor,
+          unit: u.unit,
+          side: u.side,
+          aptCode: u.aptCode,
+          index: parsed,
+          indexedAt: Date.now(),
+        });
+
+        setLastSaved({ aptCode: u.aptCode, prevIndex: prev ?? null, prevRaw });
+        setWarnings(validateIndex(parsed, prevIdx ?? prev, peerList, { maxDiff: 30 }));
+        setInvalid(false);
+        return true;
+      } catch (err) {
+        console.error('Erro ao salvar índice:', err);
+        toast('Erro ao salvar índice no banco de dados.');
+        return false;
+      }
     },
-    [campaignId, towerId, towerRecords, recordByApt, prevIdx],
+    [campaignId, towerId, towerRecords, recordByApt, prevIdx, toast],
   );
 
   const handleUndo = useCallback(async () => {
@@ -208,8 +248,12 @@ export default function Indices({ campaignId, go, toast }: Props) {
     if (value.trim()) {
       if (!(await save(apt, value))) return;
     }
-    if (pos < photoUnits.length - 1) setPos(pos + 1);
-  }, [apt, value, save, pos, photoUnits.length]);
+    if (pos < photoUnits.length - 1) {
+      setPos(pos + 1);
+    } else {
+      toast(`Ap ${apt.aptCode} salvo! Fim das fotos desta torre.`);
+    }
+  }, [apt, value, save, pos, photoUnits.length, toast]);
 
   const handleBack = useCallback(() => {
     if (pos > 0) setPos(pos - 1);
@@ -218,9 +262,15 @@ export default function Indices({ campaignId, go, toast }: Props) {
   const handleEnter = useCallback(async () => {
     if (!apt) return;
     if (!canGo()) return;
-    if (value.trim()) await save(apt, value);
-    if (pos < photoUnits.length - 1) setPos(pos + 1);
-  }, [apt, value, save, canGo, pos, photoUnits.length]);
+    if (value.trim()) {
+      if (!(await save(apt, value))) return;
+    }
+    if (pos < photoUnits.length - 1) {
+      setPos(pos + 1);
+    } else {
+      toast(`Ap ${apt.aptCode} salvo! Fim das fotos desta torre.`);
+    }
+  }, [apt, value, save, canGo, pos, photoUnits.length, toast]);
 
   const handleJump = (e: FormEvent) => {
     e.preventDefault();

@@ -3,7 +3,7 @@ import autoTable from 'jspdf-autotable';
 import { saveAs } from 'file-saver';
 import { db, Campaign, MeterRecord } from '../db/db';
 import { TOWERS } from './towers';
-import { campaignLabel, formatIndex, sideLabel } from './utils';
+import { campaignLabel, formatIndex } from './utils';
 import { loadConsumption, keyOf } from './consumption';
 import { watermarkPhoto, formatWatermarkDate } from './watermark';
 import { NamedBlob } from './exportZip';
@@ -88,7 +88,7 @@ export async function buildPdf(
   );
   doc.setTextColor(103, 232, 249);
   doc.setFontSize(10);
-  doc.text('Leitura organizada por torre, andar e lado.', W / 2, 122, { align: 'center' });
+  doc.text('Relatório de medições com índices anteriores e consumo.', W / 2, 122, { align: 'center' });
 
   for (const tower of TOWERS) {
     const recs = records
@@ -104,15 +104,17 @@ export async function buildPdf(
 
     autoTable(doc, {
       startY: 19,
-      head: [['Andar', 'Ap', 'Lado', 'Índice', 'Consumo', 'Foto']],
-      body: recs.map((r: MeterRecord) => [
-        String(r.floor),
-        r.aptCode,
-        sideLabel(r.side),
-        formatIndex(r.index),
-        m3Label(consumption.get(keyOf(r.towerId, r.aptCode))?.consumption ?? null),
-        r.photo ? 'Sim' : '—',
-      ]),
+      head: [['Ap', 'Índice Anterior', 'Índice Atual', 'Consumo', 'Foto']],
+      body: recs.map((r: MeterRecord) => {
+        const c = consumption.get(keyOf(r.towerId, r.aptCode));
+        return [
+          r.aptCode,
+          c?.previousIndex !== null && c?.previousIndex !== undefined ? formatIndex(c.previousIndex) : '—',
+          formatIndex(r.index),
+          m3Label(c?.consumption ?? null),
+          r.photo ? 'Sim' : '—',
+        ];
+      }),
       styles: { fontSize: 8.5, cellPadding: 1.6, font: 'helvetica' },
       headStyles: { fillColor: [11, 46, 70], textColor: [103, 232, 249], fontStyle: 'bold' },
       alternateRowStyles: { fillColor: [240, 248, 252] },

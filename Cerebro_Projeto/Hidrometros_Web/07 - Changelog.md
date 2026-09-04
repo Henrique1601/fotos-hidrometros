@@ -34,6 +34,15 @@
   - Inserido botão com ícone de Câmera na barra superior da Home, ao lado dos ícones de Dados e Sincronização, mantendo o padrão visual idêntico (`icon-btn glass`).
   - Removido o card estático do rodapé da tela inicial, abrindo em seu lugar um modal dedicado de configurações com Modo Burst e Lanterna Contínua.
   - Ponto indicador ativo (`.has-badge`) quando alguma das opções estiver habilitada.
+- **Correção da Exibição dos Índices Anteriores em Campanhas Seguintes** (`src/screens/Indices.tsx`):
+  - Corrigido o mapeamento do `prevIndexMap` para indexar tanto pela chave `torre:ap` quanto diretamente por `aptCode` (`92`, `232`, etc.). Agora a campanha de Agosto/Setembro carrega com 100% de precisão os índices do mês anterior.
+- **Correção no Salvamento de Índices (ex: Torre C 92 e Torre D 232)** (`src/db/records.ts` + `src/lib/utils.ts` + `src/screens/Indices.tsx`):
+  - `upsertRecord`: atualizado para usar `db.records.put(merged)` e realizar limpeza automática de duplicatas no IndexedDB, impedindo travamento de chave primária.
+  - `parseIndex`: suporte aprimorado para teclado numérico do PC (onde o ponto '.' é usado para decimais), evitando conversão errônea de valores e bloqueios na validação.
+  - `Indices.tsx`: adicionado bloco try/catch e toast de confirmação mesmo no último apartamento da torre.
+- **Ajustes nos Relatórios PDF e Excel** (`src/lib/exportPdf.ts` + `src/lib/exportExcel.ts`):
+  - **PDF**: removidas as colunas *Andar* e *Lado*, adicionada a coluna *Índice Anterior* (`Ap | Índice Anterior | Índice Atual | Consumo | Foto`).
+  - **Excel**: removida a coluna *Andar*, adicionada a coluna *Índice Anterior* na planilha de Índices.
 
 ### Testes
 

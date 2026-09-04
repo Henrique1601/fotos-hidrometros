@@ -16,14 +16,14 @@ export async function buildExcel(campaign: Campaign, opts: ExcelOptions = {}): P
   );
   const consumption = await loadConsumption(campaign, records);
 
-  const rows: (string | number)[][] = [['Torre', 'Andar', 'Ap', 'Lado', 'Índice', 'Consumo']];
+  const rows: (string | number)[][] = [['Torre', 'Ap', 'Lado', 'Índice Anterior', 'Índice Atual', 'Consumo']];
   for (const r of records) {
     const c = consumption.get(keyOf(r.towerId, r.aptCode));
     rows.push([
       `Torre ${r.towerId}`,
-      r.floor,
       r.aptCode,
       sideLabel(r.side),
+      c?.previousIndex !== null && c?.previousIndex !== undefined ? c.previousIndex : '',
       r.index !== null && r.index !== undefined ? r.index : '',
       c?.consumption ?? '',
     ]);
@@ -33,9 +33,9 @@ export async function buildExcel(campaign: Campaign, opts: ExcelOptions = {}): P
   idxSheet['!cols'] = [
     { wch: 10 },
     { wch: 8 },
-    { wch: 8 },
     { wch: 10 },
-    { wch: 12 },
+    { wch: 16 },
+    { wch: 14 },
     { wch: 10 },
   ];
 

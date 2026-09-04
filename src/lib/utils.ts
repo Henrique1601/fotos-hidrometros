@@ -31,8 +31,28 @@ export function formatIndex(n: number | null | undefined): string {
 }
 
 export function parseIndex(text: string): number | null {
-  const t = text.trim().replace(/\./g, '').replace(',', '.');
+  if (!text) return null;
+  let t = text.trim().replace(/\s+/g, '');
   if (!t) return null;
+
+  if (t.includes(',') && t.includes('.')) {
+    const lastComma = t.lastIndexOf(',');
+    const lastDot = t.lastIndexOf('.');
+    if (lastComma > lastDot) {
+      t = t.replace(/\./g, '').replace(',', '.');
+    } else {
+      t = t.replace(/,/g, '');
+    }
+  } else if (t.includes(',')) {
+    t = t.replace(',', '.');
+  } else if (t.includes('.')) {
+    // Se tiver formato exato de milhar brasileiro puro (ex.: 1.234 ou 10.500)
+    if (/^\d{1,3}\.\d{3}$/.test(t)) {
+      t = t.replace(/\./g, '');
+    }
+    // Caso contrário (ex.: 2624.51 do teclado do PC ou 12.5), mantém o ponto como decimal
+  }
+
   const n = Number(t);
   return Number.isFinite(n) ? n : null;
 }

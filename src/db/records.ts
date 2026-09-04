@@ -14,22 +14,37 @@ export async function listTowerRecords(campaignId: number, towerId: string): Pro
 
 export async function upsertRecord(rec: Omit<MeterRecord, 'updatedAt'>): Promise<number> {
   const now = Date.now();
-  const existing = await db.records
+  const matches = await db.records
     .where('campaignId')
     .equals(rec.campaignId)
     .and((r) => r.towerId === rec.towerId && r.aptCode === rec.aptCode)
-    .first();
-  if (existing) {
+    .toArray();
+
+  if (matches.length > 0) {
+    const primary = matches.find((m) => m.photo) ?? matches[0];
+    const updatedPhoto = rec.photo !== undefined ? rec.photo : (primary.photo ?? matches.find((m) => m.photo)?.photo ?? null);
+    const updatedIndex = rec.index !== undefined ? rec.index : (primary.index ?? matches.find((m) => m.index !== null && m.index !== undefined)?.index ?? null);
+
     const merged: MeterRecord = {
-      ...existing,
+      ...primary,
       ...rec,
-      photo: rec.photo ?? existing.photo,
-      index: rec.index !== undefined ? rec.index : existing.index,
+      photo: updatedPhoto,
+      index: updatedIndex,
       updatedAt: now,
-      id: existing.id,
+      id: primary.id,
     };
-    await db.records.update(existing.id!, merged);
-    return existing.id!;
+
+    await db.records.put(merged);
+
+    // Se houver registros duplicados desse mesmo apartamento, remove os fantasmas
+    if (matches.length > 1) {
+      for (const other of matches) {
+        if (other.id && other.id !== primary.id) {
+          await db.records.delete(other.id);
+        }
+      }
+    }
+    return primary.id!;
   }
   return db.records.add({ ...rec, updatedAt: now });
 }

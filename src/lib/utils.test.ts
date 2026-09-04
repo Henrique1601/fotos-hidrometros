@@ -30,6 +30,10 @@ describe('utils', () => {
     expect(parseIndex('1234')).toBe(1234);
     expect(parseIndex('1.234')).toBe(1234);
     expect(parseIndex('1,234')).toBe(1.234);
+    expect(parseIndex('2624.51')).toBe(2624.51);
+    expect(parseIndex('2081.83')).toBe(2081.83);
+    expect(parseIndex('2.624,51')).toBe(2624.51);
+    expect(parseIndex('2 624,51')).toBe(2624.51);
     expect(parseIndex('  456 ')).toBe(456);
     expect(parseIndex('')).toBe(null);
     expect(parseIndex('abc')).toBe(null);
