@@ -51,6 +51,16 @@ export function buildTowers(): TowerConfig[] {
 
 export const TOWERS: TowerConfig[] = buildTowers();
 
+export const CONDO_TOTAL_UNITS = TOWERS.reduce((acc, t) => acc + towerTotalUnits(t), 0);
+
+export const VALID_UNIT_KEYS = new Set<string>(
+  TOWERS.flatMap((t) => towerUnits(t).map((u) => `${t.id}:${u.aptCode}`)),
+);
+
+export function isValidCondoUnit(towerId: string, aptCode: string): boolean {
+  return VALID_UNIT_KEYS.has(`${towerId}:${aptCode}`);
+}
+
 export function towerById(id: string): TowerConfig {
   return TOWERS.find((t) => t.id === id) ?? TOWERS[0];
 }

@@ -46,10 +46,27 @@
 - **Ajuste Estrutural da Torre E (Apt 35 não existe)** (`src/lib/towers.ts` + `towers.test.ts`):
   - Confirmado pelo leiturista que o apartamento `35` da Torre E não existe. O 3º andar da Torre E possui apenas 4 unidades (31, 32, 33 e 34), alinhando a Torre E com 180 apartamentos no total. Removido o botão do apt 35 das telas de fotos e índices.
 
+- **Auditoria Geral e Correção da Contagem de Índices (1.438 → 1.435)** (`src/lib/towers.ts` + `src/db/records.ts` + `src/screens/Export.tsx` + `src/screens/Home.tsx` + `src/screens/ConsumptionScreen.tsx` + `src/lib/exportExcel.ts` + `src/lib/exportPdf.ts` + `src/lib/exportZip.ts`):
+  - **Diagnóstico do número 1.438**: o condomínio possui matematicamente e fisicamente **1.435 apartamentos** (A: 180, B: 180, C: 181, D: 180, E: 180, F: 180, G: 181, H: 173). O contador exibia 1.438 devido a 3 registros extras no banco de dados local:
+    1. O apartamento 35 da Torre E preenchido antes de ser confirmado que ele não existia (+1 registro órfão).
+    2. Registros duplicados gerados nas tentativas anteriores de salvar Torre C 92 e Torre D 232 (+2 registros duplicados).
+  - **Função de Limpeza e Higienização do Banco** (`cleanOrphanAndDuplicateRecords` em `src/db/records.ts`):
+    - Executa automaticamente na abertura da tela de Resumo/Exportação e da Home.
+    - Remove definitivamente registros órfãos que não pertencem a nenhuma torre/andar/unidade oficial (`!isValidCondoUnit`).
+    - Agrupa e funde registros duplicados do mesmo apartamento (`campaignId + towerId + aptCode`), preservando foto e índice mais recentes e expurgando duplicatas.
+  - **Deduplicação e Validação nas Telas e Exportadores**:
+    - `Export.tsx`: tanto o resumo por torre quanto a contagem geral deduplicam por apartamento e filtram unidades válidas, garantindo exibição de 1.435 índices preenchidos de 1.435.
+    - `Home.tsx`: cards de progresso exibem 1.435 / 1.435 com deduplicação segura.
+    - `exportExcel.ts` e `exportPdf.ts`: garantem que o resumo e tabelas exportem exatamente as 1.435 unidades oficiais sem linhas fantasmas.
+  - **Exportação de Utilitários em `towers.ts`**:
+    - `CONDO_TOTAL_UNITS = 1435`
+    - `VALID_UNIT_KEYS = Set<string>`
+    - `isValidCondoUnit(towerId, aptCode): boolean`
+
 ### Testes
 
-- `npm run test`: **63/63** testes unitários aprovados (9 arquivos de teste).
-- `npm run build`: build Vite e typecheck aprovados com sucesso.
+- `npm run test`: **65/65** testes unitários aprovados (9 arquivos de teste).
+- `npm run build`: build Vite e typecheck aprovados com sucesso sem erros.
 
 ---
 

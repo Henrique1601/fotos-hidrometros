@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
   ArrowLeft,
@@ -8,8 +8,9 @@ import {
   FolderDown,
   Share2,
 } from 'lucide-react';
-import { db } from '../db/db';
-import { TOWERS, towerTotalUnits } from '../lib/towers';
+import { db, MeterRecord } from '../db/db';
+import { cleanOrphanAndDuplicateRecords } from '../db/records';
+import { TOWERS, towerTotalUnits, isValidCondoUnit } from '../lib/towers';
 import { campaignLabel } from '../lib/utils';
 import { calculateMeasurementStats, formatDuration, formatPace } from '../lib/measurementStats';
 import { buildExcel, exportExcel } from '../lib/exportExcel';
@@ -36,21 +37,45 @@ export default function Export({ campaignId, go, toast }: Props) {
       [campaignId],
     ) ?? [];
 
+  useEffect(() => {
+    void cleanOrphanAndDuplicateRecords(campaignId);
+  }, [campaignId]);
+
+  const validRecords = useMemo(() => {
+    const map = new Map<string, MeterRecord>();
+    for (const r of records) {
+      if (!isValidCondoUnit(r.towerId, r.aptCode)) continue;
+      const key = `${r.towerId}:${r.aptCode}`;
+      const existing = map.get(key);
+      if (!existing) {
+        map.set(key, r);
+      } else {
+        map.set(key, {
+          ...existing,
+          ...r,
+          photo: r.photo ?? existing.photo,
+          index: r.index !== null && r.index !== undefined ? r.index : existing.index,
+        });
+      }
+    }
+    return Array.from(map.values());
+  }, [records]);
+
   const byTower = useMemo(() => {
     const map = new Map<string, { photos: number; indices: number }>();
     for (const t of TOWERS) map.set(t.id, { photos: 0, indices: 0 });
-    for (const r of records) {
+    for (const r of validRecords) {
       const cur = map.get(r.towerId);
       if (!cur) continue;
       if (r.photo) cur.photos += 1;
       if (r.index !== null && r.index !== undefined) cur.indices += 1;
     }
     return map;
-  }, [records]);
+  }, [validRecords]);
 
-  const photos = records.filter((r) => r.photo).length;
-  const indices = records.filter((r) => r.index !== null && r.index !== undefined).length;
-  const stats = useMemo(() => calculateMeasurementStats(records), [records]);
+  const photos = validRecords.filter((r) => r.photo).length;
+  const indices = validRecords.filter((r) => r.index !== null && r.index !== undefined).length;
+  const stats = useMemo(() => calculateMeasurementStats(validRecords), [validRecords]);
 
   const run = async (kind: 'pdf' | 'excel' | 'zip') => {
     if (busy || !campaign) return;

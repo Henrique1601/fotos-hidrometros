@@ -1,4 +1,71 @@
 import { db, Campaign, MeterRecord } from './db';
+import { isValidCondoUnit } from '../lib/towers';
+
+export async function cleanOrphanAndDuplicateRecords(
+  campaignId?: number,
+): Promise<{ removedOrphans: number; mergedDuplicates: number }> {
+  const collection = campaignId !== undefined
+    ? db.records.where('campaignId').equals(campaignId)
+    : db.records.toCollection();
+
+  const all = await collection.toArray();
+  let removedOrphans = 0;
+  let mergedDuplicates = 0;
+
+  // 1. Remove registros orfaos que nao pertencem a nenhuma torre/andar/unidade valida
+  for (const r of all) {
+    if (!isValidCondoUnit(r.towerId, r.aptCode) && r.id) {
+      await db.records.delete(r.id);
+      removedOrphans++;
+    }
+  }
+
+  // 2. Agrupa por (campaignId, towerId, aptCode) e funde duplicatas
+  const groups = new Map<string, MeterRecord[]>();
+  for (const r of all) {
+    if (!isValidCondoUnit(r.towerId, r.aptCode)) continue;
+    const k = `${r.campaignId}:${r.towerId}:${r.aptCode}`;
+    const list = groups.get(k) ?? [];
+    list.push(r);
+    groups.set(k, list);
+  }
+
+  for (const [, list] of groups) {
+    if (list.length > 1) {
+      const primary =
+        list.find((m) => m.photo && m.index !== null && m.index !== undefined) ??
+        list.find((m) => m.photo) ??
+        list.find((m) => m.index !== null && m.index !== undefined) ??
+        list[0];
+
+      const mergedPhoto = list.find((m) => m.photo)?.photo ?? primary.photo ?? null;
+      const mergedIndex =
+        list.find((m) => m.index !== null && m.index !== undefined)?.index ?? primary.index ?? null;
+      const latestCapturedAt =
+        Math.max(...list.map((m) => m.capturedAt ?? 0)) || primary.capturedAt || null;
+      const latestIndexedAt =
+        Math.max(...list.map((m) => m.indexedAt ?? 0)) || primary.indexedAt || null;
+
+      await db.records.put({
+        ...primary,
+        photo: mergedPhoto,
+        index: mergedIndex,
+        capturedAt: latestCapturedAt,
+        indexedAt: latestIndexedAt,
+        updatedAt: Date.now(),
+      });
+
+      for (const item of list) {
+        if (item.id && item.id !== primary.id) {
+          await db.records.delete(item.id);
+          mergedDuplicates++;
+        }
+      }
+    }
+  }
+
+  return { removedOrphans, mergedDuplicates };
+}
 
 export async function listCampaignRecords(campaignId: number): Promise<MeterRecord[]> {
   return db.records.where('campaignId').equals(campaignId).toArray();

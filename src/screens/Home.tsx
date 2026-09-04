@@ -3,8 +3,8 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import gsap from 'gsap';
 import { BarChart3, Camera, Clock, Cloud, Droplets, FolderDown, HardDrive, ListOrdered, Pencil, Play, Plus, Search, Trash2, X } from 'lucide-react';
 import { db } from '../db/db';
-import { deleteCampaign, updateCampaign } from '../db/records';
-import { TOWERS, towerTotalUnits } from '../lib/towers';
+import { deleteCampaign, updateCampaign, cleanOrphanAndDuplicateRecords } from '../db/records';
+import { CONDO_TOTAL_UNITS, isValidCondoUnit } from '../lib/towers';
 import { campaignLabel, monthName } from '../lib/utils';
 import { calculateMeasurementStats, formatDuration, formatPace } from '../lib/measurementStats';
 import GlassCard from '../components/GlassCard';
@@ -17,7 +17,7 @@ interface Props {
   toast: NotifyFn;
 }
 
-const TOTAL_UNITS = TOWERS.reduce((acc, t) => acc + towerTotalUnits(t), 0);
+const TOTAL_UNITS = CONDO_TOTAL_UNITS;
 
 export default function Home({ go, toast }: Props) {
   const campaigns =
@@ -34,6 +34,10 @@ export default function Home({ go, toast }: Props) {
   const [cameraModalOpen, setCameraModalOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editCampaign, setEditCampaign] = useState<{ id: number; name: string; month: number; year: number } | null>(null);
+
+  useEffect(() => {
+    void cleanOrphanAndDuplicateRecords();
+  }, []);
 
   const [burstSetting, setBurstSetting] = useState<boolean>(() => {
     try {
@@ -70,14 +74,36 @@ export default function Home({ go, toast }: Props) {
     toast(checked ? 'Lanterna contínua ativada.' : 'Lanterna contínua desativada.');
   };
 
-  const photosByCampaign = new Map<number, number>();
-  const idxByCampaign = new Map<number, number>();
-  for (const r of records) {
-    if (r.photo) photosByCampaign.set(r.campaignId, (photosByCampaign.get(r.campaignId) ?? 0) + 1);
-    if (r.index !== null && r.index !== undefined) {
-      idxByCampaign.set(r.campaignId, (idxByCampaign.get(r.campaignId) ?? 0) + 1);
+  const { photosByCampaign, idxByCampaign } = useMemo(() => {
+    const photos = new Map<number, number>();
+    const idxs = new Map<number, number>();
+
+    const unique = new Map<string, (typeof records)[0]>();
+    for (const r of records) {
+      if (!isValidCondoUnit(r.towerId, r.aptCode)) continue;
+      const key = `${r.campaignId}:${r.towerId}:${r.aptCode}`;
+      const existing = unique.get(key);
+      if (!existing) {
+        unique.set(key, r);
+      } else {
+        unique.set(key, {
+          ...existing,
+          ...r,
+          photo: r.photo ?? existing.photo,
+          index: r.index !== null && r.index !== undefined ? r.index : existing.index,
+        });
+      }
     }
-  }
+
+    for (const r of unique.values()) {
+      if (r.photo) photos.set(r.campaignId, (photos.get(r.campaignId) ?? 0) + 1);
+      if (r.index !== null && r.index !== undefined) {
+        idxs.set(r.campaignId, (idxs.get(r.campaignId) ?? 0) + 1);
+      }
+    }
+
+    return { photosByCampaign: photos, idxByCampaign: idxs };
+  }, [records]);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return campaigns;

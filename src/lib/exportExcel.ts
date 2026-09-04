@@ -1,6 +1,7 @@
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
-import { db, Campaign } from '../db/db';
+import { db, Campaign, MeterRecord } from '../db/db';
+import { TOWERS, towerTotalUnits, isValidCondoUnit } from './towers';
 import { campaignLabel, sideLabel } from './utils';
 import { loadConsumption, keyOf } from './consumption';
 import { NamedBlob } from './exportZip';
@@ -11,7 +12,26 @@ export interface ExcelOptions {
 
 export async function buildExcel(campaign: Campaign, opts: ExcelOptions = {}): Promise<NamedBlob> {
   const all = await db.records.where('campaignId').equals(campaign.id!).toArray();
-  const records = (opts.towerId ? all.filter((r) => r.towerId === opts.towerId) : all).sort(
+
+  const uniqueMap = new Map<string, MeterRecord>();
+  for (const r of all) {
+    if (!isValidCondoUnit(r.towerId, r.aptCode)) continue;
+    const key = `${r.towerId}:${r.aptCode}`;
+    const existing = uniqueMap.get(key);
+    if (!existing) {
+      uniqueMap.set(key, r);
+    } else {
+      uniqueMap.set(key, {
+        ...existing,
+        ...r,
+        photo: r.photo ?? existing.photo,
+        index: r.index !== null && r.index !== undefined ? r.index : existing.index,
+      });
+    }
+  }
+
+  const cleanAll = Array.from(uniqueMap.values());
+  const records = (opts.towerId ? cleanAll.filter((r) => r.towerId === opts.towerId) : cleanAll).sort(
     (a, b) => a.towerId.localeCompare(b.towerId) || a.floor - b.floor || a.unit - b.unit,
   );
   const consumption = await loadConsumption(campaign, records);
@@ -40,12 +60,15 @@ export async function buildExcel(campaign: Campaign, opts: ExcelOptions = {}): P
   ];
 
   const towers = new Map<string, { total: number; photos: number; indices: number }>();
+  for (const t of TOWERS) {
+    if (opts.towerId && t.id !== opts.towerId) continue;
+    towers.set(t.id, { total: towerTotalUnits(t), photos: 0, indices: 0 });
+  }
   for (const r of records) {
-    const t = towers.get(r.towerId) ?? { total: 0, photos: 0, indices: 0 };
-    t.total++;
+    const t = towers.get(r.towerId);
+    if (!t) continue;
     if (r.photo) t.photos++;
     if (r.index !== null && r.index !== undefined) t.indices++;
-    towers.set(r.towerId, t);
   }
   const sumRows: (string | number)[][] = [['Torre', 'Unidades', 'Fotos', 'Índices']];
   for (const [id, t] of [...towers.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {

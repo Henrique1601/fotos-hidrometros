@@ -3,11 +3,14 @@ import {
   aptCode,
   buildTowers,
   columnSequence,
+  CONDO_TOTAL_UNITS,
   floorSequence,
+  isValidCondoUnit,
   TOWERS,
   towerById,
   towerTotalUnits,
   unitSide,
+  VALID_UNIT_KEYS,
 } from './towers';
 
 describe('towers', () => {
@@ -95,5 +98,23 @@ describe('towers', () => {
       expect(t.floors[t.floors.length - 1].floor).toBe(3);
       expect(t.floors).toHaveLength(expectedLength);
     }
+  });
+
+  it('total do condomínio é exatamente 1.435 unidades', () => {
+    expect(CONDO_TOTAL_UNITS).toBe(1435);
+    expect(VALID_UNIT_KEYS.size).toBe(1435);
+  });
+
+  it('isValidCondoUnit valida apenas apartamentos existentes', () => {
+    expect(isValidCondoUnit('A', '31')).toBe(true);
+    expect(isValidCondoUnit('C', '35')).toBe(true);
+    expect(isValidCondoUnit('E', '34')).toBe(true);
+    // Apt 35 da Torre E não existe
+    expect(isValidCondoUnit('E', '35')).toBe(false);
+    // 25º andar da Torre H não existe
+    expect(isValidCondoUnit('H', '251')).toBe(false);
+    expect(isValidCondoUnit('H', '241')).toBe(true);
+    // Torre inexistente
+    expect(isValidCondoUnit('Z', '31')).toBe(false);
   });
 });

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { ArrowLeft, BarChart3, Droplets, AlertTriangle, TrendingUp } from 'lucide-react';
-import { db } from '../db/db';
-import { TOWERS, towerTotalUnits } from '../lib/towers';
+import { db, MeterRecord } from '../db/db';
+import { TOWERS, towerTotalUnits, isValidCondoUnit } from '../lib/towers';
 import { Consumption, loadConsumption, keyOf } from '../lib/consumption';
 import { campaignLabel } from '../lib/utils';
 import GlassCard from '../components/GlassCard';
@@ -22,17 +22,37 @@ export default function ConsumptionScreen({ campaignId, go, toast }: Props) {
   const [consumption, setConsumption] = useState<Map<string, Consumption>>(new Map());
   const [loading, setLoading] = useState(true);
 
+  const validRecords = useMemo(() => {
+    const map = new Map<string, MeterRecord>();
+    for (const r of records) {
+      if (!isValidCondoUnit(r.towerId, r.aptCode)) continue;
+      const key = `${r.towerId}:${r.aptCode}`;
+      const existing = map.get(key);
+      if (!existing) {
+        map.set(key, r);
+      } else {
+        map.set(key, {
+          ...existing,
+          ...r,
+          photo: r.photo ?? existing.photo,
+          index: r.index !== null && r.index !== undefined ? r.index : existing.index,
+        });
+      }
+    }
+    return Array.from(map.values());
+  }, [records]);
+
   useEffect(() => {
     if (!campaign) return;
     let cancelled = false;
-    loadConsumption(campaign, records).then((map) => {
+    loadConsumption(campaign, validRecords).then((map) => {
       if (!cancelled) {
         setConsumption(map);
         setLoading(false);
       }
     });
     return () => { cancelled = true; };
-  }, [campaign, records]);
+  }, [campaign, validRecords]);
 
   const label = campaign ? campaignLabel(campaign.name, campaign.month, campaign.year) : '';
 
@@ -52,7 +72,7 @@ export default function ConsumptionScreen({ campaignId, go, toast }: Props) {
   const towerStats = useMemo(() => {
     return TOWERS.map((tower) => {
       const total = towerTotalUnits(tower);
-      const towerConsumptions = records
+      const towerConsumptions = validRecords
         .filter((r) => r.towerId === tower.id && r.index !== null && r.index !== undefined)
         .map((r) => {
           const c = consumption.get(keyOf(r.towerId, r.aptCode));
@@ -65,7 +85,7 @@ export default function ConsumptionScreen({ campaignId, go, toast }: Props) {
       const anomalies = towerConsumptions.filter((c) => c.status === 'anomaly').length;
       return { tower, total, indexed: towerConsumptions.length, avg, anomalies };
     });
-  }, [records, consumption]);
+  }, [validRecords, consumption]);
 
   const handleExportPdf = async () => {
     toast('Exportando relatório…');

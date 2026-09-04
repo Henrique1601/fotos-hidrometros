@@ -1,6 +1,7 @@
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
-import { db, Campaign } from '../db/db';
+import { db, Campaign, MeterRecord } from '../db/db';
+import { isValidCondoUnit } from './towers';
 import { campaignLabel, pad2 } from './utils';
 import { watermarkPhoto, formatWatermarkDate } from './watermark';
 
@@ -23,7 +24,18 @@ export async function buildPhotosZip(
     .equals(campaign.id!)
     .and((r) => !!r.photo)
     .toArray();
-  const records = opts.towerId ? all.filter((r) => r.towerId === opts.towerId) : all;
+
+  const uniqueMap = new Map<string, MeterRecord>();
+  for (const r of all) {
+    if (!isValidCondoUnit(r.towerId, r.aptCode)) continue;
+    const key = `${r.towerId}:${r.aptCode}`;
+    if (!uniqueMap.has(key)) {
+      uniqueMap.set(key, r);
+    }
+  }
+
+  const cleanAll = Array.from(uniqueMap.values());
+  const records = opts.towerId ? cleanAll.filter((r) => r.towerId === opts.towerId) : cleanAll;
 
   const zip = new JSZip();
   for (const r of records) {

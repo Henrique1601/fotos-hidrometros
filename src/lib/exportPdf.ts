@@ -2,7 +2,7 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { saveAs } from 'file-saver';
 import { db, Campaign, MeterRecord } from '../db/db';
-import { TOWERS } from './towers';
+import { TOWERS, isValidCondoUnit } from './towers';
 import { campaignLabel, formatIndex } from './utils';
 import { loadConsumption, keyOf } from './consumption';
 import { watermarkPhoto, formatWatermarkDate } from './watermark';
@@ -57,7 +57,24 @@ export async function buildPdf(
   opts: PdfOptions = {},
 ): Promise<NamedBlob> {
   const all = await db.records.where('campaignId').equals(campaign.id!).toArray();
-  const records = opts.towerId ? all.filter((r) => r.towerId === opts.towerId) : all;
+  const uniqueMap = new Map<string, MeterRecord>();
+  for (const r of all) {
+    if (!isValidCondoUnit(r.towerId, r.aptCode)) continue;
+    const key = `${r.towerId}:${r.aptCode}`;
+    const existing = uniqueMap.get(key);
+    if (!existing) {
+      uniqueMap.set(key, r);
+    } else {
+      uniqueMap.set(key, {
+        ...existing,
+        ...r,
+        photo: r.photo ?? existing.photo,
+        index: r.index !== null && r.index !== undefined ? r.index : existing.index,
+      });
+    }
+  }
+  const cleanAll = Array.from(uniqueMap.values());
+  const records = opts.towerId ? cleanAll.filter((r) => r.towerId === opts.towerId) : cleanAll;
   const consumption = await loadConsumption(campaign, records);
 
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
