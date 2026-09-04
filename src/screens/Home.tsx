@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import gsap from 'gsap';
-import { BarChart3, Camera, Clock, Cloud, Droplets, FolderDown, HardDrive, ListOrdered, Pencil, Play, Plus, Search, Trash2 } from 'lucide-react';
+import { BarChart3, Camera, Clock, Cloud, Droplets, FolderDown, HardDrive, ListOrdered, Pencil, Play, Plus, Search, Trash2, X } from 'lucide-react';
 import { db } from '../db/db';
 import { deleteCampaign, updateCampaign } from '../db/records';
 import { TOWERS, towerTotalUnits } from '../lib/towers';
@@ -31,6 +31,7 @@ export default function Home({ go, toast }: Props) {
     onConfirm: () => void;
   } | null>(null);
   const [search, setSearch] = useState('');
+  const [cameraModalOpen, setCameraModalOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editCampaign, setEditCampaign] = useState<{ id: number; name: string; month: number; year: number } | null>(null);
 
@@ -139,9 +140,18 @@ export default function Home({ go, toast }: Props) {
         </div>
         <div className="home-toolbar">
           <button
+            className={`icon-btn glass${burstSetting || torchSetting ? ' has-badge' : ''}`}
+            onClick={() => setCameraModalOpen(true)}
+            aria-label="Câmera e Captura"
+            title="Opções de Câmera e Captura"
+          >
+            <Camera size={18} />
+          </button>
+          <button
             className="icon-btn glass"
             onClick={() => go({ name: 'data' })}
             aria-label="Dados"
+            title="Dados e Backup"
           >
             <HardDrive size={18} />
           </button>
@@ -149,6 +159,7 @@ export default function Home({ go, toast }: Props) {
             className="icon-btn glass"
             onClick={() => go({ name: 'sync' })}
             aria-label="Sincronização"
+            title="Sincronização Nuvem"
           >
             <Cloud size={18} />
           </button>
@@ -273,29 +284,66 @@ export default function Home({ go, toast }: Props) {
         onCancel={() => setConfirmOpen(false)}
       />
 
-      <GlassCard className="data-card gs-home-item">
-        <h2 className="display-small">Câmera & Captura</h2>
-        <label className="check-row" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <input
-            type="checkbox"
-            checked={burstSetting}
-            onChange={(e) => toggleBurstSetting(e.target.checked)}
-          />
-          <span>
-            <strong>Modo Burst</strong> (disparo rápido e avanço instantâneo)
-          </span>
-        </label>
-        <label className="check-row" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <input
-            type="checkbox"
-            checked={torchSetting}
-            onChange={(e) => toggleTorchSetting(e.target.checked)}
-          />
-          <span>
-            <strong>Lanterna contínua</strong> (manter flash sempre aceso)
-          </span>
-        </label>
-      </GlassCard>
+      {cameraModalOpen && (
+        <div className="modal-overlay" onClick={() => setCameraModalOpen(false)}>
+          <GlassCard className="edit-campaign-modal">
+            <div onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Camera size={20} style={{ color: 'var(--cyan)' }} />
+                  <h2 className="modal-title" style={{ margin: 0 }}>Câmera & Captura</h2>
+                </div>
+                <button
+                  type="button"
+                  className="icon-btn"
+                  onClick={() => setCameraModalOpen(false)}
+                  aria-label="Fechar"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <label className="check-row" style={{ cursor: 'pointer', display: 'flex', alignItems: 'flex-start', gap: 10, padding: '12px', background: 'rgba(255, 255, 255, 0.03)', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
+                  <input
+                    type="checkbox"
+                    checked={burstSetting}
+                    onChange={(e) => toggleBurstSetting(e.target.checked)}
+                    style={{ marginTop: 3 }}
+                  />
+                  <div>
+                    <strong style={{ display: 'block', color: 'var(--text)', fontSize: '0.9rem' }}>Modo Burst</strong>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)', lineHeight: 1.3, display: 'block', marginTop: 2 }}>
+                      Disparo rápido e avanço instantâneo para o próximo apartamento
+                    </span>
+                  </div>
+                </label>
+
+                <label className="check-row" style={{ cursor: 'pointer', display: 'flex', alignItems: 'flex-start', gap: 10, padding: '12px', background: 'rgba(255, 255, 255, 0.03)', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
+                  <input
+                    type="checkbox"
+                    checked={torchSetting}
+                    onChange={(e) => toggleTorchSetting(e.target.checked)}
+                    style={{ marginTop: 3 }}
+                  />
+                  <div>
+                    <strong style={{ display: 'block', color: 'var(--text)', fontSize: '0.9rem' }}>Lanterna contínua</strong>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)', lineHeight: 1.3, display: 'block', marginTop: 2 }}>
+                      Manter o flash/lanterna sempre ligado durante a captura das fotos
+                    </span>
+                  </div>
+                </label>
+              </div>
+
+              <div className="modal-actions" style={{ marginTop: 20 }}>
+                <button className="btn-primary" style={{ width: '100%' }} onClick={() => setCameraModalOpen(false)}>
+                  Concluído
+                </button>
+              </div>
+            </div>
+          </GlassCard>
+        </div>
+      )}
 
       {editOpen && editCampaign && (
         <div className="modal-overlay" onClick={() => setEditOpen(false)}>

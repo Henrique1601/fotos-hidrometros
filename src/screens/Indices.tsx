@@ -369,25 +369,41 @@ export default function Indices({ campaignId, go, toast }: Props) {
               Andar {pad2(apt.floor)} · {sideLabel(apt.side)}
             </span>
 
-            {recordByApt.get(apt.aptCode)?.index !== null &&
-              recordByApt.get(apt.aptCode)?.index !== undefined && (
-                <span className="iv-filled">
-                  <Check size={12} /> Salvo
-                  {lastSaved && lastSaved.aptCode === apt.aptCode && (
-                    <button
-                      className="iv-undo"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        void handleUndo();
-                      }}
-                      aria-label="Desfazer índice"
-                      title="Desfazer"
-                    >
-                      <Undo2 size={12} />
-                    </button>
-                  )}
+            {/* GRUPO SUPERIOR DIREITO: ÍNDICE ANTERIOR EM DESTAQUE + STATUS SALVO */}
+            <div className="iv-top-right-group">
+              {prevIdx !== null && prevIdx !== undefined ? (
+                <span className="iv-prev-overlay-badge" title="Índice do mês anterior de referência">
+                  <Clock size={12} className="iv-prev-overlay-icon" />
+                  <span className="iv-prev-overlay-sub">Ant:</span>
+                  <strong className="mono">{formatIndex(prevIdx)}</strong>
+                </span>
+              ) : (
+                <span className="iv-prev-overlay-badge dim" title="Sem índice anterior cadastrado">
+                  <Clock size={12} className="iv-prev-overlay-icon" />
+                  <span className="iv-prev-overlay-sub">Sem anterior</span>
                 </span>
               )}
+
+              {recordByApt.get(apt.aptCode)?.index !== null &&
+                recordByApt.get(apt.aptCode)?.index !== undefined && (
+                  <span className="iv-filled">
+                    <Check size={12} /> Salvo
+                    {lastSaved && lastSaved.aptCode === apt.aptCode && (
+                      <button
+                        className="iv-undo"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void handleUndo();
+                        }}
+                        aria-label="Desfazer índice"
+                        title="Desfazer"
+                      >
+                        <Undo2 size={12} />
+                      </button>
+                    )}
+                  </span>
+                )}
+            </div>
           </div>
 
           {/* PAINEL INFERIOR COMPACTO E FOCADO NA DIGITAÇÃO */}
@@ -519,7 +535,10 @@ export default function Indices({ campaignId, go, toast }: Props) {
               <X size={24} />
             </button>
             <LightboxPhoto blob={recordByApt.get(apt.aptCode)?.photo} aptCode={apt.aptCode} />
-            <span className="photo-lightbox-badge mono">Apt {apt.aptCode} · Torre {towerId}</span>
+            <span className="photo-lightbox-badge mono">
+              Apt {apt.aptCode} · Torre {towerId}
+              {prevIdx !== null && prevIdx !== undefined ? ` · Ant: ${formatIndex(prevIdx)}` : ''}
+            </span>
           </div>
         </div>
       )}

@@ -26,6 +26,14 @@
   - Arquivo de backup exportado disponível para restauração direta (`backup-julho-2026.json`).
   - Confirmação de que o apartamento `236` da Torre E existe e tem leitura (`2408,72 m³`).
   - **Ajuste Estrutural da Torre H**: confirmado que a Torre H vai do andar 03 ao 24 (não tem 25º andar), totalizando exatamente 173 apartamentos (21 andares com 8 aps + andar 3 com 5 aps). O condomínio possui exatamente 1.435 apartamentos no total, batendo 100% com a base histórica fornecida.
+- **Índice Anterior Flutuante Sobre a Foto nos Índices** (`src/screens/Indices.tsx` + `src/styles.css`):
+  - Badge no canto superior direito da imagem (`.iv-prev-overlay-badge`) exibindo o índice anterior em destaque (`Ant: 1533,45`) em JetBrains Mono com fundo translúcido e borda ciano brilhante.
+  - Permite ao leiturista comparar visualmente a foto do hidrômetro com a leitura do mês anterior instantaneamente sem desviar os olhos da foto.
+  - Suporte ao badge também no modal ampliado (Lightbox) da foto.
+- **Botão de Câmera & Captura na Toolbar da Home** (`src/screens/Home.tsx` + `src/styles.css`):
+  - Inserido botão com ícone de Câmera na barra superior da Home, ao lado dos ícones de Dados e Sincronização, mantendo o padrão visual idêntico (`icon-btn glass`).
+  - Removido o card estático do rodapé da tela inicial, abrindo em seu lugar um modal dedicado de configurações com Modo Burst e Lanterna Contínua.
+  - Ponto indicador ativo (`.has-badge`) quando alguma das opções estiver habilitada.
 
 ### Testes
 

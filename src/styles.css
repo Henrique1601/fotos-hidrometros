@@ -256,6 +256,22 @@ body {
   border: 1px solid var(--border);
 }
 
+.icon-btn.has-badge {
+  position: relative;
+}
+
+.icon-btn.has-badge::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 8px var(--cyan);
+}
+
 /* ---------- Home layout ---------- */
 .home-toolbar {
   display: flex;
@@ -1637,6 +1653,61 @@ select.text-input {
   border: 1px solid var(--border);
   color: var(--text-dim);
   font-size: 0.74rem;
+}
+
+.iv-top-right-group {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 5;
+}
+
+.iv-top-right-group .iv-filled {
+  position: static;
+}
+
+.iv-prev-overlay-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: rgba(2, 8, 13, 0.92);
+  border: 1px solid rgba(94, 234, 212, 0.48);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6), 0 0 12px rgba(94, 234, 212, 0.15);
+  backdrop-filter: blur(8px);
+  color: var(--cyan);
+  font-size: 0.82rem;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.iv-prev-overlay-badge .iv-prev-overlay-icon {
+  color: var(--cyan);
+  flex-shrink: 0;
+}
+
+.iv-prev-overlay-badge .iv-prev-overlay-sub {
+  color: var(--text-dim);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.iv-prev-overlay-badge strong {
+  color: #ffffff;
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+}
+
+.iv-prev-overlay-badge.dim {
+  border-color: var(--border);
+  color: var(--text-dim);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
 .iv-filled {
