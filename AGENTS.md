@@ -46,7 +46,7 @@ Dexie + dexie-react-hooks (IndexedDB local), GSAP + @gsap/react (animações), l
 
 ## Regras de negócio (não alterar sem consultar a spec)
 
-- 8 torres A–H, andares 03–25. Código do apt exibido SEM zero à esquerda (`31`, `101`, `258`); internamente `aptCode = String(andar * 10 + unidade)`.
+- 8 torres A–H: andares 03–25 nas torres A–G, e 03–24 na torre H (não possui 25º andar, total de 173 apts). Código do apt exibido SEM zero à esquerda (`31`, `101`, `258`); internamente `aptCode = String(andar * 10 + unidade)`.
 - Andar 03: torres A/B/D/F = unidades 1–4; torres C/E/G/H = unidades 1–5. Andares 04–25 = unidades 1–8.
 - Lado: unidade 3–6 → esquerda; 1/2/7/8 → direita.
 - Pendência aberta: Torre E pode não ter o apt `236` — confirmar com o cliente.

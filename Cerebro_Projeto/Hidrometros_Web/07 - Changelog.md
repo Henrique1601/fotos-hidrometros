@@ -25,6 +25,7 @@
   - Botão de 1 clique na tela de Dados: *"Carregar Base de Julho/2026"*, inserindo no Dexie com status concluído sem apagar medições existentes.
   - Arquivo de backup exportado disponível para restauração direta (`backup-julho-2026.json`).
   - Confirmação de que o apartamento `236` da Torre E existe e tem leitura (`2408,72 m³`).
+  - **Ajuste Estrutural da Torre H**: confirmado que a Torre H vai do andar 03 ao 24 (não tem 25º andar), totalizando exatamente 173 apartamentos (21 andares com 8 aps + andar 3 com 5 aps). O condomínio possui exatamente 1.435 apartamentos no total, batendo 100% com a base histórica fornecida.
 
 ### Testes
 

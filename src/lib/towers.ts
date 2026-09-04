@@ -40,7 +40,8 @@ export function aptCode(floor: number, unit: number): string {
 export function buildTowers(): TowerConfig[] {
   return TOWER_IDS.map((id) => {
     const floors: FloorConfig[] = [];
-    for (let f = FLOOR_MAX; f >= FLOOR_MIN; f--) {
+    const maxFloor = id === 'H' ? 24 : FLOOR_MAX;
+    for (let f = maxFloor; f >= FLOOR_MIN; f--) {
       const units = f === 3 ? (EXTRA_UNIT_ON_FLOOR_3.has(id) ? [1, 2, 3, 4, 5] : [1, 2, 3, 4]) : UNITS_FULL;
       floors.push({ floor: f, units });
     }

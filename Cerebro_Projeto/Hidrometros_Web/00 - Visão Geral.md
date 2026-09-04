@@ -18,9 +18,10 @@ PWA mobile-first para leiturista de condomínio com 8 torres (A–H). Fotografa 
 ## Estrutura do condomínio
 
 - 8 torres: A, B, C, D, E, F, G, H.
-- Andares: 03 até 25 (23 andares).
+- Andares: 03 até 25 nas torres A–G (23 andares); 03 até 24 na torre H (22 andares, não possui 25º andar).
 - Código do ap (sem zero à esquerda): `andar(2 dígitos) + unidade(1 dígito)` → `31`, `101`, `258`.
-- Andar 03: unidades 1–4 em A/B/D/F; 1–5 em C/E/G/H. Andares 04–25: 1–8.
+- Andar 03: unidades 1–4 em A/B/D/F; 1–5 em C/E/G/H. Andares 04–25 (04–24 na torre H): 1–8.
+- Total do condomínio: 1.435 apartamentos (Torres A/B/D/E/F = 180 cada, C/G = 181 cada, H = 173).
 - Lado: unidade ∈ [3,4,5,6] → esquerda; ∈ [1,2,7,8] → direita.
 
 > **Pendência:** Torre E pode não ter o ap `236` (entre `235` e `237`). Foi incluído seguindo o padrão do andar 25; confirmar com o cliente.

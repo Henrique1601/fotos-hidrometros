@@ -51,6 +51,7 @@ describe('towers', () => {
   it('towerTotalUnits: A = 4 + 22*8 = 180', () => {
     expect(towerTotalUnits(towerById('A'))).toBe(180);
     expect(towerTotalUnits(towerById('C'))).toBe(181);
+    expect(towerTotalUnits(towerById('H'))).toBe(173);
   });
 
   it('floorSequence: esq desc depois dir desc por andar, andares descendentes (25 a 3)', () => {
@@ -81,11 +82,13 @@ describe('towers', () => {
     expect(towerById('ZZ').id).toBe('A');
   });
 
-  it('buildTowers produz torres com floors descendentes 25..3', () => {
+  it('buildTowers produz torres com floors descendentes (Torre H 24..3, outras 25..3)', () => {
     for (const t of buildTowers()) {
-      expect(t.floors[0].floor).toBe(25);
+      const expectedMax = t.id === 'H' ? 24 : 25;
+      const expectedLength = t.id === 'H' ? 22 : 23;
+      expect(t.floors[0].floor).toBe(expectedMax);
       expect(t.floors[t.floors.length - 1].floor).toBe(3);
-      expect(t.floors).toHaveLength(23);
+      expect(t.floors).toHaveLength(expectedLength);
     }
   });
 });
