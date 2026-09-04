@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { ArrowLeft, Download, HardDrive, Info, Loader2, Upload } from 'lucide-react';
+import { ArrowLeft, Database, Download, HardDrive, Info, Loader2, Upload } from 'lucide-react';
 import { generateBackupBlob, restoreBackup } from '../lib/backup';
 import GlassCard from '../components/GlassCard';
 import ConfirmModal from '../components/ConfirmModal';
@@ -16,6 +16,7 @@ export default function DataScreen({ go, toast }: Props) {
   const [pendingData, setPendingData] = useState<unknown>(null);
   const [backupBusy, setBackupBusy] = useState(false);
   const [backupProgress, setBackupProgress] = useState<{ done: number; total: number } | null>(null);
+  const [loadingJuly, setLoadingJuly] = useState(false);
 
   const handleBackup = async () => {
     if (backupBusy) return;
@@ -66,6 +67,20 @@ export default function DataScreen({ go, toast }: Props) {
     setConfirmOpen(false);
   };
 
+  const handleLoadJulyBase = async () => {
+    setLoadingJuly(true);
+    try {
+      const { loadJuly2026Base } = await import('../lib/seedJuly2026');
+      const result = await loadJuly2026Base();
+      toast(`Base de Julho/2026 carregada: ${result.count} índices salvos!`);
+    } catch (e) {
+      console.error(e);
+      toast('Erro ao carregar base de Julho.');
+    } finally {
+      setLoadingJuly(false);
+    }
+  };
+
   return (
     <div>
       <header className="app-header">
@@ -89,6 +104,21 @@ export default function DataScreen({ go, toast }: Props) {
             Todos os dados (fotos e índices) ficam apenas neste dispositivo. Faça backups periódicos
             para não perder nada.
           </p>
+        </GlassCard>
+
+        <GlassCard className="page-card">
+          <div className="page-card-row">
+            <div className="page-card-row-info">
+              <h3 className="page-card-title-sm">Base de Julho/2026</h3>
+              <p className="page-card-desc-sm">
+                Carrega 1.435 índices anteriores de Julho/2026 para cálculo automático de consumo e conferência.
+              </p>
+            </div>
+            <button className="btn-primary" onClick={() => void handleLoadJulyBase()} disabled={loadingJuly}>
+              {loadingJuly ? <Loader2 size={16} className="spin" /> : <Database size={16} />}
+              {loadingJuly ? 'Carregando…' : 'Carregar Base'}
+            </button>
+          </div>
         </GlassCard>
 
         <GlassCard className="page-card">

@@ -20,6 +20,11 @@
     - **Salto vs. Média da Torre**: alerta se o índice destoar da média dos outros apartamentos da mesma torre já preenchidos.
   - Exibição em banner chamativo de alto contraste (vermelho/âmbar com ícone de alerta) abaixo do campo de entrada.
   - Atualizado `save()` em `Indices.tsx` para validar contra o `prevIdx` real do mês anterior com limite `{ maxDiff: 30 }`.
+- **Carga da Base Histórica de Julho/2026** (`src/data/july2026Records.json` + `src/lib/seedJuly2026.ts` + `DataScreen.tsx` + `public/backup-julho-2026.json`):
+  - Inclusão dos 1.435 índices anteriores de Julho/2026 das Torres A–H fornecidos pelo cliente.
+  - Botão de 1 clique na tela de Dados: *"Carregar Base de Julho/2026"*, inserindo no Dexie com status concluído sem apagar medições existentes.
+  - Arquivo de backup exportado disponível para restauração direta (`backup-julho-2026.json`).
+  - Confirmação de que o apartamento `236` da Torre E existe e tem leitura (`2408,72 m³`).
 
 ### Testes
 
