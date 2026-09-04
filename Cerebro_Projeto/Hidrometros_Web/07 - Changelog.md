@@ -43,6 +43,8 @@
 - **Ajustes nos Relatórios PDF e Excel** (`src/lib/exportPdf.ts` + `src/lib/exportExcel.ts`):
   - **PDF**: removidas as colunas *Andar* e *Lado*, adicionada a coluna *Índice Anterior* (`Ap | Índice Anterior | Índice Atual | Consumo | Foto`).
   - **Excel**: removida a coluna *Andar*, adicionada a coluna *Índice Anterior* na planilha de Índices.
+- **Ajuste Estrutural da Torre E (Apt 35 não existe)** (`src/lib/towers.ts` + `towers.test.ts`):
+  - Confirmado pelo leiturista que o apartamento `35` da Torre E não existe. O 3º andar da Torre E possui apenas 4 unidades (31, 32, 33 e 34), alinhando a Torre E com 180 apartamentos no total. Removido o botão do apt 35 das telas de fotos e índices.
 
 ### Testes
 

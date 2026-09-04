@@ -15,12 +15,12 @@ describe('towers', () => {
     expect(TOWERS.map((t) => t.id)).toEqual(['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']);
   });
 
-  it('andar 03: A/B/D/F tem 4 unidades e C/E/G/H tem 5', () => {
-    for (const id of ['A', 'B', 'D', 'F']) {
+  it('andar 03: A/B/D/E/F tem 4 unidades e C/G/H tem 5', () => {
+    for (const id of ['A', 'B', 'D', 'E', 'F']) {
       const f3 = towerById(id).floors.find((f) => f.floor === 3)!;
       expect(f3.units).toEqual([1, 2, 3, 4]);
     }
-    for (const id of ['C', 'E', 'G', 'H']) {
+    for (const id of ['C', 'G', 'H']) {
       const f3 = towerById(id).floors.find((f) => f.floor === 3)!;
       expect(f3.units).toEqual([1, 2, 3, 4, 5]);
     }
@@ -48,9 +48,14 @@ describe('towers', () => {
     expect(unitSide(8)).toBe('right');
   });
 
-  it('towerTotalUnits: A = 4 + 22*8 = 180', () => {
+  it('towerTotalUnits: A/B/D/E/F = 180, C/G = 181, H = 173', () => {
     expect(towerTotalUnits(towerById('A'))).toBe(180);
+    expect(towerTotalUnits(towerById('B'))).toBe(180);
     expect(towerTotalUnits(towerById('C'))).toBe(181);
+    expect(towerTotalUnits(towerById('D'))).toBe(180);
+    expect(towerTotalUnits(towerById('E'))).toBe(180);
+    expect(towerTotalUnits(towerById('F'))).toBe(180);
+    expect(towerTotalUnits(towerById('G'))).toBe(181);
     expect(towerTotalUnits(towerById('H'))).toBe(173);
   });
 

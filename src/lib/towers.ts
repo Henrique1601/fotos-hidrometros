@@ -19,7 +19,7 @@ export interface UnitRef {
 }
 
 const TOWER_IDS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
-const EXTRA_UNIT_ON_FLOOR_3 = new Set(['C', 'E', 'G', 'H']);
+const EXTRA_UNIT_ON_FLOOR_3 = new Set(['C', 'G', 'H']);
 const FLOOR_MIN = 3;
 const FLOOR_MAX = 25;
 const UNITS_FULL = [1, 2, 3, 4, 5, 6, 7, 8];

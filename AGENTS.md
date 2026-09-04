@@ -47,9 +47,9 @@ Dexie + dexie-react-hooks (IndexedDB local), GSAP + @gsap/react (animações), l
 ## Regras de negócio (não alterar sem consultar a spec)
 
 - 8 torres A–H: andares 03–25 nas torres A–G, e 03–24 na torre H (não possui 25º andar, total de 173 apts). Código do apt exibido SEM zero à esquerda (`31`, `101`, `258`); internamente `aptCode = String(andar * 10 + unidade)`.
-- Andar 03: torres A/B/D/F = unidades 1–4; torres C/E/G/H = unidades 1–5. Andares 04–25 = unidades 1–8.
+- Andar 03: torres A/B/D/E/F = unidades 1–4 (apt 35 não existe na Torre E); torres C/G/H = unidades 1–5. Andares 04–25 (04–24 na Torre H) = unidades 1–8.
 - Lado: unidade 3–6 → esquerda; 1/2/7/8 → direita.
-- Pendência aberta: Torre E pode não ter o apt `236` — confirmar com o cliente.
+- Confirmado com o cliente: o apt 236 da Torre E existe normalmente (leitura ativa). O apt 35 da Torre E não existe (Torre E possui 4 apts no andar 03: 31 a 34, totalizando 180 apts).
 - Fluxo: criar campanha mensal → fotografar **por andar** (03→25; lado esquerdo descendente, depois direito descendente — ex.: `46→45→44→43→48→47→42→41`) com auto-avanço → preencher índices (foto em destaque, input abaixo, Enter salva e avança) → exportar.
 - Ordem de captura e navegação vêm de `floorSequence(tower)` em `src/lib/towers.ts` (usada em Collect e Indices).
 
