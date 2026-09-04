@@ -6,7 +6,7 @@ import { db } from '../db/db';
 import { upsertRecord } from '../db/records';
 import { floorSequence, towerById, UnitRef } from '../lib/towers';
 import { campaignLabel, formatIndex, pad2, parseIndex, sideLabel } from '../lib/utils';
-import { validateIndex } from '../lib/validate';
+import { mean, stddev, validateIndex } from '../lib/validate';
 import type { IndexWarning } from '../lib/validate';
 import { recognizeMeter } from '../lib/ocr';
 import { useBgOcr } from '../lib/bgOcr';
@@ -29,6 +29,7 @@ export default function Indices({ campaignId, go, toast }: Props) {
   const [invalid, setInvalid] = useState(false);
   const [jump, setJump] = useState('');
   const [jumpMsg, setJumpMsg] = useState<string | null>(null);
+  const [showSearch, setShowSearch] = useState(false);
   const [ocrBusy, setOcrBusy] = useState(false);
   const [lastSaved, setLastSaved] = useState<{ aptCode: string; prevIndex: number | null; prevRaw: string } | null>(null);
   const [zoomModal, setZoomModal] = useState(false);
@@ -103,6 +104,48 @@ export default function Indices({ campaignId, go, toast }: Props) {
     inputRef.current?.focus();
   }, [apt?.aptCode]);
 
+  const prevIdx = apt ? prevIndexMap.get(apt.aptCode) : null;
+
+  const liveWarning = useMemo((): string | null => {
+    if (!value.trim()) return null;
+    const parsed = parseIndex(value);
+    if (parsed === null) return null;
+
+    if (prevIdx !== null && prevIdx !== undefined) {
+      const diff = Math.round((parsed - prevIdx) * 1000) / 1000;
+      if (diff < 0) {
+        return `⚠️ O índice (${parsed}) é MENOR que o mês anterior (${formatIndex(prevIdx)}). Em hidrômetros o valor é acumulativo.`;
+      }
+      if (diff > 50) {
+        return `🚨 ÍNDICE NÃO CONDIZ (MUITO ALTO): Consumo calculado de +${diff} m³! O consumo normal de um apartamento é até 30 m³. Verifique se não digitou dígitos a mais!`;
+      }
+      if (diff > 30) {
+        return `⚠️ Atenção: Consumo de +${diff} m³ está acima do habitual para um apartamento (limite de 30 m³). Verifique se o índice está correto.`;
+      }
+      if (prevIdx > 0 && parsed > prevIdx * 2) {
+        return `⚠️ Salto superior a 100% vs. o mês anterior (${formatIndex(prevIdx)} → ${parsed}). Confira a foto.`;
+      }
+    }
+
+    if (parsed >= 50000) {
+      return `⚠️ Índice muito alto (${parsed}). Verifique se não digitou os números vermelhos (litros) junto com os pretos (m³).`;
+    }
+
+    const cleanPeers = towerRecords
+      .filter((r) => r.index !== null && r.index !== undefined && r.aptCode !== apt?.aptCode && r.index! > 0)
+      .map((r) => r.index as number);
+
+    if (cleanPeers.length >= 3) {
+      const m = mean(cleanPeers);
+      const s = stddev(cleanPeers);
+      if (s > 0 && Math.abs(parsed - m) > 3 * s) {
+        return `⚠️ Valor (${parsed}) muito fora da média dos outros apartamentos da Torre ${towerId} (${Math.round(m)}). Confira se digitou corretamente.`;
+      }
+    }
+
+    return null;
+  }, [value, prevIdx, towerRecords, apt?.aptCode, towerId]);
+
   const save = useCallback(
     async (u: UnitRef, raw: string): Promise<boolean> => {
       const parsed = parseIndex(raw);
@@ -123,11 +166,11 @@ export default function Indices({ campaignId, go, toast }: Props) {
         indexedAt: Date.now(),
       });
       setLastSaved({ aptCode: u.aptCode, prevIndex: prev ?? null, prevRaw });
-      setWarnings(validateIndex(parsed, prev, peerList));
+      setWarnings(validateIndex(parsed, prevIdx ?? prev, peerList, { maxDiff: 30 }));
       setInvalid(false);
       return true;
     },
-    [campaignId, towerId, towerRecords, recordByApt],
+    [campaignId, towerId, towerRecords, recordByApt, prevIdx],
   );
 
   const handleUndo = useCallback(async () => {
@@ -187,6 +230,7 @@ export default function Indices({ campaignId, go, toast }: Props) {
     if (idx >= 0) {
       setPos(idx);
       setJumpMsg(null);
+      setShowSearch(false);
     } else {
       setJumpMsg('Apt não encontrado nesta torre.');
     }
@@ -219,10 +263,10 @@ export default function Indices({ campaignId, go, toast }: Props) {
     }
   };
 
-  const prevIdx = apt ? prevIndexMap.get(apt.aptCode) : null;
+  const parsedCurrent = parseIndex(value);
 
   return (
-    <div>
+    <div className="indices-screen">
       <header className="app-header">
         <button className="icon-btn glass" onClick={() => go({ name: 'home' })} aria-label="Voltar">
           <ArrowLeft size={22} />
@@ -232,13 +276,22 @@ export default function Indices({ campaignId, go, toast }: Props) {
             {campaign ? campaignLabel(campaign.name, campaign.month, campaign.year) : ''}
           </h2>
           <span className="header-sub">
-            Índices {indexDone}/{photoUnits.length}
+            Torre {towerId} · Índices {indexDone}/{photoUnits.length}
           </span>
         </div>
-        <span className="header-spacer" />
+        <div className="iv-header-actions">
+          <button
+            className={`icon-btn glass${showSearch ? ' is-active' : ''}`}
+            onClick={() => setShowSearch((prev) => !prev)}
+            aria-label="Buscar apartamento"
+            title="Buscar apartamento"
+          >
+            <Search size={18} />
+          </button>
+        </div>
       </header>
 
-      <div className="chip-row">
+      <div className="chip-row indices-tower-chips">
         {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'].map((id) => (
           <button
             key={id}
@@ -251,18 +304,41 @@ export default function Indices({ campaignId, go, toast }: Props) {
         ))}
       </div>
 
+      {showSearch && (
+        <form className="apt-jump" onSubmit={handleJump} role="search">
+          <Search size={16} aria-hidden="true" />
+          <input
+            value={jump}
+            onChange={(e) => setJump(e.target.value)}
+            placeholder="Ir para apt (ex.: 258)"
+            inputMode="numeric"
+            autoComplete="off"
+            autoFocus
+            aria-label="Buscar apartamento"
+          />
+          <button
+            type="button"
+            className="icon-btn"
+            onClick={() => setShowSearch(false)}
+            aria-label="Fechar busca"
+          >
+            <X size={16} />
+          </button>
+          {jumpMsg && <span className="apt-jump-msg">{jumpMsg}</span>}
+        </form>
+      )}
+
       {pendingPhotosCount > 0 && (
-        <div className="bg-ocr-banner">
+        <div className="bg-ocr-banner compact">
           <div className="bg-ocr-info">
-            <Sparkles size={16} className={`bg-ocr-icon${bgOcr.isRunning ? ' spin' : ''}`} />
+            <Sparkles size={14} className={`bg-ocr-icon${bgOcr.isRunning ? ' spin' : ''}`} />
             <div>
-              <strong className="bg-ocr-title">OCR em 2º plano</strong>
               <p className="bg-ocr-sub">
                 {bgOcr.isRunning
-                  ? `Processando ${bgOcr.currentApt ? `Apt ${bgOcr.currentApt}` : ''} (${bgOcr.processed}/${bgOcr.total})`
+                  ? `OCR: ${bgOcr.currentApt ? `Ap ${bgOcr.currentApt}` : ''} (${bgOcr.processed}/${bgOcr.total})`
                   : bgOcr.successCount > 0
-                  ? `${bgOcr.successCount} índices lidos automaticamente`
-                  : `${pendingPhotosCount} fotos pendentes de leitura`}
+                  ? `${bgOcr.successCount} índices lidos`
+                  : `${pendingPhotosCount} fotos pendentes`}
               </p>
             </div>
           </div>
@@ -271,36 +347,28 @@ export default function Indices({ campaignId, go, toast }: Props) {
             onClick={() => (bgOcr.isRunning ? bgOcr.stop() : bgOcr.start(campaignId))}
             aria-label={bgOcr.isRunning ? 'Pausar OCR' : 'Processar fotos com OCR'}
           >
-            {bgOcr.isRunning ? <Pause size={14} /> : <Play size={14} />}
+            {bgOcr.isRunning ? <Pause size={12} /> : <Play size={12} />}
             {bgOcr.isRunning ? 'Pausar' : 'Ler todas'}
           </button>
         </div>
       )}
 
-      <form className="apt-jump" onSubmit={handleJump} role="search">
-        <Search size={16} aria-hidden="true" />
-        <input
-          value={jump}
-          onChange={(e) => setJump(e.target.value)}
-          placeholder="Ir para apt (ex.: 258)"
-          inputMode="numeric"
-          autoComplete="off"
-          aria-label="Buscar apartamento"
-        />
-        {jumpMsg && <span className="apt-jump-msg">{jumpMsg}</span>}
-      </form>
-
       {apt ? (
-        <div className="iv">
-          <div className="iv-photo-wrap" onClick={() => setZoomModal(true)}>
-            <AptPhoto blob={recordByApt.get(apt.aptCode)?.photo} aptCode={apt.aptCode} />
+        <div className="iv iv-focus-mode">
+          {/* FOTO PRINCIPAL COM ZOOM DINÂMICO NO MOUSE */}
+          <div className="iv-photo-wrap">
+            <AptPhoto
+              blob={recordByApt.get(apt.aptCode)?.photo}
+              aptCode={apt.aptCode}
+              onClick={() => setZoomModal(true)}
+            />
+
             <span className="iv-badge mono">{apt.aptCode}</span>
-            <span className="iv-zoom-hint">
-              <Maximize2 size={12} /> Toque p/ ampliar
-            </span>
+
             <span className="iv-meta">
               Andar {pad2(apt.floor)} · {sideLabel(apt.side)}
             </span>
+
             {recordByApt.get(apt.aptCode)?.index !== null &&
               recordByApt.get(apt.aptCode)?.index !== undefined && (
                 <span className="iv-filled">
@@ -308,7 +376,10 @@ export default function Indices({ campaignId, go, toast }: Props) {
                   {lastSaved && lastSaved.aptCode === apt.aptCode && (
                     <button
                       className="iv-undo"
-                      onClick={() => void handleUndo()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void handleUndo();
+                      }}
                       aria-label="Desfazer índice"
                       title="Desfazer"
                     >
@@ -319,21 +390,22 @@ export default function Indices({ campaignId, go, toast }: Props) {
               )}
           </div>
 
+          {/* PAINEL INFERIOR COMPACTO E FOCADO NA DIGITAÇÃO */}
           <div className="iv-panel">
             {prevIdx !== null && prevIdx !== undefined && (
               <div className="iv-prev">
                 <Clock size={14} />
-                <span>Índice anterior: <strong className="mono">{formatIndex(prevIdx)}</strong></span>
+                <span>
+                  Índice anterior: <strong className="mono">{formatIndex(prevIdx)}</strong>
+                </span>
               </div>
             )}
-            <label className="field-label" htmlFor="iv-input">
-              Índice do hidrômetro
-            </label>
+
             <div className="iv-input-row">
               <input
                 id="iv-input"
                 ref={inputRef}
-                className={`iv-input${invalid ? ' iv-input-invalid' : ''}`}
+                className={`iv-input${invalid || liveWarning ? ' iv-input-invalid' : ''}`}
                 inputMode="decimal"
                 autoComplete="off"
                 placeholder="Digite o índice"
@@ -345,6 +417,8 @@ export default function Indices({ campaignId, go, toast }: Props) {
                 }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') void handleEnter();
+                  if (e.key === 'ArrowLeft' && e.altKey) handleBack();
+                  if (e.key === 'ArrowRight' && e.altKey) void handleNext();
                 }}
                 onBlur={() => {
                   if (value.trim() && parseIndex(value) !== null) void save(apt, value);
@@ -359,44 +433,57 @@ export default function Indices({ campaignId, go, toast }: Props) {
                 title="Ler índice da foto com OCR"
               >
                 <ScanText size={18} />
-                {ocrBusy ? 'Lendo…' : 'Ler da foto'}
+                {ocrBusy ? 'Lendo…' : 'OCR'}
               </button>
             </div>
-            {(() => {
-              const parsed = parseIndex(value);
-              if (parsed !== null && prevIdx !== null && prevIdx !== undefined) {
-                const diff = Math.round((parsed - prevIdx) * 1000) / 1000;
-                const isNegative = diff < 0;
-                const isHigh = diff > 30;
-                return (
-                  <div className={`iv-live-consumption ${isNegative || isHigh ? 'warn' : 'ok'}`}>
-                    <span>
-                      Consumo calculado: <strong className="mono">{diff >= 0 ? `+${diff}` : diff} m³</strong>
-                      {isNegative && ' ⚠️ Regressão'}
-                      {isHigh && ' ⚠️ Alto consumo'}
-                      {!isNegative && !isHigh && ' ✅'}
-                    </span>
-                  </div>
-                );
-              }
-              return null;
-            })()}
+
+            {/* ALERTA VISÍVEL EM TEMPO REAL QUANDO O VALOR NÃO CONDIZ */}
+            {liveWarning && (
+              <div className="iv-high-alert" role="alert">
+                <AlertTriangle size={18} className="iv-alert-icon" />
+                <span>{liveWarning}</span>
+              </div>
+            )}
+
+            {/* CONSUMO NORMAL CALCULADO AO VIVO */}
+            {parsedCurrent !== null &&
+              prevIdx !== null &&
+              prevIdx !== undefined &&
+              !liveWarning && (
+                <div className="iv-live-consumption ok">
+                  <span>
+                    Consumo calculado:{' '}
+                    <strong className="mono">
+                      +{Math.round((parsedCurrent - prevIdx) * 1000) / 1000} m³
+                    </strong>{' '}
+                    ✅
+                  </span>
+                </div>
+              )}
+
             {invalid && (
               <div className="iv-warn" role="alert">
                 <AlertTriangle size={14} /> Índice inválido. Use apenas números, vírgula ou ponto.
               </div>
             )}
+
             {warnings.map((w) => (
-              <div key={w.code} className="iv-warn" role="alert">
+              <div
+                key={w.code}
+                className={w.code === 'excessive_consumption' || w.code === 'unrealistic_value' ? 'iv-high-alert' : 'iv-warn'}
+                role="alert"
+              >
                 <AlertTriangle size={14} /> {w.message}
               </div>
             ))}
+
             <div className="iv-nav">
               <button
                 className="btn-ghost"
                 onClick={handleBack}
                 disabled={pos === 0}
-                aria-label="Voltar para o índice anterior"
+                aria-label="Voltar para o índice anterior (Alt+←)"
+                title="Voltar (Alt+←)"
               >
                 <ArrowLeft size={18} /> Voltar
               </button>
@@ -406,7 +493,8 @@ export default function Indices({ campaignId, go, toast }: Props) {
               <button
                 className="btn-primary"
                 onClick={() => void handleNext()}
-                aria-label="Avançar para o próximo índice"
+                aria-label="Avançar para o próximo índice (Enter)"
+                title="Avançar (Enter)"
               >
                 Avançar <ArrowRight size={18} />
               </button>
@@ -430,7 +518,7 @@ export default function Indices({ campaignId, go, toast }: Props) {
             >
               <X size={24} />
             </button>
-            <AptPhoto blob={recordByApt.get(apt.aptCode)?.photo} aptCode={apt.aptCode} />
+            <LightboxPhoto blob={recordByApt.get(apt.aptCode)?.photo} aptCode={apt.aptCode} />
             <span className="photo-lightbox-badge mono">Apt {apt.aptCode} · Torre {towerId}</span>
           </div>
         </div>
@@ -439,7 +527,71 @@ export default function Indices({ campaignId, go, toast }: Props) {
   );
 }
 
-function AptPhoto({ blob, aptCode }: { blob?: Blob | null; aptCode: string }) {
+interface AptPhotoProps {
+  blob?: Blob | null;
+  aptCode: string;
+  onClick?: () => void;
+}
+
+function AptPhoto({ blob, aptCode, onClick }: AptPhotoProps) {
+  const url = usePhotoUrl(blob);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isHovered, setIsHovered] = useState(false);
+  const [coords, setCoords] = useState({ x: 50, y: 50 });
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const el = containerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
+    const x = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
+    const y = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100));
+    setCoords({ x, y });
+  };
+
+  const handleMouseEnter = () => {
+    setIsHovered(true);
+  };
+
+  const handleMouseLeave = () => {
+    setIsHovered(false);
+    setCoords({ x: 50, y: 50 });
+  };
+
+  if (!url) return <div className="iv-photo-placeholder" aria-label={`Foto ${aptCode}`} />;
+
+  return (
+    <div
+      ref={containerRef}
+      className={`iv-photo-container${isHovered ? ' is-zooming' : ''}`}
+      onMouseMove={handleMouseMove}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      onClick={onClick}
+    >
+      <img
+        src={url}
+        alt={`Foto ${aptCode}`}
+        className="iv-photo iv-photo-zoomable"
+        style={{
+          transformOrigin: `${coords.x}% ${coords.y}%`,
+          transform: isHovered ? 'scale(2.3)' : 'scale(1)',
+        }}
+      />
+      {isHovered ? (
+        <span className="iv-zoom-active-badge">
+          🔍 Lupa 2.3× ativa
+        </span>
+      ) : (
+        <span className="iv-zoom-hint">
+          <Maximize2 size={12} /> Passe o mouse p/ zoom
+        </span>
+      )}
+    </div>
+  );
+}
+
+function LightboxPhoto({ blob, aptCode }: { blob?: Blob | null; aptCode: string }) {
   const url = usePhotoUrl(blob);
   if (!url) return <div className="iv-photo-placeholder" aria-label={`Foto ${aptCode}`} />;
   return <img src={url} alt={`Foto ${aptCode}`} className="iv-photo" />;

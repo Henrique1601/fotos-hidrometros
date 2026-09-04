@@ -1386,6 +1386,23 @@ select.text-input {
 }
 
 /* ---------- Indices viewer ---------- */
+.indices-screen {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100dvh - 36px);
+}
+
+.indices-tower-chips {
+  margin: 2px 0 6px 0;
+  padding-bottom: 2px;
+}
+
+.iv-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .iv {
   display: flex;
   flex-direction: column;
@@ -1393,18 +1410,41 @@ select.text-input {
   min-height: calc(100dvh - 138px);
 }
 
+.iv.iv-focus-mode {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+
 .iv-photo-wrap {
   position: relative;
-  flex: 1;
-  min-height: 220px;
-  max-height: 48vh;
-  background: #04101a;
+  flex: 1 1 0;
+  min-height: 280px;
+  max-height: none;
+  background: #02080d;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
-  display: grid;
-  place-items: center;
-  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: crosshair;
+}
+
+.iv-photo-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.iv-photo-container.is-zooming {
+  cursor: zoom-in;
 }
 
 .iv-photo {
@@ -1412,6 +1452,35 @@ select.text-input {
   height: 100%;
   object-fit: contain;
   display: block;
+}
+
+.iv-photo-zoomable {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  transition: transform 0.08s ease-out;
+  will-change: transform, transform-origin;
+  pointer-events: none;
+}
+
+.iv-zoom-active-badge {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(94, 234, 212, 0.24);
+  border: 1px solid var(--cyan);
+  color: var(--cyan);
+  font-size: 0.76rem;
+  font-weight: 700;
+  pointer-events: none;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 0 16px rgba(94, 234, 212, 0.25);
 }
 
 .iv-zoom-hint {
@@ -1429,6 +1498,27 @@ select.text-input {
   font-size: 0.72rem;
   font-weight: 600;
   backdrop-filter: blur(6px);
+  pointer-events: none;
+}
+
+.iv-high-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(239, 68, 68, 0.16);
+  border: 1px solid rgba(239, 68, 68, 0.55);
+  color: #fca5a5;
+  font-size: 0.84rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.iv-high-alert .iv-alert-icon {
+  flex-shrink: 0;
+  color: #ef4444;
+  margin-top: 1px;
 }
 
 .photo-lightbox {
@@ -1489,8 +1579,8 @@ select.text-input {
   }
 
   .iv-photo-wrap {
-    min-height: 180px;
-    max-height: 38vh;
+    min-height: 220px;
+    max-height: none;
   }
 
   .iv-panel {

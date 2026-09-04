@@ -1,5 +1,33 @@
 # 07 - Changelog
 
+## 2026-09-04 — Modo Foco na Foto, Lupa no Mouse (PC) e Alertas de Índice Inconsistente
+
+### Feito
+
+- **Modo Foco na Foto nos Índices** (`src/screens/Indices.tsx` + `src/styles.css`):
+  - A foto passa a ocupar a área principal da tela (~65% a 70% de altura útil), eliminando a necessidade de tocar para ampliar a cada apartamento.
+  - Cabeçalho limpo com seletor de torre integrado e botão de busca retrátil (`showSearch`), liberando espaço vertical máximo.
+  - Painel inferior fixo e focado na digitação: campo de índice ampliado com foco automático, exibição compacta do índice do mês anterior e botões de navegação (`Voltar` e `Avançar`) com suporte a atalhos de teclado (`Enter`, `Alt+←`, `Alt+→`).
+- **Lupa Dinâmica com Movimento do Mouse para PC (Hover Zoom Lens)** (`src/screens/Indices.tsx` + `src/styles.css`):
+  - Ao passar o cursor do mouse sobre a foto no computador, a imagem aplica zoom suave de 2.3× centrado exatamente nas coordenadas do cursor (`transform-origin: x% y%`), permitindo ler os roletes numéricos sem clicar em nenhum modal.
+  - O cursor do mouse exibe feedback visual (`zoom-in`) e badge indicativo "🔍 Lupa 2.3× ativa".
+  - Mantido suporte a clique/toque para abrir lightbox em tela cheia caso necessário.
+- **Alertas Inteligentes de Índice Que Não Condiz / Muito Alto** (`src/lib/validate.ts` + `validate.test.ts` + `src/screens/Indices.tsx` + `src/styles.css`):
+  - Verificação em tempo real enquanto o usuário digita:
+    - **Regressão**: alerta se o valor for menor que a medição do mês anterior.
+    - **Consumo Excessivo**: alerta se o consumo mensal calculado ultrapassar 30 m³ ou 50 m³ (anomalia em hidrômetro residencial).
+    - **Confusão de Litros**: alerta se o índice ultrapassar 50.000 m³, avisando que o leiturista pode ter incluído os números vermelhos (litros) por engano.
+    - **Salto vs. Média da Torre**: alerta se o índice destoar da média dos outros apartamentos da mesma torre já preenchidos.
+  - Exibição em banner chamativo de alto contraste (vermelho/âmbar com ícone de alerta) abaixo do campo de entrada.
+  - Atualizado `save()` em `Indices.tsx` para validar contra o `prevIdx` real do mês anterior com limite `{ maxDiff: 30 }`.
+
+### Testes
+
+- `npm run test`: **63/63** testes unitários aprovados (9 arquivos de teste).
+- `npm run build`: build Vite e typecheck aprovados com sucesso.
+
+---
+
 ## 2026-09-01 — Tempo de Medição & Produtividade, OCR em Segundo Plano e Mira Guia de Enquadramento
 
 ### Feito

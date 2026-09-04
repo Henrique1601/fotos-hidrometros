@@ -35,4 +35,14 @@ describe('validate index', () => {
     expect(stddev([10, 10, 10])).toBe(0);
     expect(stddev([])).toBe(0);
   });
+
+  it('alerta consumo excessivo com maxDiff', () => {
+    const w = validateIndex(1050, 1000, [], { maxDiff: 30 });
+    expect(w.map((x) => x.code)).toContain('excessive_consumption');
+  });
+
+  it('alerta valor inverossímil/muito alto', () => {
+    const w = validateIndex(55000, null, []);
+    expect(w.map((x) => x.code)).toContain('unrealistic_value');
+  });
 });
