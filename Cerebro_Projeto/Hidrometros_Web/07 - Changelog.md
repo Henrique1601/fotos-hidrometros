@@ -1,6 +1,23 @@
 # 07 - Changelog
 
-## 2026-09-09 — Sistema Completo de Atalhos de Teclado (Shortcuts) e Navegação de Fotos
+## 2026-09-09 — Otimização de Performance, PWA Offline Completo, Limpeza de CSS e Melhorias de UX
+
+### Feito
+
+- **Otimização de Memória e Consultas no Banco IndexedDB** (`src/screens/HistoryScreen.tsx`):
+  - Refatorada a busca do histórico de medições do apartamento (`HistoryScreen`): anteriormente carregava a tabela inteira de registros com todos os blobs de fotos de todas as campanhas na memória RAM via `db.records.toArray()`.
+  - Agora executa consulta indexada filtrada no Dexie: `db.records.where('towerId').equals(towerId).filter(...)`, economizando centenas de megabytes de RAM em condomínios com milhares de fotos.
+- **PWA Offline Resiliente & Precaching Total** (`vite.config.ts`):
+  - Removidos padrões frágeis de `globIgnores` que excluíam chunks de tela grandes da instalação offline (`Export`, etc.).
+  - Configurado `maximumFileSizeToCacheInBytes: 5 * 1024 * 1024` no Workbox, garantindo que 100% dos assets e telas fiquem armazenados no Service Worker para uso completo em campo sem internet.
+- **Limpeza de Código Morto e Altura Dinâmica de Viewport Mobile** (`src/components/Background.tsx` e `src/styles.css`):
+  - Removidos elementos órfãos (`.orb` e `.bg-wave`) do componente `Background` e suas regras mortas (`display: none`) de `styles.css`.
+  - Adicionado suporte a `100dvh` com fallback `100vh` em `#root`, `.app`, `.app-main` e `.camera-overlay`, eliminando saltos de layout e overflow causados pela barra de endereço dinâmica e teclado virtual em smartphones Android e iOS.
+- **Aprimoramento de Estados Vazios (Empty States UX)** (`src/screens/Export.tsx` e `src/screens/ConsumptionScreen.tsx`):
+  - Na tela de Exportação (`Export.tsx`), quando a campanha não possui registros, os botões de exportação e compartilhamento ficam desabilitados com aviso visual orientando a coleta de fotos antes da geração.
+  - Na tela de Consumo (`ConsumptionScreen.tsx`), adicionada diferenciação inteligente: quando a campanha possui índices mas é a primeira campanha cadastrada (sem campanha anterior para comparação), o app exibe um card explicativo indicando "Campanha Base Inicial", em vez de uma mensagem enganosa de "Nenhum índice preenchido".
+
+---
 
 ### Feito
 

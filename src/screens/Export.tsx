@@ -245,16 +245,22 @@ export default function Export({ campaignId, go, toast }: Props) {
           ))}
         </div>
 
+        {validRecords.length === 0 && (
+          <p className="hint" style={{ color: 'var(--amber)', marginTop: 10, marginBottom: 12 }}>
+            Nenhuma foto ou índice registrado nesta campanha ainda. Colete fotos antes de exportar.
+          </p>
+        )}
+
         <div className="export-buttons">
-          <button className="btn-primary" disabled={busy !== null} onClick={() => void run('pdf')}>
+          <button className="btn-primary" disabled={busy !== null || validRecords.length === 0} onClick={() => void run('pdf')}>
             <FileText size={18} />
             {busy === 'pdf' ? 'Gerando…' : 'PDF'}
           </button>
-          <button className="btn-primary" disabled={busy !== null} onClick={() => void run('excel')}>
+          <button className="btn-primary" disabled={busy !== null || validRecords.length === 0} onClick={() => void run('excel')}>
             <FileSpreadsheet size={18} />
             {busy === 'excel' ? 'Gerando…' : 'Excel'}
           </button>
-          <button className="btn-primary" disabled={busy !== null} onClick={() => void run('zip')}>
+          <button className="btn-primary" disabled={busy !== null || photos === 0} onClick={() => void run('zip')}>
             <FolderDown size={18} />
             {busy === 'zip' ? 'Gerando…' : 'Fotos (ZIP)'}
           </button>
@@ -262,7 +268,7 @@ export default function Export({ campaignId, go, toast }: Props) {
 
         <button
           className="btn-ghost btn-share"
-          disabled={busy !== null}
+          disabled={busy !== null || validRecords.length === 0}
           onClick={() => void handleShare()}
           aria-label="Compartilhar campanha"
         >

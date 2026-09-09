@@ -16,13 +16,11 @@ interface Props {
 
 export default function HistoryScreen({ towerId, aptCode, go }: Props) {
   const campaigns = useLiveQuery(() => db.campaigns.orderBy('createdAt').reverse().toArray(), []) ?? [];
-  const allRecords = useLiveQuery(() => db.records.toArray(), []) ?? [];
+  const records = useLiveQuery(
+    () => db.records.where('towerId').equals(towerId).filter((r) => r.aptCode === aptCode).toArray(),
+    [towerId, aptCode],
+  ) ?? [];
   const [zoomPhoto, setZoomPhoto] = useState<{ blob: Blob; label: string } | null>(null);
-
-  const records = useMemo(
-    () => allRecords.filter((r) => r.towerId === towerId && r.aptCode === aptCode),
-    [allRecords, towerId, aptCode],
-  );
 
   const campaignMap = useMemo(() => new Map(campaigns.map((c) => [c.id!, c])), [campaigns]);
 

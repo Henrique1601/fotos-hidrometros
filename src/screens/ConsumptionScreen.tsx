@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { ArrowLeft, BarChart3, Droplets, AlertTriangle, TrendingUp } from 'lucide-react';
+import { ArrowLeft, BarChart3, Droplets, AlertTriangle, Info, TrendingUp } from 'lucide-react';
 import { db, MeterRecord } from '../db/db';
 import { TOWERS, towerTotalUnits, isValidCondoUnit } from '../lib/towers';
-import { Consumption, loadConsumption, keyOf } from '../lib/consumption';
+import { Consumption, loadConsumption, selectPreviousCampaign, keyOf } from '../lib/consumption';
 import { campaignLabel } from '../lib/utils';
 import GlassCard from '../components/GlassCard';
 import { Screen } from '../nav';
@@ -17,6 +17,7 @@ interface Props {
 
 export default function ConsumptionScreen({ campaignId, go, toast }: Props) {
   const campaign = useLiveQuery(() => db.campaigns.get(campaignId), [campaignId]);
+  const allCampaigns = useLiveQuery(() => db.campaigns.toArray(), []) ?? [];
   const records = useLiveQuery(() => db.records.where('campaignId').equals(campaignId).toArray(), [campaignId]) ?? [];
 
   const [consumption, setConsumption] = useState<Map<string, Consumption>>(new Map());
@@ -55,6 +56,8 @@ export default function ConsumptionScreen({ campaignId, go, toast }: Props) {
   }, [campaign, validRecords]);
 
   const label = campaign ? campaignLabel(campaign.name, campaign.month, campaign.year) : '';
+  const prevCampaign = useMemo(() => (campaign ? selectPreviousCampaign(allCampaigns, campaign) : null), [allCampaigns, campaign]);
+  const hasIndices = useMemo(() => validRecords.some((r) => r.index !== null && r.index !== undefined), [validRecords]);
 
   const stats = useMemo(() => {
     const values = [...consumption.values()].filter((c) => c.consumption !== null);
@@ -176,6 +179,14 @@ export default function ConsumptionScreen({ campaignId, go, toast }: Props) {
             Exportar PDF
           </button>
         </div>
+      ) : !prevCampaign && hasIndices ? (
+        <GlassCard className="empty-state">
+          <Info size={28} style={{ color: 'var(--cyan)' }} />
+          <p style={{ fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>Campanha Base Inicial</p>
+          <p style={{ fontSize: '0.88rem', color: 'var(--text-dim)', maxWidth: 360, margin: '0 auto', lineHeight: 1.4 }}>
+            Esta é a primeira campanha cadastrada ({label}). Os índices preenchidos servirão como base para o cálculo de consumo das próximas campanhas.
+          </p>
+        </GlassCard>
       ) : (
         <GlassCard className="empty-state">
           <BarChart3 size={28} />
