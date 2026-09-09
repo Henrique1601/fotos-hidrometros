@@ -1,7 +1,25 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { AlertTriangle, ArrowLeft, ArrowRight, Check, Clock, ImageOff, Maximize2, Pause, Play, ScanText, Search, Sparkles, Undo2, X } from 'lucide-react';
+import {
+  AlertTriangle,
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  ImageOff,
+  Keyboard,
+  Maximize2,
+  Pause,
+  Play,
+  ScanText,
+  Search,
+  Sparkles,
+  Undo2,
+  X,
+} from 'lucide-react';
 import { db, MeterRecord } from '../db/db';
 import { upsertRecord } from '../db/records';
 import { floorSequence, towerById, UnitRef } from '../lib/towers';
@@ -12,6 +30,7 @@ import { recognizeMeter } from '../lib/ocr';
 import { useBgOcr } from '../lib/bgOcr';
 import { selectPreviousCampaign } from '../lib/consumption';
 import GlassCard from '../components/GlassCard';
+import ShortcutsModal from '../components/ShortcutsModal';
 import { usePhotoUrl } from '../hooks/usePhotoUrl';
 import { Screen } from '../nav';
 
@@ -33,6 +52,7 @@ export default function Indices({ campaignId, go, toast }: Props) {
   const [ocrBusy, setOcrBusy] = useState(false);
   const [lastSaved, setLastSaved] = useState<{ aptCode: string; prevIndex: number | null; prevRaw: string } | null>(null);
   const [zoomModal, setZoomModal] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const bgOcr = useBgOcr(campaignId);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -313,6 +333,187 @@ export default function Indices({ campaignId, go, toast }: Props) {
     }
   };
 
+  const handleLightboxNext = useCallback(() => {
+    if (pos < photoUnits.length - 1) {
+      setPos((prev) => prev + 1);
+    } else {
+      toast('Fim das fotos desta torre.');
+    }
+  }, [pos, photoUnits.length, toast]);
+
+  const handleLightboxBack = useCallback(() => {
+    if (pos > 0) setPos((prev) => prev - 1);
+  }, [pos]);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const isSearchInput = target?.getAttribute('aria-label') === 'Buscar apartamento';
+      const isTextInput = target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA';
+
+      // 1. ESCAPE: fecha modais ou remove foco
+      if (e.key === 'Escape') {
+        if (shortcutsOpen) {
+          setShortcutsOpen(false);
+          e.preventDefault();
+          return;
+        }
+        if (zoomModal) {
+          setZoomModal(false);
+          e.preventDefault();
+          return;
+        }
+        if (showSearch) {
+          setShowSearch(false);
+          e.preventDefault();
+          return;
+        }
+        if (isTextInput) {
+          target?.blur();
+          e.preventDefault();
+          return;
+        }
+      }
+
+      // 2. GUIA DE ATALHOS: ? ou F1 (quando não digitando em input)
+      if ((e.key === '?' || e.key === 'F1') && !isTextInput) {
+        setShortcutsOpen((prev) => !prev);
+        e.preventDefault();
+        return;
+      }
+
+      // 3. ZOOM LIGHTBOX: Z ou Espaço (quando não digitando em input)
+      if (!isTextInput && (e.key === 'z' || e.key === 'Z' || e.key === ' ') && !e.ctrlKey && !e.metaKey) {
+        if (recordByApt.get(apt?.aptCode ?? '')?.photo) {
+          setZoomModal((prev) => !prev);
+          e.preventDefault();
+          return;
+        }
+      }
+
+      // 4. DESFAZER: Ctrl+Z ou Alt+Z
+      if ((e.key === 'z' || e.key === 'Z') && (e.ctrlKey || e.metaKey || e.altKey)) {
+        if (lastSaved && apt && lastSaved.aptCode === apt.aptCode) {
+          e.preventDefault();
+          void handleUndo();
+          return;
+        }
+      }
+
+      // 5. OCR: Alt+O ou (O quando fora de input)
+      if ((e.key === 'o' || e.key === 'O') && (e.altKey || !isTextInput)) {
+        e.preventDefault();
+        void handleReadPhoto();
+        return;
+      }
+
+      // 6. BUSCA: / ou Ctrl+F
+      if ((e.key === '/' || ((e.key === 'f' || e.key === 'F') && (e.ctrlKey || e.metaKey))) && !isSearchInput) {
+        e.preventDefault();
+        setShowSearch(true);
+        return;
+      }
+
+      // 7. TROCA DE TORRES: [ e ] (quando fora de input)
+      if ((e.key === '[' || e.key === ']') && !isTextInput) {
+        const towerIds = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+        const curIdx = towerIds.indexOf(towerId);
+        if (e.key === '[' && curIdx > 0) {
+          setTowerId(towerIds[curIdx - 1]);
+          e.preventDefault();
+        } else if (e.key === ']' && curIdx < towerIds.length - 1) {
+          setTowerId(towerIds[curIdx + 1]);
+          e.preventDefault();
+        }
+        return;
+      }
+
+      // 8. NAVEGAÇÃO DE FOTOS NO MODO LIGHTBOX
+      if (zoomModal) {
+        if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === 'd' || e.key === 'D' || e.key === ' ') {
+          e.preventDefault();
+          handleLightboxNext();
+          return;
+        }
+        if (e.key === 'ArrowLeft' || e.key === 'PageUp' || e.key === 'a' || e.key === 'A') {
+          e.preventDefault();
+          handleLightboxBack();
+          return;
+        }
+        return;
+      }
+
+      // 9. NAVEGAÇÃO GERAL (FORA DO LIGHTBOX)
+      // PageDown e PageUp sempre navegam entre fotos
+      if (e.key === 'PageDown') {
+        e.preventDefault();
+        void handleNext();
+        return;
+      }
+      if (e.key === 'PageUp') {
+        e.preventDefault();
+        handleBack();
+        return;
+      }
+
+      // Alt + Setas navegam sempre
+      if (e.altKey) {
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+          e.preventDefault();
+          void handleNext();
+          return;
+        }
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+          e.preventDefault();
+          handleBack();
+          return;
+        }
+      }
+
+      // Quando o foco NÃO está em campo de texto:
+      if (!isTextInput) {
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === 'd' || e.key === 'D') {
+          e.preventDefault();
+          void handleNext();
+          return;
+        }
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'a' || e.key === 'A') {
+          e.preventDefault();
+          handleBack();
+          return;
+        }
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          inputRef.current?.focus();
+          return;
+        }
+        // Se usuário digita número ou vírgula/ponto enquanto confere fotos: foca no campo
+        if (/^[0-9,.]$/.test(e.key)) {
+          inputRef.current?.focus();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [
+    shortcutsOpen,
+    zoomModal,
+    showSearch,
+    pos,
+    photoUnits.length,
+    apt,
+    towerId,
+    handleNext,
+    handleBack,
+    handleLightboxNext,
+    handleLightboxBack,
+    handleUndo,
+    handleReadPhoto,
+    lastSaved,
+    recordByApt,
+  ]);
+
   const parsedCurrent = parseIndex(value);
 
   return (
@@ -331,10 +532,18 @@ export default function Indices({ campaignId, go, toast }: Props) {
         </div>
         <div className="iv-header-actions">
           <button
+            className="icon-btn glass"
+            onClick={() => setShortcutsOpen(true)}
+            aria-label="Atalhos de teclado (?)"
+            title="Atalhos de teclado (?)"
+          >
+            <Keyboard size={18} />
+          </button>
+          <button
             className={`icon-btn glass${showSearch ? ' is-active' : ''}`}
             onClick={() => setShowSearch((prev) => !prev)}
-            aria-label="Buscar apartamento"
-            title="Buscar apartamento"
+            aria-label="Buscar apartamento (/)"
+            title="Buscar apartamento (/)"
           >
             <Search size={18} />
           </button>
@@ -548,8 +757,8 @@ export default function Indices({ campaignId, go, toast }: Props) {
                 className="btn-ghost"
                 onClick={handleBack}
                 disabled={pos === 0}
-                aria-label="Voltar para o índice anterior (Alt+←)"
-                title="Voltar (Alt+←)"
+                aria-label="Voltar para a foto anterior (←, PgUp ou Alt+←)"
+                title="Voltar foto (←, PgUp ou Alt+←)"
               >
                 <ArrowLeft size={18} /> Voltar
               </button>
@@ -559,8 +768,8 @@ export default function Indices({ campaignId, go, toast }: Props) {
               <button
                 className="btn-primary"
                 onClick={() => void handleNext()}
-                aria-label="Avançar para o próximo índice (Enter)"
-                title="Avançar (Enter)"
+                aria-label="Avançar para a próxima foto (Enter, →, PgDn ou Alt+→)"
+                title="Avançar foto (Enter, →, PgDn ou Alt+→)"
               >
                 Avançar <ArrowRight size={18} />
               </button>
@@ -580,18 +789,55 @@ export default function Indices({ campaignId, go, toast }: Props) {
             <button
               className="icon-btn glass photo-lightbox-close"
               onClick={() => setZoomModal(false)}
-              aria-label="Fechar ampliação"
+              aria-label="Fechar ampliação (Esc ou Z)"
+              title="Fechar (Esc ou Z)"
             >
               <X size={24} />
             </button>
+
+            {pos > 0 && (
+              <button
+                className="icon-btn glass photo-lightbox-nav prev"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleLightboxBack();
+                }}
+                aria-label="Foto anterior (← ou A)"
+                title="Foto anterior (← ou A)"
+              >
+                <ChevronLeft size={28} />
+              </button>
+            )}
+
             <LightboxPhoto blob={recordByApt.get(apt.aptCode)?.photo} aptCode={apt.aptCode} />
+
+            {pos < photoUnits.length - 1 && (
+              <button
+                className="icon-btn glass photo-lightbox-nav next"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleLightboxNext();
+                }}
+                aria-label="Próxima foto (→ ou D)"
+                title="Próxima foto (→ ou D)"
+              >
+                <ChevronRight size={28} />
+              </button>
+            )}
+
             <span className="photo-lightbox-badge mono">
-              Apt {apt.aptCode} · Torre {towerId}
+              Apt {apt.aptCode} · Torre {towerId} ({pos + 1}/{photoUnits.length})
               {prevIdx !== null && prevIdx !== undefined ? ` · Ant: ${formatIndex(prevIdx)}` : ''}
+            </span>
+
+            <span className="photo-lightbox-hint">
+              Navegar: ← → ou A/D · Fechar: Esc ou Z
             </span>
           </div>
         </div>
       )}
+
+      <ShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
     </div>
   );
 }

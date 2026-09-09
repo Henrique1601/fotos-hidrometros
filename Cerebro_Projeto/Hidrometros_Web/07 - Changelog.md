@@ -1,5 +1,46 @@
 # 07 - Changelog
 
+## 2026-09-09 — Sistema Completo de Atalhos de Teclado (Shortcuts) e Navegação de Fotos
+
+### Feito
+
+- **Atalhos Globais na Tela de Índices & Fotos** (`src/screens/Indices.tsx`):
+  - **Navegação rápida entre fotos**:
+    - `→` / `PgDn` / `Alt+→` / `D`: avança para a próxima foto/apartamento.
+    - `←` / `PgUp` / `Alt+←` / `A`: volta para a foto/apartamento anterior.
+    - `Enter`: salva o índice digitado e avança automaticamente para o próximo apartamento.
+    - `0–9` / `,` / `.`: quando fora do campo, foca automaticamente no input do índice para digitação imediata.
+    - `Z` ou `Espaço`: abre/fecha a foto ampliada (Lightbox).
+    - `Ctrl+Z` / `Alt+Z`: desfaz o último índice salvo.
+    - `Alt+O` ou `O`: lê o hidrômetro atual com OCR.
+    - `[` e `]`: alterna entre as Torres (A ↔ H).
+    - `/` ou `Ctrl+F`: abre a busca rápida de apartamento por número.
+    - `Esc`: fecha modais (Lightbox, Busca, Atalhos) ou remove o foco de campos.
+    - `?` ou `F1`: abre o novo Guia Visual de Atalhos de Teclado.
+- **Navegação Foto a Foto no Modal Ampliado (Lightbox)** (`src/screens/Indices.tsx` + `src/styles.css`):
+  - Inseridos botões flutuantes de seta nas laterais da foto (`ChevronLeft` e `ChevronRight`) para folhear fotos com clique.
+  - Suporte completo a navegação por teclado dentro do lightbox (`←` / `→`, `A` / `D`, `PgUp` / `PgDn`, `Espaço`).
+  - Badge com contador dinâmico de posição (`Apt 46 · Torre A (5/180)`) e legenda com atalhos.
+- **Atalhos na Câmera e Coleta** (`src/components/CameraOverlay.tsx` e `src/screens/Collect.tsx`):
+  - `Espaço` / `Enter`: dispara a foto (ao vivo) ou confirma/salva (na prévia).
+  - `Esc`: fecha a câmera ou descarta para tirar novamente.
+  - `T`: liga/desliga lanterna contínua.
+  - `B`: alterna Modo Burst.
+  - `+` / `-`: zoom in e zoom out digital da câmera.
+  - `↑` / `↓`: sobe ou desce de andar na visualização da torre.
+  - `[` / `]`: alterna torre.
+- **Atalhos na Tela Inicial (Home)** (`src/screens/Home.tsx`):
+  - `N`: Nova medição.
+  - `D`: Dados e Backup.
+  - `S`: Sincronização.
+  - `C`: Menu de configurações de Câmera/Captura.
+  - `?` / `F1`: abre o modal de atalhos.
+- **Novo Modal Glassmorphic de Atalhos de Teclado** (`src/components/ShortcutsModal.tsx` + `src/styles.css`):
+  - Design temático com visual de teclas físicas `<kbd className="key-cap">`, categorizado em *Índices & Fotos*, *Câmera & Captura* e *Geral*.
+  - Botão com ícone de teclado (`Keyboard`) nos cabeçalhos das telas para consulta rápida a qualquer momento.
+
+---
+
 ## 2026-09-04 — Modo Foco na Foto, Lupa no Mouse (PC) e Alertas de Índice Inconsistente
 
 ### Feito

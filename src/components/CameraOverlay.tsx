@@ -368,6 +368,49 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
     [burstMode, campaignId, towerId, apt, onSaved, downloadWatermarked, toast],
   );
 
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        if (phase === 'preview') {
+          handleRetake();
+        } else {
+          onClose();
+        }
+        return;
+      }
+
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        if (phase === 'live') {
+          void handleCapture();
+        } else if (phase === 'preview') {
+          void handleSave();
+        }
+        return;
+      }
+
+      if (phase === 'live') {
+        if (e.key === 't' || e.key === 'T') {
+          e.preventDefault();
+          void toggleTorch();
+        } else if (e.key === 'b' || e.key === 'B') {
+          e.preventDefault();
+          toggleBurst();
+        } else if (e.key === '+' || e.key === '=') {
+          e.preventDefault();
+          void changeZoom(0.2);
+        } else if (e.key === '-' || e.key === '_') {
+          e.preventDefault();
+          void changeZoom(-0.2);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [phase, handleCapture, handleSave, handleRetake, onClose, toggleTorch, toggleBurst, changeZoom]);
+
   return createPortal(
     <div className={`camera-overlay${flash ? ' cam-flash' : ''}`}>
       <div className="cam-top">

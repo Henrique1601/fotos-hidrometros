@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import gsap from 'gsap';
-import { BarChart3, Camera, Clock, Cloud, Droplets, FolderDown, HardDrive, ListOrdered, Pencil, Play, Plus, Search, Trash2, X } from 'lucide-react';
+import { BarChart3, Camera, Clock, Cloud, Droplets, FolderDown, HardDrive, Keyboard, ListOrdered, Pencil, Play, Plus, Search, Trash2, X } from 'lucide-react';
 import { db } from '../db/db';
 import { deleteCampaign, updateCampaign, cleanOrphanAndDuplicateRecords } from '../db/records';
 import { CONDO_TOTAL_UNITS, isValidCondoUnit } from '../lib/towers';
@@ -9,6 +9,7 @@ import { campaignLabel, monthName } from '../lib/utils';
 import { calculateMeasurementStats, formatDuration, formatPace } from '../lib/measurementStats';
 import GlassCard from '../components/GlassCard';
 import ConfirmModal from '../components/ConfirmModal';
+import ShortcutsModal from '../components/ShortcutsModal';
 import { Screen } from '../nav';
 import { NotifyFn } from '../App';
 
@@ -34,10 +35,74 @@ export default function Home({ go, toast }: Props) {
   const [cameraModalOpen, setCameraModalOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editCampaign, setEditCampaign] = useState<{ id: number; name: string; month: number; year: number } | null>(null);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
   useEffect(() => {
     void cleanOrphanAndDuplicateRecords();
   }, []);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.tagName === 'SELECT') return;
+
+      if (e.key === '?' || e.key === 'F1') {
+        e.preventDefault();
+        setShortcutsOpen((prev) => !prev);
+        return;
+      }
+
+      if (e.key === 'Escape') {
+        if (shortcutsOpen) {
+          e.preventDefault();
+          setShortcutsOpen(false);
+          return;
+        }
+        if (cameraModalOpen) {
+          e.preventDefault();
+          setCameraModalOpen(false);
+          return;
+        }
+        if (editOpen) {
+          e.preventDefault();
+          setEditOpen(false);
+          return;
+        }
+        if (confirmOpen) {
+          e.preventDefault();
+          setConfirmOpen(false);
+          return;
+        }
+      }
+
+      if (e.key === 'n' || e.key === 'N') {
+        e.preventDefault();
+        go({ name: 'new-campaign' });
+        return;
+      }
+
+      if (e.key === 'd' || e.key === 'D') {
+        e.preventDefault();
+        go({ name: 'data' });
+        return;
+      }
+
+      if (e.key === 's' || e.key === 'S') {
+        e.preventDefault();
+        go({ name: 'sync' });
+        return;
+      }
+
+      if (e.key === 'c' || e.key === 'C') {
+        e.preventDefault();
+        setCameraModalOpen((prev) => !prev);
+        return;
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [shortcutsOpen, cameraModalOpen, editOpen, confirmOpen, go]);
 
   const [burstSetting, setBurstSetting] = useState<boolean>(() => {
     try {
@@ -166,26 +231,34 @@ export default function Home({ go, toast }: Props) {
         </div>
         <div className="home-toolbar">
           <button
+            className="icon-btn glass"
+            onClick={() => setShortcutsOpen(true)}
+            aria-label="Atalhos de teclado (?)"
+            title="Atalhos de teclado (?)"
+          >
+            <Keyboard size={18} />
+          </button>
+          <button
             className={`icon-btn glass${burstSetting || torchSetting ? ' has-badge' : ''}`}
             onClick={() => setCameraModalOpen(true)}
-            aria-label="Câmera e Captura"
-            title="Opções de Câmera e Captura"
+            aria-label="Câmera e Captura (C)"
+            title="Opções de Câmera e Captura (C)"
           >
             <Camera size={18} />
           </button>
           <button
             className="icon-btn glass"
             onClick={() => go({ name: 'data' })}
-            aria-label="Dados"
-            title="Dados e Backup"
+            aria-label="Dados (D)"
+            title="Dados e Backup (D)"
           >
             <HardDrive size={18} />
           </button>
           <button
             className="icon-btn glass"
             onClick={() => go({ name: 'sync' })}
-            aria-label="Sincronização"
-            title="Sincronização Nuvem"
+            aria-label="Sincronização (S)"
+            title="Sincronização Nuvem (S)"
           >
             <Cloud size={18} />
           </button>
@@ -418,6 +491,8 @@ export default function Home({ go, toast }: Props) {
           </GlassCard>
         </div>
       )}
+
+      <ShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
     </div>
   );
 }

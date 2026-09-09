@@ -3,7 +3,7 @@ import type { FormEvent } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
-import { ArrowLeft, ArrowRight, Check, Loader2, ScanText, Search, Trophy } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Keyboard, Loader2, ScanText, Search, Trophy } from 'lucide-react';
 import { db } from '../db/db';
 import { resetRecord } from '../db/records';
 import { batchRecognizeMeters } from '../lib/ocr';
@@ -15,6 +15,7 @@ import ProgressRing from '../components/ProgressRing';
 import AptButton from '../components/AptButton';
 import CameraOverlay from '../components/CameraOverlay';
 import ConfirmModal from '../components/ConfirmModal';
+import ShortcutsModal from '../components/ShortcutsModal';
 import { Screen } from '../nav';
 
 interface Props {
@@ -32,6 +33,7 @@ export default function Collect({ campaignId, towerId: initialTower, go, toast }
   const [batchBusy, setBatchBusy] = useState(false);
   const [batchProgress, setBatchProgress] = useState({ done: 0, total: 0 });
   const [deleteTarget, setDeleteTarget] = useState<UnitRef | null>(null);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
   const campaign = useLiveQuery(() => db.campaigns.get(campaignId), [campaignId]);
   const tower = useMemo(() => towerById(towerId), [towerId]);
@@ -204,6 +206,55 @@ export default function Collect({ campaignId, towerId: initialTower, go, toast }
     }
   };
 
+  useEffect(() => {
+    if (camApt) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA') return;
+
+      if (e.key === '?' || e.key === 'F1') {
+        e.preventDefault();
+        setShortcutsOpen((prev) => !prev);
+        return;
+      }
+
+      if (e.key === 'Escape') {
+        if (shortcutsOpen) {
+          e.preventDefault();
+          setShortcutsOpen(false);
+          return;
+        }
+        if (deleteTarget) {
+          e.preventDefault();
+          setDeleteTarget(null);
+          return;
+        }
+      }
+
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        const maxFloor = towerId === 'H' ? 24 : 25;
+        setFloor((f) => Math.min(maxFloor, f + 1));
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setFloor((f) => Math.max(3, f - 1));
+      } else if (e.key === '[') {
+        e.preventDefault();
+        const towerIds = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+        const idx = towerIds.indexOf(towerId);
+        if (idx > 0) setTowerId(towerIds[idx - 1]);
+      } else if (e.key === ']') {
+        e.preventDefault();
+        const towerIds = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+        const idx = towerIds.indexOf(towerId);
+        if (idx < towerIds.length - 1) setTowerId(towerIds[idx + 1]);
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [camApt, towerId, shortcutsOpen, deleteTarget]);
+
   return (
     <div>
       <header className="app-header">
@@ -218,7 +269,15 @@ export default function Collect({ campaignId, towerId: initialTower, go, toast }
             {photosCount}/{total} fotos {towerStats.activeTimeMs > 0 ? `· ⏱️ ${formatDuration(towerStats.activeTimeMs)} (${formatPace(towerStats.avgSecondsPerPhoto)})` : ''}
           </span>
         </div>
-        <div className="header-spacer">
+        <div className="iv-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button
+            className="icon-btn glass"
+            onClick={() => setShortcutsOpen(true)}
+            aria-label="Atalhos de teclado (?)"
+            title="Atalhos de teclado (?)"
+          >
+            <Keyboard size={18} />
+          </button>
           <ProgressRing value={photosCount / total} size={40} stroke={4} />
         </div>
       </header>
@@ -374,6 +433,8 @@ export default function Collect({ campaignId, towerId: initialTower, go, toast }
         onConfirm={() => void handleDeletePhoto()}
         onCancel={() => setDeleteTarget(null)}
       />
+
+      <ShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
     </div>
   );
 }
