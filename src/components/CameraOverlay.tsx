@@ -13,6 +13,7 @@ import {
 import { recognizeMeter, OcrResult } from '../lib/ocr';
 import { watermarkPhoto, formatWatermarkDate } from '../lib/watermark';
 import { upsertRecord } from '../db/records';
+import { bgOcr } from '../lib/bgOcr';
 import { pad2 } from '../lib/utils';
 import { UnitRef } from '../lib/towers';
 
@@ -169,7 +170,7 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
       if (burstMode) {
         setSaving(true);
         try {
-          await upsertRecord({
+          const recordId = await upsertRecord({
             campaignId,
             towerId,
             floor: apt.floor,
@@ -180,6 +181,9 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
             capturedAt: Date.now(),
           });
           void downloadWatermarked(b);
+          if (recordId) {
+            void bgOcr.enqueue(recordId, b);
+          }
           onSaved();
         } finally {
           setSaving(false);

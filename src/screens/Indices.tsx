@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   Clock,
@@ -16,6 +17,7 @@ import {
   Play,
   ScanText,
   Search,
+  Share2,
   Sparkles,
   Undo2,
   X,
@@ -29,10 +31,26 @@ import type { IndexWarning } from '../lib/validate';
 import { recognizeMeter } from '../lib/ocr';
 import { useBgOcr } from '../lib/bgOcr';
 import { selectPreviousCampaign } from '../lib/consumption';
+import { shareVoucher } from '../lib/voucher';
 import GlassCard from '../components/GlassCard';
 import ShortcutsModal from '../components/ShortcutsModal';
 import { usePhotoUrl } from '../hooks/usePhotoUrl';
 import { Screen } from '../nav';
+
+type FilterMode = 'all' | 'pending' | 'alerts';
+
+function unitHasAlert(record: MeterRecord | undefined, prevIdx: number | null | undefined): boolean {
+  if (!record || record.index === null || record.index === undefined) return false;
+  const idx = record.index;
+  if (idx >= 50000) return true;
+  if (prevIdx !== null && prevIdx !== undefined) {
+    const diff = idx - prevIdx;
+    if (diff < 0) return true;
+    if (diff > 30) return true;
+    if (prevIdx > 0 && idx > prevIdx * 2) return true;
+  }
+  return false;
+}
 
 interface Props {
   campaignId: number;
@@ -43,6 +61,7 @@ interface Props {
 export default function Indices({ campaignId, go, toast }: Props) {
   const [towerId, setTowerId] = useState('A');
   const [pos, setPos] = useState(0);
+  const [filterMode, setFilterMode] = useState<FilterMode>('all');
   const [value, setValue] = useState('');
   const [warnings, setWarnings] = useState<IndexWarning[]>([]);
   const [invalid, setInvalid] = useState(false);
@@ -108,6 +127,44 @@ export default function Indices({ campaignId, go, toast }: Props) {
     [tower, recordByApt],
   );
 
+  const pendingUnits = useMemo(
+    () =>
+      photoUnits.filter((u) => {
+        const idx = recordByApt.get(u.aptCode)?.index;
+        return idx === null || idx === undefined;
+      }),
+    [photoUnits, recordByApt],
+  );
+
+  const alertUnits = useMemo(
+    () =>
+      photoUnits.filter((u) => {
+        const rec = recordByApt.get(u.aptCode);
+        const prev = prevIndexMap.get(u.aptCode);
+        return unitHasAlert(rec, prev);
+      }),
+    [photoUnits, recordByApt, prevIndexMap],
+  );
+
+  const displayedUnits = useMemo(() => {
+    if (filterMode === 'pending') return pendingUnits;
+    if (filterMode === 'alerts') return alertUnits;
+    return photoUnits;
+  }, [filterMode, photoUnits, pendingUnits, alertUnits]);
+
+  const apt = displayedUnits[pos];
+
+  const handleFilterChange = (mode: FilterMode) => {
+    setFilterMode(mode);
+    const target = mode === 'pending' ? pendingUnits : mode === 'alerts' ? alertUnits : photoUnits;
+    if (apt) {
+      const idx = target.findIndex((u) => u.aptCode === apt.aptCode);
+      setPos(idx >= 0 ? idx : 0);
+    } else {
+      setPos(0);
+    }
+  };
+
   const indexDone = useMemo(
     () =>
       photoUnits.filter((u) => {
@@ -122,10 +179,15 @@ export default function Indices({ campaignId, go, toast }: Props) {
     [records],
   );
 
-  const apt = photoUnits[pos];
+  useEffect(() => {
+    if (pos >= displayedUnits.length && displayedUnits.length > 0) {
+      setPos(displayedUnits.length - 1);
+    }
+  }, [pos, displayedUnits.length]);
 
   useEffect(() => {
-    const firstMissing = photoUnits.findIndex((u) => {
+    const target = filterMode === 'pending' ? pendingUnits : filterMode === 'alerts' ? alertUnits : photoUnits;
+    const firstMissing = target.findIndex((u) => {
       const idx = recordByApt.get(u.aptCode)?.index;
       return idx === null || idx === undefined;
     });
@@ -268,12 +330,12 @@ export default function Indices({ campaignId, go, toast }: Props) {
     if (value.trim()) {
       if (!(await save(apt, value))) return;
     }
-    if (pos < photoUnits.length - 1) {
+    if (pos < displayedUnits.length - 1) {
       setPos(pos + 1);
     } else {
-      toast(`Ap ${apt.aptCode} salvo! Fim das fotos desta torre.`);
+      toast(`Ap ${apt.aptCode} salvo! Fim das fotos desta lista.`);
     }
-  }, [apt, value, save, pos, photoUnits.length, toast]);
+  }, [apt, value, save, pos, displayedUnits.length, toast]);
 
   const handleBack = useCallback(() => {
     if (pos > 0) setPos(pos - 1);
@@ -285,26 +347,57 @@ export default function Indices({ campaignId, go, toast }: Props) {
     if (value.trim()) {
       if (!(await save(apt, value))) return;
     }
-    if (pos < photoUnits.length - 1) {
+    if (pos < displayedUnits.length - 1) {
       setPos(pos + 1);
     } else {
-      toast(`Ap ${apt.aptCode} salvo! Fim das fotos desta torre.`);
+      toast(`Ap ${apt.aptCode} salvo! Fim das fotos desta lista.`);
     }
-  }, [apt, value, save, canGo, pos, photoUnits.length, toast]);
+  }, [apt, value, save, canGo, pos, displayedUnits.length, toast]);
 
   const handleJump = (e: FormEvent) => {
     e.preventDefault();
     const code = jump.trim();
     if (!code) return;
-    const idx = photoUnits.findIndex((u) => u.aptCode === code);
+    const idx = displayedUnits.findIndex((u) => u.aptCode === code);
     if (idx >= 0) {
       setPos(idx);
       setJumpMsg(null);
       setShowSearch(false);
     } else {
-      setJumpMsg('Apt não encontrado nesta torre.');
+      const existsInTower = photoUnits.some((u) => u.aptCode === code);
+      if (existsInTower && filterMode !== 'all') {
+        setFilterMode('all');
+        const allIdx = photoUnits.findIndex((u) => u.aptCode === code);
+        setPos(allIdx >= 0 ? allIdx : 0);
+        setJumpMsg(null);
+        setShowSearch(false);
+      } else {
+        setJumpMsg('Apt não encontrado nesta torre.');
+      }
     }
   };
+
+  const handleShareVoucher = useCallback(async () => {
+    if (!apt || !campaign) return;
+    const rec = recordByApt.get(apt.aptCode);
+    const dateStr = rec?.capturedAt
+      ? new Date(rec.capturedAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+      : undefined;
+
+    const res = await shareVoucher({
+      towerId,
+      aptCode: apt.aptCode,
+      campaignLabel: campaignLabel(campaign.name, campaign.month, campaign.year),
+      dateStr,
+      previousIndex: prevIdx,
+      currentIndex: rec?.index ?? (parseIndex(value) ?? null),
+      photo: rec?.photo,
+    });
+
+    if (res.shared) {
+      toast(res.via === 'whatsapp' ? 'WhatsApp aberto com comprovante!' : 'Comprovante compartilhado!');
+    }
+  }, [apt, campaign, recordByApt, towerId, prevIdx, value, toast]);
 
   const handleReadPhoto = async () => {
     if (!apt || ocrBusy) return;
@@ -334,12 +427,12 @@ export default function Indices({ campaignId, go, toast }: Props) {
   };
 
   const handleLightboxNext = useCallback(() => {
-    if (pos < photoUnits.length - 1) {
+    if (pos < displayedUnits.length - 1) {
       setPos((prev) => prev + 1);
     } else {
-      toast('Fim das fotos desta torre.');
+      toast('Fim das fotos desta lista.');
     }
-  }, [pos, photoUnits.length, toast]);
+  }, [pos, displayedUnits.length, toast]);
 
   const handleLightboxBack = useCallback(() => {
     if (pos > 0) setPos((prev) => prev - 1);
@@ -563,6 +656,30 @@ export default function Indices({ campaignId, go, toast }: Props) {
         ))}
       </div>
 
+      <div className="indices-filter-bar">
+        <button
+          type="button"
+          className={`filter-chip${filterMode === 'all' ? ' is-active' : ''}`}
+          onClick={() => handleFilterChange('all')}
+        >
+          Todos <span className="chip-count">{photoUnits.length}</span>
+        </button>
+        <button
+          type="button"
+          className={`filter-chip${filterMode === 'pending' ? ' is-active' : ''}`}
+          onClick={() => handleFilterChange('pending')}
+        >
+          Pendentes <span className="chip-count">{pendingUnits.length}</span>
+        </button>
+        <button
+          type="button"
+          className={`filter-chip${filterMode === 'alerts' ? ' is-active' : ''}${alertUnits.length > 0 ? ' has-alerts' : ''}`}
+          onClick={() => handleFilterChange('alerts')}
+        >
+          Com Alerta <span className="chip-count">{alertUnits.length}</span>
+        </button>
+      </div>
+
       {showSearch && (
         <form className="apt-jump" onSubmit={handleJump} role="search">
           <Search size={16} aria-hidden="true" />
@@ -762,8 +879,20 @@ export default function Indices({ campaignId, go, toast }: Props) {
               >
                 <ArrowLeft size={18} /> Voltar
               </button>
+
+              <button
+                type="button"
+                className="btn-ghost btn-voucher"
+                onClick={() => void handleShareVoucher()}
+                aria-label="Enviar comprovante via WhatsApp"
+                title="Compartilhar comprovante / WhatsApp"
+              >
+                <Share2 size={15} />
+                <span className="btn-voucher-label">WhatsApp</span>
+              </button>
+
               <span className="iv-pos mono">
-                {pos + 1}/{photoUnits.length}
+                {pos + 1}/{displayedUnits.length}
               </span>
               <button
                 className="btn-primary"
@@ -776,10 +905,42 @@ export default function Indices({ campaignId, go, toast }: Props) {
             </div>
           </div>
         </div>
-      ) : (
+      ) : photoUnits.length === 0 ? (
         <GlassCard className="empty-state">
           <ImageOff size={26} />
           <p>Nenhuma foto nesta torre. Capture as fotos primeiro.</p>
+        </GlassCard>
+      ) : filterMode === 'pending' ? (
+        <GlassCard className="empty-state">
+          <CheckCircle2 size={32} style={{ color: 'var(--teal)' }} />
+          <p style={{ fontWeight: 600, color: 'var(--text)', margin: '8px 0 4px' }}>Tudo preenchido!</p>
+          <p style={{ color: 'var(--text-dim)', fontSize: '0.9rem' }}>
+            Todos os {photoUnits.length} índices da Torre {towerId} já foram digitados.
+          </p>
+          <button
+            type="button"
+            className="btn-ghost"
+            style={{ marginTop: 12 }}
+            onClick={() => handleFilterChange('all')}
+          >
+            Ver todos
+          </button>
+        </GlassCard>
+      ) : (
+        <GlassCard className="empty-state">
+          <CheckCircle2 size={32} style={{ color: 'var(--teal)' }} />
+          <p style={{ fontWeight: 600, color: 'var(--text)', margin: '8px 0 4px' }}>Sem alertas</p>
+          <p style={{ color: 'var(--text-dim)', fontSize: '0.9rem' }}>
+            Nenhum apartamento com anomalia ou regressão na Torre {towerId}.
+          </p>
+          <button
+            type="button"
+            className="btn-ghost"
+            style={{ marginTop: 12 }}
+            onClick={() => handleFilterChange('all')}
+          >
+            Ver todos
+          </button>
         </GlassCard>
       )}
 
@@ -811,7 +972,7 @@ export default function Indices({ campaignId, go, toast }: Props) {
 
             <LightboxPhoto blob={recordByApt.get(apt.aptCode)?.photo} aptCode={apt.aptCode} />
 
-            {pos < photoUnits.length - 1 && (
+            {pos < displayedUnits.length - 1 && (
               <button
                 className="icon-btn glass photo-lightbox-nav next"
                 onClick={(e) => {
@@ -826,7 +987,7 @@ export default function Indices({ campaignId, go, toast }: Props) {
             )}
 
             <span className="photo-lightbox-badge mono">
-              Apt {apt.aptCode} · Torre {towerId} ({pos + 1}/{photoUnits.length})
+              Apt {apt.aptCode} · Torre {towerId} ({pos + 1}/{displayedUnits.length})
               {prevIdx !== null && prevIdx !== undefined ? ` · Ant: ${formatIndex(prevIdx)}` : ''}
             </span>
 

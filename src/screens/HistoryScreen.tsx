@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { ArrowLeft, Gauge, ImageOff, Maximize2, X } from 'lucide-react';
-import { db } from '../db/db';
+import { ArrowLeft, Gauge, ImageOff, Maximize2, Share2, X } from 'lucide-react';
+import { db, Campaign, MeterRecord } from '../db/db';
 import { campaignLabel, formatIndex, pad2, sideLabel } from '../lib/utils';
+import { shareVoucher } from '../lib/voucher';
 import GlassCard from '../components/GlassCard';
 import { usePhotoUrl } from '../hooks/usePhotoUrl';
 import { Screen } from '../nav';
@@ -14,7 +15,7 @@ interface Props {
   toast: (m: string) => void;
 }
 
-export default function HistoryScreen({ towerId, aptCode, go }: Props) {
+export default function HistoryScreen({ towerId, aptCode, go, toast }: Props) {
   const campaigns = useLiveQuery(() => db.campaigns.orderBy('createdAt').reverse().toArray(), []) ?? [];
   const records = useLiveQuery(
     () => db.records.where('towerId').equals(towerId).filter((r) => r.aptCode === aptCode).toArray(),
@@ -33,6 +34,31 @@ export default function HistoryScreen({ towerId, aptCode, go }: Props) {
       .filter((e) => e.campaign)
       .sort((a, b) => (b.campaign!.year - a.campaign!.year) || (b.campaign!.month - a.campaign!.month));
   }, [records, campaignMap]);
+
+  const handleShareEntry = async (
+    r: MeterRecord,
+    c: Campaign | undefined,
+    prevIdx: number | null | undefined,
+  ) => {
+    if (!c) return;
+    const dateStr = r.capturedAt
+      ? new Date(r.capturedAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+      : undefined;
+
+    const res = await shareVoucher({
+      towerId,
+      aptCode,
+      campaignLabel: campaignLabel(c.name, c.month, c.year),
+      dateStr,
+      previousIndex: prevIdx,
+      currentIndex: r.index,
+      photo: r.photo,
+    });
+
+    if (res.shared) {
+      toast(res.via === 'whatsapp' ? 'WhatsApp aberto com comprovante!' : 'Comprovante compartilhado!');
+    }
+  };
 
   return (
     <div>
@@ -56,7 +82,7 @@ export default function HistoryScreen({ towerId, aptCode, go }: Props) {
         </GlassCard>
       ) : (
         <div className="history-list">
-          {entries.map(({ record: r, campaign: c }) => (
+          {entries.map(({ record: r, campaign: c }, idx) => (
             <GlassCard key={r.id} className="history-card">
               <div className="history-head">
                 <h3 className="history-label">
@@ -84,6 +110,17 @@ export default function HistoryScreen({ towerId, aptCode, go }: Props) {
                   onClick={() => setZoomPhoto({ blob: r.photo!, label: `${campaignLabel(c!.name, c!.month, c!.year)} · Apt ${r.aptCode}` })}
                 />
               )}
+              <div className="history-actions">
+                <button
+                  type="button"
+                  className="btn-ghost btn-sm"
+                  onClick={() => void handleShareEntry(r, c, entries[idx + 1]?.record?.index)}
+                  title="Compartilhar comprovante / WhatsApp"
+                >
+                  <Share2 size={13} />
+                  <span>Comprovante WhatsApp</span>
+                </button>
+              </div>
             </GlassCard>
           ))}
         </div>

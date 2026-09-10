@@ -126,6 +126,24 @@ export class BgOcrManager {
     this.notify();
   }
 
+  async enqueue(recordId: number, photo: Blob): Promise<number | null> {
+    try {
+      const res = await recognizeMeter(photo);
+      if (res.value !== null) {
+        const now = Date.now();
+        await db.records.update(recordId, {
+          index: res.value,
+          indexedAt: now,
+          updatedAt: now,
+        });
+        return res.value;
+      }
+    } catch (err) {
+      console.warn(`BgOCR enqueue erro no record ${recordId}:`, err);
+    }
+    return null;
+  }
+
   stop(): void {
     if (this.abortController) {
       this.abortController.abort();

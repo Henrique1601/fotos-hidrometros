@@ -1,6 +1,31 @@
 # 07 - Changelog
 
-## 2026-09-09 — Otimização de Performance, PWA Offline Completo, Limpeza de CSS e Melhorias de UX
+## 2026-09-10 — Filtros Rápidos de Índices, Auto-OCR em Fundo, Comprovante WhatsApp e Comparativo Multimeses
+
+### Feito
+
+- **Filtros Rápidos e Focados na Tela de Índices** (`src/screens/Indices.tsx` + `src/styles.css`):
+  - Inserida barra de filtros por chips no topo da tela de Índices:
+    - `Todos (total)`
+    - `Pendentes (qtd)`: filtra apenas apartamentos com foto que ainda não possuem índice digitado.
+    - `Com Alerta (qtd)`: filtra apenas apartamentos com alertas de inconsistência (consumo > 30 m³, regressão ou números vermelhos/litros).
+  - Toda a navegação (`←` / `→`, `Enter`, `A` / `D`, PageUp / PageDown) adapta-se automaticamente à lista filtrada ativa.
+  - Ao salvar o índice de um apartamento pendente, o app avança suavemente para o próximo pendente da fila.
+  - Adicionados estados vazios dedicados com ilustrações quando a torre atinge 100% de preenchimento ou não possui alertas.
+- **Fila de Auto-OCR em Segundo Plano pós-captura** (`src/lib/bgOcr.ts` + `src/components/CameraOverlay.tsx`):
+  - Criado o método `enqueue(recordId, photo)` no `BgOcrManager`.
+  - No modo contínuo / burst da câmera, a foto é enfileirada para processamento de OCR em background sem travar o ritmo ágil de fotos do leiturista.
+- **Comprovante Individual e Compartilhamento via WhatsApp para o Morador** (`src/lib/voucher.ts` + `src/lib/voucher.test.ts` + `src/screens/Indices.tsx` + `src/screens/HistoryScreen.tsx` + `src/styles.css`):
+  - Desenvolvido módulo `voucher.ts` com testes unitários (100% de cobertura).
+  - Botão de WhatsApp (`Share2`) presente diretamente na barra de navegação da tela de Índices e em cada card de histórico do apartamento (`HistoryScreen`).
+  - Gera comprovante fotográfico formatado com identificação do condomínio, torre, apartamento, data/hora, índice anterior, índice atual, consumo mensal e alertas de consumo atípico.
+  - Suporte a `navigator.share` nativo com envio de foto e texto, e fallback inteligente abrindo diretamente o WhatsApp Web/App com a mensagem pronta.
+- **Dashboard Comparativo Multimeses de Consumo** (`src/screens/ConsumptionScreen.tsx` + `src/styles.css`):
+  - Adicionada seção de *Comparativo Entre Meses* na tela de Consumo com análise temporal automática de todas as campanhas cadastradas no condomínio.
+  - Barras visuais proporcionais de consumo total ($m^3$) e consumo médio por apartamento ($m^3$/apt).
+  - Cálculo automático de variação percentual ($\Delta\%$) em relação à medição anterior com badges visuais de aumento (vermelho) ou redução (verde).
+
+---
 
 ### Feito
 

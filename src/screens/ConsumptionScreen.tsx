@@ -3,7 +3,13 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { ArrowLeft, BarChart3, Droplets, AlertTriangle, Info, TrendingUp } from 'lucide-react';
 import { db, MeterRecord } from '../db/db';
 import { TOWERS, towerTotalUnits, isValidCondoUnit } from '../lib/towers';
-import { Consumption, loadConsumption, selectPreviousCampaign, keyOf } from '../lib/consumption';
+import {
+  Consumption,
+  computeConsumption,
+  loadConsumption,
+  selectPreviousCampaign,
+  keyOf,
+} from '../lib/consumption';
 import { campaignLabel } from '../lib/utils';
 import GlassCard from '../components/GlassCard';
 import { Screen } from '../nav';
@@ -71,6 +77,71 @@ export default function ConsumptionScreen({ campaignId, go, toast }: Props) {
     const noBase = [...consumption.values()].filter((v) => v.status === 'no-base').length;
     return { total, avg, max, min, anomalies, noBase, count: values.length };
   }, [consumption]);
+
+  const chronologicalCampaigns = useMemo(() => {
+    return [...allCampaigns].sort((a, b) => a.year - b.year || a.month - b.month);
+  }, [allCampaigns]);
+
+  const [historySummary, setHistorySummary] = useState<
+    Array<{
+      campaignId: number;
+      label: string;
+      totalConsumption: number;
+      avgConsumption: number;
+      unitsCount: number;
+      anomaliesCount: number;
+    }>
+  >([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadMultiMonth() {
+      if (chronologicalCampaigns.length < 2) {
+        setHistorySummary([]);
+        return;
+      }
+      const results: Array<{
+        campaignId: number;
+        label: string;
+        totalConsumption: number;
+        avgConsumption: number;
+        unitsCount: number;
+        anomaliesCount: number;
+      }> = [];
+
+      for (let i = 1; i < chronologicalCampaigns.length; i++) {
+        const curr = chronologicalCampaigns[i];
+        const prev = chronologicalCampaigns[i - 1];
+        const currRecords = await db.records.where('campaignId').equals(curr.id!).toArray();
+        const prevRecords = await db.records.where('campaignId').equals(prev.id!).toArray();
+        const prevMap = new Map<string, number | null | undefined>(
+          prevRecords.map((r) => [keyOf(r.towerId, r.aptCode), r.index]),
+        );
+        const compMap = computeConsumption(currRecords, prevMap);
+        const validComps = [...compMap.values()].filter((c) => c.consumption !== null);
+        if (validComps.length > 0) {
+          const total = validComps.reduce((acc, c) => acc + c.consumption!, 0);
+          const avg = total / validComps.length;
+          const anomalies = validComps.filter((c) => c.status === 'anomaly').length;
+          results.push({
+            campaignId: curr.id!,
+            label: campaignLabel(curr.name, curr.month, curr.year),
+            totalConsumption: total,
+            avgConsumption: avg,
+            unitsCount: validComps.length,
+            anomaliesCount: anomalies,
+          });
+        }
+      }
+      if (!cancelled) {
+        setHistorySummary(results);
+      }
+    }
+    void loadMultiMonth();
+    return () => {
+      cancelled = true;
+    };
+  }, [chronologicalCampaigns]);
 
   const towerStats = useMemo(() => {
     return TOWERS.map((tower) => {
@@ -174,6 +245,55 @@ export default function ConsumptionScreen({ campaignId, go, toast }: Props) {
               )}
             </GlassCard>
           ))}
+
+          {historySummary.length > 0 && (
+            <div className="consumption-history-section">
+              <h3 className="section-title" style={{ margin: '22px 0 10px' }}>
+                Comparativo Entre Meses
+              </h3>
+              <GlassCard className="consumption-history-card">
+                <div className="history-bars-list">
+                  {historySummary.map((item, idx) => {
+                    const maxVal = Math.max(...historySummary.map((h) => h.totalConsumption)) || 1;
+                    const pctWidth = Math.min(100, Math.max(12, (item.totalConsumption / maxVal) * 100));
+                    const prevItem = historySummary[idx - 1];
+                    let deltaPct: number | null = null;
+                    if (prevItem && prevItem.totalConsumption > 0) {
+                      deltaPct =
+                        ((item.totalConsumption - prevItem.totalConsumption) /
+                          prevItem.totalConsumption) *
+                        100;
+                    }
+
+                    return (
+                      <div key={item.campaignId} className="history-bar-row">
+                        <div className="history-bar-header">
+                          <span className="history-bar-label">{item.label}</span>
+                          <span className="history-bar-val mono">
+                            <strong>{item.totalConsumption.toFixed(0)} m³</strong>
+                            <span className="history-bar-sub"> ({item.avgConsumption.toFixed(1)} m³/apt)</span>
+                          </span>
+                        </div>
+                        <div className="history-bar-track">
+                          <div
+                            className={`history-bar-fill${item.campaignId === campaign.id ? ' is-current' : ''}`}
+                            style={{ width: `${pctWidth}%` }}
+                          />
+                        </div>
+                        {deltaPct !== null && (
+                          <div className={`history-delta-badge ${deltaPct > 0 ? 'up' : 'down'}`}>
+                            {deltaPct > 0
+                              ? `+${deltaPct.toFixed(1)}% vs anterior`
+                              : `${deltaPct.toFixed(1)}% vs anterior`}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </GlassCard>
+            </div>
+          )}
 
           <button className="btn-primary" onClick={handleExportPdf} style={{ marginTop: 16 }}>
             Exportar PDF

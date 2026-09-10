@@ -2671,3 +2671,203 @@ select.text-input {
     padding-top: 28px;
   }
 }
+
+/* ---------- Indices Filter Bar ---------- */
+.indices-filter-bar {
+  display: flex;
+  gap: 6px;
+  margin: 10px 0 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.indices-filter-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+  min-height: 34px;
+}
+
+.filter-chip:hover {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.filter-chip.is-active {
+  background: rgba(94, 234, 212, 0.15);
+  border-color: var(--cyan);
+  color: var(--cyan);
+  box-shadow: 0 0 12px rgba(94, 234, 212, 0.2);
+}
+
+.filter-chip.has-alerts {
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.filter-chip.has-alerts.is-active {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: var(--danger);
+  color: var(--danger);
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.25);
+}
+
+.filter-chip .chip-count {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: inherit;
+}
+
+.filter-chip.is-active .chip-count {
+  background: rgba(94, 234, 212, 0.25);
+  color: #fff;
+}
+
+.filter-chip.has-alerts.is-active .chip-count {
+  background: rgba(239, 68, 68, 0.35);
+  color: #fff;
+}
+
+/* ---------- WhatsApp Voucher Buttons ---------- */
+.iv-nav .btn-voucher {
+  flex: 0 0 auto;
+  padding: 8px 12px;
+  gap: 6px;
+  color: #25d366;
+  border-color: rgba(37, 211, 102, 0.3);
+  background: rgba(37, 211, 102, 0.08);
+}
+
+.iv-nav .btn-voucher:hover {
+  background: rgba(37, 211, 102, 0.16);
+  border-color: rgba(37, 211, 102, 0.5);
+}
+
+.iv-nav .btn-voucher:active {
+  transform: scale(0.96);
+}
+
+.btn-voucher-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.history-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.history-actions .btn-ghost {
+  color: #25d366;
+  border-color: rgba(37, 211, 102, 0.3);
+  background: rgba(37, 211, 102, 0.06);
+  font-size: 0.8rem;
+  padding: 6px 10px;
+  gap: 6px;
+}
+
+/* ---------- Multi-Month Consumption History Section ---------- */
+.consumption-history-section {
+  margin-top: 14px;
+}
+
+.consumption-history-card {
+  padding: 16px;
+}
+
+.history-bars-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.history-bar-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.history-bar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 0.85rem;
+}
+
+.history-bar-label {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.history-bar-val {
+  font-size: 0.92rem;
+  color: var(--cyan);
+}
+
+.history-bar-sub {
+  font-size: 0.76rem;
+  color: var(--text-dim);
+  font-weight: normal;
+}
+
+.history-bar-track {
+  width: 100%;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.history-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--teal), var(--cyan));
+  transition: width 0.4s ease;
+}
+
+.history-bar-fill.is-current {
+  background: linear-gradient(90deg, #38bdf8, #818cf8);
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+}
+
+.history-delta-badge {
+  align-self: flex-start;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+.history-delta-badge.up {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.history-delta-badge.down {
+  background: rgba(45, 212, 191, 0.15);
+  color: #2dd4bf;
+  border: 1px solid rgba(45, 212, 191, 0.3);
+}
