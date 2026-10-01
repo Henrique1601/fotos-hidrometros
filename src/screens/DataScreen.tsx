@@ -5,6 +5,7 @@ import {
   Calendar,
   Check,
   CheckSquare,
+  Cloud,
   Database,
   Download,
   FileCheck,
@@ -400,9 +401,26 @@ export default function DataScreen({ go, toast }: Props) {
           />
         </GlassCard>
 
+        {/* ---------- Nuvem Supabase ---------- */}
+        <GlassCard className="page-card">
+          <div className="page-card-row">
+            <div className="page-card-row-info">
+              <h3 className="page-card-title-sm">Nuvem Supabase (PostgreSQL)</h3>
+              <p className="page-card-desc-sm">
+                Sincronize medições e fotos na nuvem para manter backup online e acessar de múltiplos aparelhos.
+              </p>
+            </div>
+            <button className="btn-ghost" onClick={() => go({ name: 'sync' })}>
+              <Cloud size={16} /> Abrir Nuvem
+            </button>
+          </div>
+        </GlassCard>
+
         <div className="page-hint">
           <Info size={14} />
-          <span>Dica: você pode fazer backups parciais apenas dos índices para manter cópias rápidas.</span>
+          <span>
+            Dica: você tem proteção dupla — pode gerar arquivos JSON de backup localmente e também sincronizar com a nuvem Supabase.
+          </span>
         </div>
       </div>
 

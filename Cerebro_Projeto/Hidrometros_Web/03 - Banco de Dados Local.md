@@ -50,8 +50,13 @@ interface Record {
 - `useLiveQuery` (dexie-react-hooks) para reatividade nas telas.
 - Fotos são Blobs — `usePhotoUrl` converte para ObjectURL e revoga ao desmontar.
 
-## Limites
+## Sincronização e Nuvem (Supabase PostgreSQL)
 
-IndexedDB tem limite de armazenamento por origem. Em caso de "quota exceeded": avisar e sugerir exportar (ZIP/PDF) e/ou limpar campanhas antigas.
+O app possui arquitetura **Offline-First com Nuvem Híbrida**:
+- **Localmente**: IndexedDB (Dexie) garante operação em campo sem sinal de internet.
+- **Backup Manual JSON**: Permite arquivar medições em arquivos compactos com filtros de período e tipo de dados (tudo, índices, fotos).
+- **Nuvem Supabase**: Sincroniza tabelas remotas (`campaigns` e `records`) com PostgreSQL e autenticação segura via Row Level Security (RLS) por usuário (`auth.uid()`).
+  - Sincronização bidirecional via `sync.ts` (`pushAll`, `pullAll`, `syncAll`) com resolução de conflitos por *Last-Write-Wins* (`updatedAt`).
 
-Ver também: [[01 - Arquitetura]] · [[00 - Visão Geral]]
+Ver também: [[01 - Arquitetura]] · [[00 - Visão Geral]] · [[07 - Changelog]]
+

@@ -9,7 +9,11 @@ create table if not exists public.campaigns (
   year integer not null,
   created_at bigint not null,
   updated_at bigint not null,
-  status text not null default 'collecting'
+  status text not null default 'collecting',
+  leiturista text,
+  last_tower text,
+  last_floor integer,
+  last_apt text
 );
 
 create table if not exists public.records (

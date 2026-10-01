@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Cloud, CloudOff, Info, LogOut } from 'lucide-react';
-import { isSupabaseConfigured, getSession, signIn, signOut, syncAll } from '../lib/sync';
+import { ArrowLeft, Cloud, CloudOff, Info, LogIn, LogOut, UserPlus } from 'lucide-react';
+import { isSupabaseConfigured, getSession, signIn, signUp, signOut, syncAll } from '../lib/sync';
 import GlassCard from '../components/GlassCard';
 import { Screen } from '../nav';
 
@@ -13,20 +13,32 @@ export default function SyncScreen({ go, toast }: Props) {
   const [session, setSession] = useState<Awaited<ReturnType<typeof getSession>>>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isSignUp, setIsSignUp] = useState(false);
   const [syncBusy, setSyncBusy] = useState(false);
 
   useEffect(() => {
     void getSession().then(setSession);
   }, []);
 
-  const handleLogin = async () => {
+  const handleAuth = async () => {
     if (!email || !password || syncBusy) return;
     setSyncBusy(true);
     try {
-      await signIn(email.trim(), password);
-      setPassword('');
-      setSession(await getSession());
-      toast('Conectado à nuvem.');
+      if (isSignUp) {
+        await signUp(email.trim(), password);
+        toast('Conta criada com sucesso! Conectando...');
+        try {
+          await signIn(email.trim(), password);
+          setSession(await getSession());
+        } catch {
+          // Caso precise de confirmação
+        }
+      } else {
+        await signIn(email.trim(), password);
+        setPassword('');
+        setSession(await getSession());
+        toast('Conectado à nuvem Supabase!');
+      }
     } catch (e) {
       toast((e as Error).message);
     } finally {
@@ -45,7 +57,7 @@ export default function SyncScreen({ go, toast }: Props) {
     setSyncBusy(true);
     try {
       const s = await syncAll();
-      toast(`Sincronizado: ${s.campaigns} medições, ${s.records} registros.`);
+      toast(`Sincronizado com a nuvem: ${s.campaigns} medições, ${s.records} registros.`);
     } catch (e) {
       toast((e as Error).message);
     } finally {
@@ -73,9 +85,10 @@ export default function SyncScreen({ go, toast }: Props) {
           <div className="page-card-icon">
             <Cloud size={24} />
           </div>
-          <h3 className="page-card-title">Sincronize seus dados</h3>
+          <h3 className="page-card-title">Sincronize seus dados na Nuvem</h3>
           <p className="page-card-desc">
-            Mantenha suas medições seguras na nuvem. Os dados são criptografados e associados à sua conta.
+            Mantenha suas medições salvas na nuvem com PostgreSQL. Se trocar de celular ou acessar do computador,
+            seus dados e fotos estarão protegidos.
           </p>
         </GlassCard>
 
@@ -101,13 +114,23 @@ export default function SyncScreen({ go, toast }: Props) {
                 <Cloud size={16} /> {syncBusy ? 'Sincronizando…' : 'Sincronizar agora'}
               </button>
               <button className="btn-ghost btn-full" onClick={() => void handleLogout()}>
-                <LogOut size={16} /> Sair
+                <LogOut size={16} /> Sair da conta
               </button>
             </div>
           </GlassCard>
         ) : (
           <GlassCard className="page-card">
-            <h3 className="page-card-title-sm">Entrar</h3>
+            <div className="page-card-header-row" style={{ marginBottom: 8 }}>
+              <h3 className="page-card-title-sm">{isSignUp ? 'Criar Nova Conta' : 'Acessar Conta'}</h3>
+              <button
+                type="button"
+                className="btn-ghost-sm"
+                onClick={() => setIsSignUp(!isSignUp)}
+              >
+                {isSignUp ? 'Já tenho conta (Entrar)' : 'Criar nova conta'}
+              </button>
+            </div>
+
             <div className="sync-form">
               <label className="field-label">E-mail</label>
               <input
@@ -122,7 +145,7 @@ export default function SyncScreen({ go, toast }: Props) {
               <label className="field-label">Senha</label>
               <input
                 type="password"
-                autoComplete="current-password"
+                autoComplete={isSignUp ? 'new-password' : 'current-password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
@@ -131,9 +154,16 @@ export default function SyncScreen({ go, toast }: Props) {
               <button
                 className="btn-primary btn-full"
                 disabled={syncBusy || !email || !password}
-                onClick={() => void handleLogin()}
+                onClick={() => void handleAuth()}
               >
-                <Cloud size={16} /> {syncBusy ? 'Entrando…' : 'Entrar e sincronizar'}
+                {isSignUp ? <UserPlus size={16} /> : <LogIn size={16} />}
+                {syncBusy
+                  ? isSignUp
+                    ? 'Cadastrando…'
+                    : 'Entrando…'
+                  : isSignUp
+                  ? 'Criar Conta e Sincronizar'
+                  : 'Entrar e Sincronizar'}
               </button>
             </div>
           </GlassCard>
@@ -141,7 +171,10 @@ export default function SyncScreen({ go, toast }: Props) {
 
         <div className="page-hint">
           <Info size={14} />
-          <span>A sincronização envia seus dados para o Supabase e permite restaurar em outro aparelho.</span>
+          <span>
+            A nuvem Supabase trabalha em conjunto com o Backup JSON local: você tem segurança dupla tanto em arquivo
+            quanto online.
+          </span>
         </div>
       </div>
     </div>

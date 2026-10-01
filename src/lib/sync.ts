@@ -31,6 +31,13 @@ export async function signIn(email: string, password: string): Promise<void> {
   if (error) throw new Error('E-mail ou senha inválidos.');
 }
 
+export async function signUp(email: string, password: string): Promise<void> {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase não configurado.');
+  const { error } = await sb.auth.signUp({ email, password });
+  if (error) throw new Error(error.message);
+}
+
 export async function signOut(): Promise<void> {
   const sb = getSupabase();
   if (!sb) return;
@@ -45,6 +52,10 @@ interface RemoteCampaign {
   created_at: number;
   updated_at: number;
   status: 'collecting' | 'indexing' | 'done';
+  leiturista?: string | null;
+  last_tower?: string | null;
+  last_floor?: number | null;
+  last_apt?: string | null;
 }
 
 interface RemoteRecord {
@@ -119,6 +130,10 @@ export async function pushAll(): Promise<SyncStats> {
     created_at: c.createdAt,
     updated_at: c.updatedAt,
     status: c.status,
+    leiturista: c.leiturista ?? null,
+    last_tower: c.lastTower ?? null,
+    last_floor: c.lastFloor ?? null,
+    last_apt: c.lastApt ?? null,
   }));
 
   for (const c of campRows) {
@@ -174,6 +189,10 @@ export async function pullAll(): Promise<SyncStats> {
         createdAt: row.created_at,
         updatedAt: row.updated_at,
         status: row.status,
+        leiturista: row.leiturista ?? undefined,
+        lastTower: row.last_tower ?? undefined,
+        lastFloor: row.last_floor ?? undefined,
+        lastApt: row.last_apt ?? undefined,
       });
       campCount++;
     }
