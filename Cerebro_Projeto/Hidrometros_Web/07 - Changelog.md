@@ -1,5 +1,24 @@
 # 07 - Changelog
 
+## 2026-10-01 — Correção da Exclusão de Fotos na Grade de Hidrômetros
+
+### Feito
+
+- **Correção da Remoção de Fotos no Botão "X" (`src/db/records.ts` + `src/screens/Collect.tsx`)**:
+  - Identificada e corrigida a inversão dos parâmetros nas funções `resetRecord` e `deleteRecord` em `src/db/records.ts`.
+  - A assinatura anterior `(campaignId: number, aptCode: string, towerId: string)` recebia os argumentos na ordem `(campaignId, towerId, aptCode)` vinda de `Collect.tsx`, o que fazia a consulta IndexedDB falhar silenciosamente ao comparar o código do apartamento com o ID da torre e vice-versa.
+  - A assinatura e implementação foram padronizadas para `(campaignId: number, towerId: string, aptCode: string)`, compatibilizando com as demais rotinas do banco (`listTowerRecords`, `upsertRecord`).
+  - O `resetRecord` agora localiza todos os registros correspondentes ao hidrômetro, reseta `photo: null`, `index: null`, `capturedAt: null`, `indexedAt: null`, atualiza `updatedAt: Date.now()` (para replicação adequada via sync LWW) e elimina eventuais registros duplicados fantasmas.
+  - O card do apartamento (`AptButton`) reage instantaneamente via `useLiveQuery`, voltando ao estado inicial vazio e ocultando o botão "X".
+
+### Testes
+
+- `npm run test`: **83/83** testes unitários aprovados (novos testes adicionados em `cloudAndLock.test.ts` para `resetRecord` e `deleteRecord`).
+- `npm run test:e2e`: **5/5** testes Playwright E2E aprovados, incluindo novo teste validando a exclusão de foto pelo botão "X", exibição do modal de confirmação e transição do card para `apt-empty`.
+- `npm run build`: Typecheck TypeScript (`tsc -b`) e build Vite de produção 100% aprovados.
+
+---
+
 ## 2026-10-01 — Indicador de Status Nuvem, Instalação PWA, Bloqueio de Medições Concluídas e Otimização de Sync
 
 ### Feito

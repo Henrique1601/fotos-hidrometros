@@ -123,31 +123,41 @@ export async function deleteCampaign(campaignId: number): Promise<void> {
   });
 }
 
-export async function deleteRecord(campaignId: number, aptCode: string, towerId: string): Promise<void> {
-  const rec = await db.records
+export async function deleteRecord(campaignId: number, towerId: string, aptCode: string): Promise<void> {
+  const matches = await db.records
     .where('campaignId')
     .equals(campaignId)
-    .and((r) => r.aptCode === aptCode && r.towerId === towerId)
-    .first();
-  if (rec?.id) {
-    await db.records.delete(rec.id);
+    .and((r) => r.towerId === towerId && r.aptCode === aptCode)
+    .toArray();
+  for (const rec of matches) {
+    if (rec.id) {
+      await db.records.delete(rec.id);
+    }
   }
 }
 
-export async function resetRecord(campaignId: number, aptCode: string, towerId: string): Promise<void> {
-  const rec = await db.records
+export async function resetRecord(campaignId: number, towerId: string, aptCode: string): Promise<void> {
+  const matches = await db.records
     .where('campaignId')
     .equals(campaignId)
-    .and((r) => r.aptCode === aptCode && r.towerId === towerId)
-    .first();
-  if (rec?.id) {
-    await db.records.update(rec.id, {
-      photo: null,
-      index: null,
-      capturedAt: null,
-      indexedAt: null,
-      updatedAt: Date.now(),
-    });
+    .and((r) => r.towerId === towerId && r.aptCode === aptCode)
+    .toArray();
+  if (matches.length > 0) {
+    const primary = matches[0];
+    if (primary.id) {
+      await db.records.update(primary.id, {
+        photo: null,
+        index: null,
+        capturedAt: null,
+        indexedAt: null,
+        updatedAt: Date.now(),
+      });
+    }
+    for (let i = 1; i < matches.length; i++) {
+      if (matches[i].id) {
+        await db.records.delete(matches[i].id!);
+      }
+    }
   }
 }
 

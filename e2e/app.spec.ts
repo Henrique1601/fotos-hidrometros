@@ -101,3 +101,23 @@ test('bloqueio de medição concluída protege fotos e índices', async ({ page 
 
   await expect(page.locator('.campaign-locked-banner')).not.toBeVisible();
 });
+
+test('remover foto pelo botão X atualiza o card e limpa o registro', async ({ page }) => {
+  await criarCampanhaComFoto(page);
+
+  await page.getByRole('button', { name: 'Fotos' }).click();
+  const apt256 = page.locator('.apt-btn', { hasText: '256' });
+  await expect(apt256).toHaveClass(/apt-photo/);
+
+  const btnX = apt256.locator('.apt-delete');
+  await expect(btnX).toBeVisible();
+  await btnX.click();
+
+  await expect(page.getByText('Remover foto?')).toBeVisible();
+  await page.locator('.modal-panel').getByRole('button', { name: 'Remover' }).click();
+
+  await expect(page.getByText('Foto do ap 256 removida.')).toBeVisible();
+  await expect(apt256).toHaveClass(/apt-empty/);
+  await expect(btnX).not.toBeVisible();
+});
+

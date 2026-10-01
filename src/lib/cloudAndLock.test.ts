@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { describe, expect, it, beforeEach } from 'vitest';
 import { db, MeterRecord } from '../db/db';
-import { updateCampaign } from '../db/records';
+import { updateCampaign, resetRecord, deleteRecord } from '../db/records';
 import { getLastSyncAt, setLastSyncAt } from './sync';
 
 const storage = new Map<string, string>();
@@ -106,5 +106,60 @@ describe('Cloud Sync Tracking and Campaign Locking', () => {
     expect(c?.leiturista).toBe('Henrique');
     expect(c?.lastTower).toBe('B');
     expect(c?.status).toBe('done');
+  });
+
+  it('remove foto e índice com resetRecord(campaignId, towerId, aptCode)', async () => {
+    const fakeBlob = new Blob(['photo-data'], { type: 'image/jpeg' });
+    const recId = await db.records.add({
+      campaignId: 10,
+      towerId: 'A',
+      floor: 3,
+      unit: 1,
+      side: 'left',
+      aptCode: '31',
+      photo: fakeBlob,
+      index: 12345,
+      capturedAt: 1000,
+      indexedAt: 2000,
+      updatedAt: 1000,
+    });
+
+    await resetRecord(10, 'A', '31');
+
+    const updated = await db.records.get(recId);
+    expect(updated).toBeDefined();
+    expect(updated?.photo).toBeNull();
+    expect(updated?.index).toBeNull();
+    expect(updated?.capturedAt).toBeNull();
+    expect(updated?.indexedAt).toBeNull();
+    expect(updated?.updatedAt).toBeGreaterThan(1000);
+  });
+
+  it('exclui registro completamente com deleteRecord(campaignId, towerId, aptCode)', async () => {
+    await db.records.add({
+      campaignId: 10,
+      towerId: 'B',
+      floor: 4,
+      unit: 2,
+      side: 'right',
+      aptCode: '42',
+      updatedAt: 1000,
+    });
+
+    let found = await db.records
+      .where('campaignId')
+      .equals(10)
+      .and((r) => r.towerId === 'B' && r.aptCode === '42')
+      .first();
+    expect(found).toBeDefined();
+
+    await deleteRecord(10, 'B', '42');
+
+    found = await db.records
+      .where('campaignId')
+      .equals(10)
+      .and((r) => r.towerId === 'B' && r.aptCode === '42')
+      .first();
+    expect(found).toBeUndefined();
   });
 });
