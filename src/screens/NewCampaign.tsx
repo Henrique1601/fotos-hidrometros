@@ -18,6 +18,13 @@ export default function NewCampaign({ go, toast }: Props) {
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
   const [name, setName] = useState('');
+  const [leiturista, setLeiturista] = useState(() => {
+    try {
+      return localStorage.getItem('foto-hidro:last-leiturista') || '';
+    } catch {
+      return '';
+    }
+  });
 
   const years = useMemo(() => {
     const y = now.getFullYear();
@@ -30,10 +37,19 @@ export default function NewCampaign({ go, toast }: Props) {
 
   const handleSelectTower = async (towerId: string) => {
     const nowTs = Date.now();
+    const lTrimmed = leiturista.trim();
+    if (lTrimmed) {
+      try {
+        localStorage.setItem('foto-hidro:last-leiturista', lTrimmed);
+      } catch {
+        // ignore
+      }
+    }
     const id = await db.campaigns.add({
       name: name.trim() || undefined,
       month,
       year,
+      leiturista: lTrimmed || undefined,
       createdAt: nowTs,
       updatedAt: nowTs,
       status: 'collecting',
@@ -84,6 +100,15 @@ export default function NewCampaign({ go, toast }: Props) {
             </select>
           </div>
         </div>
+
+        <label className="field-label">Leiturista / Responsável (opcional)</label>
+        <input
+          className="text-input"
+          placeholder="Ex: Henrique Bezerra"
+          value={leiturista}
+          onChange={(e) => setLeiturista(e.target.value)}
+          aria-label="Nome do leiturista"
+        />
       </GlassCard>
 
       <p className="tower-hint gs-new-item">Escolha a torre para começar:</p>

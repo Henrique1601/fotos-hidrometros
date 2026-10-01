@@ -1,7 +1,7 @@
 export type Screen =
   | { name: 'home' }
   | { name: 'new-campaign' }
-  | { name: 'collect'; campaignId: number; towerId?: string }
+  | { name: 'collect'; campaignId: number; towerId?: string; floor?: number; aptCode?: string }
   | { name: 'indices'; campaignId: number }
   | { name: 'export'; campaignId: number }
   | { name: 'data' }

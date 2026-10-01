@@ -6,6 +6,7 @@ import {
   FileSpreadsheet,
   FileText,
   FolderDown,
+  MessageSquare,
   Share2,
 } from 'lucide-react';
 import { db, MeterRecord } from '../db/db';
@@ -24,6 +25,8 @@ interface Props {
   go: (s: Screen) => void;
   toast: (m: string) => void;
 }
+
+const TOTAL_UNITS = TOWERS.reduce((acc, t) => acc + towerTotalUnits(t), 0);
 
 export default function Export({ campaignId, go, toast }: Props) {
   const [busy, setBusy] = useState<string | null>(null);
@@ -132,6 +135,33 @@ export default function Export({ campaignId, go, toast }: Props) {
     }
   };
 
+  const handleCopyWhatsApp = async () => {
+    if (!campaign) return;
+    const label = campaignLabel(campaign.name, campaign.month, campaign.year);
+    const duration = stats.activeTimeMs > 0 ? formatDuration(stats.activeTimeMs) : '—';
+    const pace = stats.activeTimeMs > 0 ? formatPace(stats.avgSecondsPerPhoto) : '—';
+    const leituristaInfo = campaign.leiturista ? `\n👤 *Leiturista:* ${campaign.leiturista}` : '';
+
+    const text = `💧 *FOTO HIDRÔMETROS - MEDIÇÃO CONCLUÍDA*\n🏢 *Medição:* ${label}${leituristaInfo}\n📊 *Fotos Capturadas:* ${photos}/${TOTAL_UNITS} (${Math.round((photos / TOTAL_UNITS) * 100)}%)\n📝 *Índices Preenchidos:* ${indices}/${photos}\n⏱️ *Tempo Ativo:* ${duration} (Média: ${pace})\n⚡ *Velocidade:* ${stats.photosPerHour} hidrômetros/hora\n\n✅ *Relatórios PDF e Planilha Excel gerados e arquivados.*`;
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        toast('Resumo copiado para o WhatsApp!');
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        toast('Resumo copiado para o WhatsApp!');
+      }
+    } catch {
+      toast('Erro ao copiar resumo.');
+    }
+  };
+
   return (
     <div>
       <header className="app-header">
@@ -142,7 +172,9 @@ export default function Export({ campaignId, go, toast }: Props) {
           <h2 className="header-title">
             {campaign ? campaignLabel(campaign.name, campaign.month, campaign.year) : ''}
           </h2>
-          <span className="header-sub">Resumo e exportação</span>
+          <span className="header-sub">
+            Resumo e exportação {campaign?.leiturista ? `· Leiturista: ${campaign.leiturista}` : ''}
+          </span>
         </div>
         <div className="header-spacer" />
       </header>
@@ -266,15 +298,25 @@ export default function Export({ campaignId, go, toast }: Props) {
           </button>
         </div>
 
-        <button
-          className="btn-ghost btn-share"
-          disabled={busy !== null || validRecords.length === 0}
-          onClick={() => void handleShare()}
-          aria-label="Compartilhar campanha"
-        >
-          <Share2 size={16} />
-          {busy === 'share' ? 'Compartilhando…' : 'Compartilhar'}
-        </button>
+        <div className="export-extra-actions">
+          <button
+            className="btn-ghost btn-share"
+            disabled={busy !== null || validRecords.length === 0}
+            onClick={() => void handleCopyWhatsApp()}
+            aria-label="Copiar resumo formatado para o WhatsApp"
+          >
+            <MessageSquare size={16} /> Copiar Resumo p/ WhatsApp
+          </button>
+          <button
+            className="btn-ghost btn-share"
+            disabled={busy !== null || validRecords.length === 0}
+            onClick={() => void handleShare()}
+            aria-label="Compartilhar campanha"
+          >
+            <Share2 size={16} />
+            {busy === 'share' ? 'Compartilhando…' : 'Compartilhar'}
+          </button>
+        </div>
 
         <p className="hint">
           {towerId ? `Exportando apenas a Torre ${towerId}.` : 'Exportando todas as torres.'} Os

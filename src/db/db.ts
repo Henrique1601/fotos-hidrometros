@@ -11,6 +11,8 @@ export interface Campaign {
   status: 'collecting' | 'indexing' | 'done';
   lastTower?: string;
   lastFloor?: number;
+  lastApt?: string;
+  leiturista?: string;
 }
 
 export interface MeterRecord {

@@ -137,6 +137,8 @@ function ScreenSwitch({ screen, go, toast }: ScreenSwitchProps) {
         <Collect
           campaignId={screen.campaignId}
           towerId={screen.towerId}
+          floor={screen.floor}
+          aptCode={screen.aptCode}
           go={go}
           toast={toast}
         />

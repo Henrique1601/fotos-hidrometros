@@ -10,6 +10,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
+  Filter,
   ImageOff,
   Keyboard,
   Maximize2,
@@ -55,7 +56,7 @@ function unitHasAlert(record: MeterRecord | undefined, prevIdx: number | null | 
 interface Props {
   campaignId: number;
   go: (s: Screen) => void;
-  toast: (msg: string) => void;
+  toast: (m: string) => void;
 }
 
 export default function Indices({ campaignId, go, toast }: Props) {
@@ -122,10 +123,7 @@ export default function Indices({ campaignId, go, toast }: Props) {
     void loadPrev();
   }, [campaign, towerId]);
 
-  const photoUnits = useMemo(
-    () => floorSequence(tower).filter((u) => Boolean(recordByApt.get(u.aptCode)?.photo)),
-    [tower, recordByApt],
-  );
+  const photoUnits = allPhotoUnits;
 
   const pendingUnits = useMemo(
     () =>
@@ -728,6 +726,7 @@ export default function Indices({ campaignId, go, toast }: Props) {
           </button>
         </div>
       )}
+
 
       {apt ? (
         <div className="iv iv-focus-mode">

@@ -7,6 +7,7 @@ import { deleteCampaign, updateCampaign, cleanOrphanAndDuplicateRecords } from '
 import { CONDO_TOTAL_UNITS, isValidCondoUnit } from '../lib/towers';
 import { campaignLabel, monthName } from '../lib/utils';
 import { calculateMeasurementStats, formatDuration, formatPace } from '../lib/measurementStats';
+import { isSoundEnabled, setSoundEnabled } from '../lib/audioHaptics';
 import GlassCard from '../components/GlassCard';
 import ConfirmModal from '../components/ConfirmModal';
 import ShortcutsModal from '../components/ShortcutsModal';
@@ -34,7 +35,7 @@ export default function Home({ go, toast }: Props) {
   const [search, setSearch] = useState('');
   const [cameraModalOpen, setCameraModalOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const [editCampaign, setEditCampaign] = useState<{ id: number; name: string; month: number; year: number } | null>(null);
+  const [editCampaign, setEditCampaign] = useState<{ id: number; name: string; month: number; year: number; leiturista?: string } | null>(null);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
   useEffect(() => {
@@ -118,6 +119,13 @@ export default function Home({ go, toast }: Props) {
       return false;
     }
   });
+  const [soundSetting, setSoundSetting] = useState<boolean>(() => isSoundEnabled());
+
+  const toggleSoundSetting = (checked: boolean) => {
+    setSoundSetting(checked);
+    setSoundEnabled(checked);
+    toast(checked ? 'Som de disparo ativado.' : 'Som de disparo desativado.');
+  };
 
   const toggleBurstSetting = (checked: boolean) => {
     setBurstSetting(checked);
@@ -201,8 +209,8 @@ export default function Home({ go, toast }: Props) {
     setConfirmOpen(true);
   };
 
-  const openEdit = (c: { id: number; name?: string; month: number; year: number }) => {
-    setEditCampaign({ id: c.id, name: c.name ?? '', month: c.month, year: c.year });
+  const openEdit = (c: { id: number; name?: string; month: number; year: number; leiturista?: string }) => {
+    setEditCampaign({ id: c.id, name: c.name ?? '', month: c.month, year: c.year, leiturista: c.leiturista ?? '' });
     setEditOpen(true);
   };
 
@@ -212,6 +220,7 @@ export default function Home({ go, toast }: Props) {
       name: editCampaign.name || undefined,
       month: editCampaign.month,
       year: editCampaign.year,
+      leiturista: editCampaign.leiturista?.trim() || undefined,
     });
     toast('Medição atualizada.');
     setEditOpen(false);
@@ -323,7 +332,7 @@ export default function Home({ go, toast }: Props) {
                 <div className="campaign-head-actions">
                   <button
                     className="icon-btn"
-                    onClick={() => openEdit({ id: c.id!, name: c.name, month: c.month, year: c.year })}
+                    onClick={() => openEdit({ id: c.id!, name: c.name, month: c.month, year: c.year, leiturista: c.leiturista })}
                     aria-label="Editar medição"
                   >
                     <Pencil size={16} />
@@ -343,10 +352,10 @@ export default function Home({ go, toast }: Props) {
               {c.lastTower && (
                 <button
                   className="campaign-resume-banner"
-                  onClick={() => go({ name: 'collect', campaignId: c.id!, towerId: c.lastTower })}
+                  onClick={() => go({ name: 'collect', campaignId: c.id!, towerId: c.lastTower, floor: c.lastFloor, aptCode: c.lastApt })}
                 >
                   <span className="campaign-resume-text">
-                    <Play size={15} className="campaign-resume-icon" /> Continuar Torre {c.lastTower}{c.lastFloor ? ` · andar ${String(c.lastFloor).padStart(2, '0')}` : ''}
+                    <Play size={15} className="campaign-resume-icon" /> Continuar Torre {c.lastTower}{c.lastFloor ? ` · andar ${String(c.lastFloor).padStart(2, '0')}` : ''}{c.lastApt ? ` · ap ${c.lastApt}` : ''}
                   </span>
                   <span className="campaign-resume-arrow">→</span>
                 </button>
@@ -403,6 +412,21 @@ export default function Home({ go, toast }: Props) {
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <label className="check-row" style={{ cursor: 'pointer', display: 'flex', alignItems: 'flex-start', gap: 10, padding: '12px', background: 'rgba(255, 255, 255, 0.03)', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
+                  <input
+                    type="checkbox"
+                    checked={soundSetting}
+                    onChange={(e) => toggleSoundSetting(e.target.checked)}
+                    style={{ marginTop: 3 }}
+                  />
+                  <div>
+                    <strong style={{ display: 'block', color: 'var(--text)', fontSize: '0.9rem' }}>Bip sonoro & vibração</strong>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)', lineHeight: 1.3, display: 'block', marginTop: 2 }}>
+                      Feedback sonoro e tátil ao disparar cada foto
+                    </span>
+                  </div>
+                </label>
+
                 <label className="check-row" style={{ cursor: 'pointer', display: 'flex', alignItems: 'flex-start', gap: 10, padding: '12px', background: 'rgba(255, 255, 255, 0.03)', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
                   <input
                     type="checkbox"
@@ -483,6 +507,15 @@ export default function Home({ go, toast }: Props) {
                 />
               </label>
             </div>
+            <label className="field-label">
+              Leiturista / Responsável
+              <input
+                className="modal-input"
+                placeholder="Ex: Henrique Bezerra"
+                value={editCampaign.leiturista ?? ''}
+                onChange={(e) => setEditCampaign({ ...editCampaign, leiturista: e.target.value })}
+              />
+            </label>
             <div className="modal-actions">
               <button className="btn-ghost" onClick={() => setEditOpen(false)}>Cancelar</button>
               <button className="btn-primary" onClick={handleSaveEdit}>Salvar</button>

@@ -1589,6 +1589,7 @@ select.text-input {
   backdrop-filter: blur(6px);
 }
 
+<<<<<<< HEAD
 .photo-lightbox-nav {
   position: absolute;
   top: 50%;
@@ -1760,14 +1761,22 @@ select.text-input {
 }
 
 @media (max-height: 740px), (max-width: 390px) {
+=======
+@media (max-height: 760px), (max-width: 480px) {
+>>>>>>> cf1a10e (feat: implement flexible backup, precise continue navigation, audio/haptic feedback, whatsapp summary, pending filter and leiturista identification)
   .iv {
     min-height: auto;
     gap: 8px;
   }
 
   .iv-photo-wrap {
+<<<<<<< HEAD
     min-height: 220px;
     max-height: none;
+=======
+    min-height: 140px;
+    max-height: clamp(140px, 28vh, 220px);
+>>>>>>> cf1a10e (feat: implement flexible backup, precise continue navigation, audio/haptic feedback, whatsapp summary, pending filter and leiturista identification)
   }
 
   .iv-panel {
@@ -1777,7 +1786,18 @@ select.text-input {
 
   .iv-input {
     padding: 10px 12px;
-    font-size: 1.2rem;
+    font-size: 1.15rem;
+  }
+
+  .iv-nav {
+    gap: 8px;
+    padding-top: 2px;
+  }
+
+  .iv-nav .btn-primary,
+  .iv-nav .btn-ghost {
+    padding: 10px 12px;
+    font-size: 0.88rem;
   }
 
   .column-grid {
@@ -1993,7 +2013,8 @@ select.text-input {
 }
 
 /* ---------- Export ---------- */
-.tower-summary {
+.tower-summary,
+.tower-pills {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -2871,3 +2892,272 @@ select.text-input {
   color: #2dd4bf;
   border: 1px solid rgba(45, 212, 191, 0.3);
 }
+/* ---------- Indices Toolbar Row ---------- */
+.indices-toolbar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.btn-ghost-active {
+  background: rgba(94, 234, 212, 0.18) !important;
+  color: var(--cyan) !important;
+  border-color: var(--border-strong) !important;
+}
+
+/* ---------- Export Extra Actions ---------- */
+.export-extra-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+@media (max-width: 440px) {
+  .export-extra-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- Flexible Backup Screen ---------- */
+.db-stats-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(94, 234, 212, 0.08);
+  border: 1px solid var(--border-strong);
+  color: var(--cyan);
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  margin-top: 8px;
+}
+
+.page-card-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.campaign-select-actions {
+  flex-shrink: 0;
+}
+
+.btn-ghost-sm {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--cyan);
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-ghost-sm:hover,
+.btn-ghost-sm:active {
+  background: rgba(94, 234, 212, 0.1);
+  border-color: var(--border-strong);
+}
+
+.backup-type-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.backup-type-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+
+.backup-type-card:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(94, 234, 212, 0.4);
+}
+
+.backup-type-card.active {
+  border-color: var(--cyan);
+  background: rgba(94, 234, 212, 0.1);
+  box-shadow: 0 0 16px rgba(94, 234, 212, 0.15);
+}
+
+.backup-card-icon {
+  color: var(--cyan);
+  flex-shrink: 0;
+}
+
+.backup-card-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.backup-card-text strong {
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.backup-card-text span {
+  font-size: 0.76rem;
+  color: var(--text-dim);
+}
+
+.backup-card-check {
+  color: var(--cyan);
+  flex-shrink: 0;
+}
+
+.backup-campaign-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 240px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.backup-campaign-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--text-dim);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.12s ease;
+}
+
+.backup-campaign-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.backup-campaign-item.selected {
+  border-color: rgba(94, 234, 212, 0.5);
+  background: rgba(94, 234, 212, 0.06);
+  color: var(--text);
+}
+
+.backup-campaign-item-label {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.backup-campaign-item-label strong {
+  font-size: 0.88rem;
+}
+
+.backup-campaign-item-sub {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.backup-item-cal {
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+
+.backup-action-footer {
+  margin-top: 14px;
+}
+
+.btn-backup-main {
+  width: 100%;
+  justify-content: center;
+  padding: 12px;
+  font-size: 0.95rem;
+}
+
+.restore-summary-box {
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(94, 234, 212, 0.05);
+  border: 1px solid var(--border);
+  font-size: 0.82rem;
+}
+
+.restore-summary-head {
+  margin: 0 0 6px 0;
+  color: var(--cyan);
+}
+
+.restore-summary-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--text-dim);
+}
+
+.restore-summary-list strong {
+  color: var(--text);
+}
+
+.restore-mode-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.restore-mode-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.restore-mode-option input {
+  margin-top: 3px;
+  accent-color: var(--teal);
+}
+
+.restore-mode-option.active {
+  border-color: var(--cyan);
+  background: rgba(94, 234, 212, 0.08);
+}
+
+.restore-mode-desc {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.restore-mode-desc strong {
+  font-size: 0.86rem;
+  color: var(--text);
+}
+
+.restore-mode-desc span {
+  font-size: 0.74rem;
+  color: var(--text-dim);
+  line-height: 1.3;
+}
+
+

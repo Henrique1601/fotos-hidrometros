@@ -3,7 +3,7 @@ import type { FormEvent } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
-import { ArrowLeft, ArrowRight, Check, Keyboard, Loader2, ScanText, Search, Trophy } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Filter, Keyboard, Loader2, ScanText, Search, Trophy } from 'lucide-react';
 import { db } from '../db/db';
 import { resetRecord } from '../db/records';
 import { batchRecognizeMeters } from '../lib/ocr';
@@ -21,20 +21,31 @@ import { Screen } from '../nav';
 interface Props {
   campaignId: number;
   towerId?: string;
+  floor?: number;
+  aptCode?: string;
   go: (s: Screen) => void;
   toast: (m: string) => void;
 }
 
-export default function Collect({ campaignId, towerId: initialTower, go, toast }: Props) {
+export default function Collect({
+  campaignId,
+  towerId: initialTower,
+  floor: initialFloor,
+  aptCode: initialApt,
+  go,
+  toast,
+}: Props) {
   const [towerId, setTowerId] = useState(initialTower ?? 'A');
-  const [floor, setFloor] = useState(25);
+  const [floor, setFloor] = useState(initialFloor ?? 25);
   const [camApt, setCamApt] = useState<UnitRef | null>(null);
+  const [onlyPending, setOnlyPending] = useState(false);
   const [jump, setJump] = useState('');
   const [batchBusy, setBatchBusy] = useState(false);
   const [batchProgress, setBatchProgress] = useState({ done: 0, total: 0 });
   const [deleteTarget, setDeleteTarget] = useState<UnitRef | null>(null);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
+  const initialMountRef = useRef(true);
   const campaign = useLiveQuery(() => db.campaigns.get(campaignId), [campaignId]);
   const tower = useMemo(() => towerById(towerId), [towerId]);
   const records =
@@ -67,6 +78,22 @@ export default function Collect({ campaignId, towerId: initialTower, go, toast }
   }, [camApt, tower]);
 
   useEffect(() => {
+    if (initialMountRef.current) {
+      initialMountRef.current = false;
+      if (initialFloor) {
+        setFloor(initialFloor);
+      } else {
+        const defaultFloor =
+          tower.floors.find((f) => f.units.some((u) => !photoSet.has(aptCode(f.floor, u))))?.floor ??
+          tower.floors[0].floor;
+        setFloor(defaultFloor);
+      }
+      if (initialApt) {
+        const target = floorSequence(tower).find((u) => u.aptCode === initialApt);
+        if (target) setCamApt(target);
+      }
+      return;
+    }
     const defaultFloor =
       tower.floors.find((f) => f.units.some((u) => !photoSet.has(aptCode(f.floor, u))))?.floor ??
       tower.floors[0].floor;
@@ -76,8 +103,12 @@ export default function Collect({ campaignId, towerId: initialTower, go, toast }
 
   useEffect(() => {
     if (!campaign) return;
-    db.campaigns.update(campaignId, { lastTower: towerId, lastFloor: floor });
-  }, [towerId, floor, campaignId, campaign]);
+    db.campaigns.update(campaignId, {
+      lastTower: towerId,
+      lastFloor: floor,
+      lastApt: camApt?.aptCode,
+    });
+  }, [towerId, floor, camApt, campaignId, campaign]);
 
   const columnApts = useCallback(
     (side: Side): UnitRef[] => {
@@ -325,6 +356,13 @@ export default function Collect({ campaignId, towerId: initialTower, go, toast }
 
       <div className="collect-toolbar">
         <button
+          className={`btn-ghost ${onlyPending ? 'btn-ghost-active' : ''}`}
+          onClick={() => setOnlyPending(!onlyPending)}
+          aria-label={onlyPending ? 'Mostrar todos os apartamentos' : 'Mostrar apenas pendentes'}
+        >
+          <Filter size={16} /> {onlyPending ? 'Só pendentes' : 'Todos'}
+        </button>
+        <button
           className="btn-ghost"
           onClick={() => void handleBatchOcr()}
           disabled={batchBusy}
@@ -362,8 +400,10 @@ export default function Collect({ campaignId, towerId: initialTower, go, toast }
             </span>
           </div>
           <div className="column-grid">
-            {columnApts('left').map((a) => (
-              <AptButton
+            {columnApts('left')
+              .filter((a) => !onlyPending || !photoSet.has(a.aptCode))
+              .map((a) => (
+                <AptButton
                   key={a.aptCode}
                   apt={a}
                   hasPhoto={photoSet.has(a.aptCode)}
@@ -389,8 +429,10 @@ export default function Collect({ campaignId, towerId: initialTower, go, toast }
             </span>
           </div>
           <div className="column-grid">
-            {columnApts('right').map((a) => (
-              <AptButton
+            {columnApts('right')
+              .filter((a) => !onlyPending || !photoSet.has(a.aptCode))
+              .map((a) => (
+                <AptButton
                   key={a.aptCode}
                   apt={a}
                   hasPhoto={photoSet.has(a.aptCode)}

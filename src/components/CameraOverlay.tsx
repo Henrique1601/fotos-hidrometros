@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Camera, Focus, Layers, Minus, Plus, RotateCcw, ScanText, Undo2, Upload, X, Zap, ZapOff } from 'lucide-react';
+import { Camera, Focus, Layers, Minus, Plus, RotateCcw, ScanText, Undo2, Upload, Volume2, VolumeX, X, Zap, ZapOff } from 'lucide-react';
 import {
   ActiveCamera,
   CameraCapabilities,
@@ -12,6 +12,7 @@ import {
 } from '../lib/camera';
 import { recognizeMeter, OcrResult } from '../lib/ocr';
 import { watermarkPhoto, formatWatermarkDate } from '../lib/watermark';
+import { isSoundEnabled, playShutterFeedback, setSoundEnabled } from '../lib/audioHaptics';
 import { upsertRecord } from '../db/records';
 import { bgOcr } from '../lib/bgOcr';
 import { pad2 } from '../lib/utils';
@@ -67,6 +68,8 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
       return false;
     }
   });
+
+  const [soundOn, setSoundOn] = useState<boolean>(() => isSoundEnabled());
 
   const [saving, setSaving] = useState(false);
   const [zoom, setZoomState] = useState(1);
@@ -162,7 +165,7 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
     if (!videoRef.current || saving) return;
     try {
       setFlash(true);
-      navigator.vibrate?.(50);
+      playShutterFeedback();
       setTimeout(() => setFlash(false), 220);
 
       const b = await captureFrame(videoRef.current);
@@ -269,6 +272,14 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
       } catch {
         // ignore
       }
+      return next;
+    });
+  }, []);
+
+  const toggleSound = useCallback(() => {
+    setSoundOn((prev) => {
+      const next = !prev;
+      setSoundEnabled(next);
       return next;
     });
   }, []);
@@ -495,6 +506,16 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
             >
               <Layers size={20} />
               <span className="cam-tool-sub">BURST</span>
+            </button>
+
+            <button
+              className={`cam-tool glass${soundOn ? ' is-on' : ''}`}
+              onClick={toggleSound}
+              aria-label={soundOn ? 'Desativar som do disparo' : 'Ativar som do disparo'}
+              aria-pressed={soundOn}
+            >
+              {soundOn ? <Volume2 size={20} /> : <VolumeX size={20} />}
+              <span className="cam-tool-sub">SOM</span>
             </button>
 
             {zoomSupported && (

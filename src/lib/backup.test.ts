@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { BACKUP_APP, buildBackup, deserializePhoto, isValidBackup } from './backup';
+import { BACKUP_APP, buildBackup, createBackupFileName, deserializePhoto, isValidBackup } from './backup';
+import type { Campaign } from '../db/db';
 
-const campaigns = [
+const campaigns: Campaign[] = [
   {
     id: 1,
     name: 'Julho',
@@ -57,5 +58,23 @@ describe('backup', () => {
   it('deserializePhoto null retorna null', () => {
     expect(deserializePhoto(null)).toBeNull();
     expect(deserializePhoto(undefined)).toBeNull();
+  });
+
+  it('createBackupFileName gera nomes adequados de acordo com o tipo', () => {
+    const fnAll = createBackupFileName(campaigns, 'all');
+    expect(fnAll).toContain('tudo-2026-07');
+
+    const fnIndices = createBackupFileName(campaigns, 'indices');
+    expect(fnIndices).toContain('indices-2026-07');
+
+    const fnPhotos = createBackupFileName(campaigns, 'photos');
+    expect(fnPhotos).toContain('fotos-2026-07');
+
+    const multiCamp: Campaign[] = [
+      { id: 1, month: 7, year: 2026, createdAt: 1, updatedAt: 1, status: 'done' },
+      { id: 2, month: 8, year: 2026, createdAt: 2, updatedAt: 2, status: 'done' },
+    ];
+    const fnMulti = createBackupFileName(multiCamp, 'all');
+    expect(fnMulti).toContain('2medicoes');
   });
 });

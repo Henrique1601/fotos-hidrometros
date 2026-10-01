@@ -103,9 +103,16 @@ export async function buildPdf(
     106,
     { align: 'center' },
   );
+  if (campaign.leiturista) {
+    doc.setTextColor(103, 232, 249);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Leiturista: ${campaign.leiturista}`, W / 2, 120, { align: 'center' });
+  }
   doc.setTextColor(103, 232, 249);
   doc.setFontSize(10);
-  doc.text('Relatório de medições com índices anteriores e consumo.', W / 2, 122, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.text('Relatório de medições com índices anteriores e consumo.', W / 2, campaign.leiturista ? 132 : 122, { align: 'center' });
 
   for (const tower of TOWERS) {
     const recs = records
@@ -115,9 +122,10 @@ export async function buildPdf(
 
     doc.addPage();
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(16);
+    doc.setFontSize(15);
     doc.setTextColor(7, 24, 34);
-    doc.text(`Torre ${tower.id} — ${name}`, 14, 15);
+    const subHeader = campaign.leiturista ? `Torre ${tower.id} — ${name}  |  Leiturista: ${campaign.leiturista}` : `Torre ${tower.id} — ${name}`;
+    doc.text(subHeader, 14, 15);
 
     autoTable(doc, {
       startY: 19,

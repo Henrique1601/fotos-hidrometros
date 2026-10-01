@@ -1,5 +1,38 @@
 # 07 - Changelog
 
+## 2026-10-01 — Retomada de Navegação, Backup Flexível, Bip/Vibração, Resumo WhatsApp, Filtro de Pendências e Nome do Leiturista
+
+### Feito
+
+- **Retomada Precisa da Medição** (`Collect.tsx` + `Home.tsx` + `App.tsx` + `db.ts`):
+  - Ao clicar em "Continuar", o app restaura exatamente a torre, andar e apartamento onde a medição foi interrompida, sem resetar para o primeiro andar incompleto.
+  - Persistência contínua de `lastTower`, `lastFloor` e `lastApt` no banco de dados da campanha.
+- **Sistema Flexível de Backup & Restauração** (`src/lib/backup.ts` + `src/screens/DataScreen.tsx` + `src/styles.css`):
+  - **Tipo de Conteúdo**: Completo (Fotos + Índices), Apenas Índices (Leve) e Apenas Fotos.
+  - **Seleção de Período**: Seleção individual ou em lote de medições por mês/ano.
+  - **Modos de Restauração**: Escolha entre "Substituir Tudo" (limpeza total) ou "Mesclar / Adicionar" (preserva dados locais e atualiza registros).
+- **Bip Sonoro & Vibração no Disparo** (`src/lib/audioHaptics.ts` + `CameraOverlay.tsx` + `Home.tsx`):
+  - Síntese rápida de áudio Web Audio (clique de obturador) + vibração háptica em disparos normais e no modo burst.
+  - Botão de alternância rápida de Som no HUD da câmera e na tela inicial.
+- **Gerador de Resumo para WhatsApp** (`src/screens/Export.tsx`):
+  - Botão "Copiar Resumo p/ WhatsApp" com relatório formatado contendo porcentagem de conclusão, ritmo médio, velocidade e dados do leiturista.
+- **Filtro de Apenas Pendências** (`src/screens/Collect.tsx` + `src/screens/Indices.tsx`):
+  - Botão de alternância nos controles para visualizar apenas apartamentos sem fotos na Coleta e fotos sem leitura nos Índices.
+- **Identificação do Leiturista nos Relatórios** (`NewCampaign.tsx` + `exportPdf.ts` + `exportExcel.ts` + `Export.tsx`):
+  - Campo de leiturista na criação e edição de campanhas com memória automática no dispositivo.
+  - Exibição destacada na capa e cabeçalhos do relatório PDF e na planilha Excel.
+- **Correções Visuais de Layout & Responsividade** (`src/styles.css`):
+  - Corrigido alinhamento e empilhamento das pílulas de torres no topo da tela de exportação (`.tower-pills`).
+  - Ajustada proporção da foto em dispositivos móveis menores para assegurar que o botão "Avançar" nos índices nunca saia da área visível.
+
+### Testes
+
+- `npm run test`: **66/66** testes unitários aprovados (10 arquivos de teste).
+- `npm run test:e2e`: **3/3** testes E2E Playwright aprovados.
+- `npm run build`: build Vite de produção concluído com sucesso.
+
+---
+
 ## 2026-09-10 — Filtros Rápidos de Índices, Auto-OCR em Fundo, Comprovante WhatsApp e Comparativo Multimeses
 
 ### Feito
@@ -27,6 +60,8 @@
 
 ---
 
+## 2026-09-09 — Otimizações de Banco, PWA Offline Resiliente, Limpeza de CSS e Melhorias de UX
+
 ### Feito
 
 - **Otimização de Memória e Consultas no Banco IndexedDB** (`src/screens/HistoryScreen.tsx`):
@@ -44,6 +79,8 @@
 
 ---
 
+## 2026-09-08 — Atalhos de Teclado Globais, Navegação Foto a Foto e Lupa Interativa
+
 ### Feito
 
 - **Atalhos Globais na Tela de Índices & Fotos** (`src/screens/Indices.tsx`):
@@ -57,99 +94,15 @@
     - `Alt+O` ou `O`: lê o hidrômetro atual com OCR.
     - `[` e `]`: alterna entre as Torres (A ↔ H).
     - `/` ou `Ctrl+F`: abre a busca rápida de apartamento por número.
-    - `Esc`: fecha modais (Lightbox, Busca, Atalhos) ou remove o foco de campos.
-    - `?` ou `F1`: abre o novo Guia Visual de Atalhos de Teclado.
-- **Navegação Foto a Foto no Modal Ampliado (Lightbox)** (`src/screens/Indices.tsx` + `src/styles.css`):
-  - Inseridos botões flutuantes de seta nas laterais da foto (`ChevronLeft` e `ChevronRight`) para folhear fotos com clique.
-  - Suporte completo a navegação por teclado dentro do lightbox (`←` / `→`, `A` / `D`, `PgUp` / `PgDn`, `Espaço`).
-  - Badge com contador dinâmico de posição (`Apt 46 · Torre A (5/180)`) e legenda com atalhos.
-- **Atalhos na Câmera e Coleta** (`src/components/CameraOverlay.tsx` e `src/screens/Collect.tsx`):
-  - `Espaço` / `Enter`: dispara a foto (ao vivo) ou confirma/salva (na prévia).
-  - `Esc`: fecha a câmera ou descarta para tirar novamente.
-  - `T`: liga/desliga lanterna contínua.
-  - `B`: alterna Modo Burst.
-  - `+` / `-`: zoom in e zoom out digital da câmera.
-  - `↑` / `↓`: sobe ou desce de andar na visualização da torre.
-  - `[` / `]`: alterna torre.
-- **Atalhos na Tela Inicial (Home)** (`src/screens/Home.tsx`):
-  - `N`: Nova medição.
-  - `D`: Dados e Backup.
-  - `S`: Sincronização.
-  - `C`: Menu de configurações de Câmera/Captura.
-  - `?` / `F1`: abre o modal de atalhos.
-- **Novo Modal Glassmorphic de Atalhos de Teclado** (`src/components/ShortcutsModal.tsx` + `src/styles.css`):
-  - Design temático com visual de teclas físicas `<kbd className="key-cap">`, categorizado em *Índices & Fotos*, *Câmera & Captura* e *Geral*.
-  - Botão com ícone de teclado (`Keyboard`) nos cabeçalhos das telas para consulta rápida a qualquer momento.
-
----
-
-## 2026-09-04 — Modo Foco na Foto, Lupa no Mouse (PC) e Alertas de Índice Inconsistente
-
-### Feito
-
-- **Modo Foco na Foto nos Índices** (`src/screens/Indices.tsx` + `src/styles.css`):
-  - A foto passa a ocupar a área principal da tela (~65% a 70% de altura útil), eliminando a necessidade de tocar para ampliar a cada apartamento.
-  - Cabeçalho limpo com seletor de torre integrado e botão de busca retrátil (`showSearch`), liberando espaço vertical máximo.
-  - Painel inferior fixo e focado na digitação: campo de índice ampliado com foco automático, exibição compacta do índice do mês anterior e botões de navegação (`Voltar` e `Avançar`) com suporte a atalhos de teclado (`Enter`, `Alt+←`, `Alt+→`).
-- **Lupa Dinâmica com Movimento do Mouse para PC (Hover Zoom Lens)** (`src/screens/Indices.tsx` + `src/styles.css`):
-  - Ao passar o cursor do mouse sobre a foto no computador, a imagem aplica zoom suave de 2.3× centrado exatamente nas coordenadas do cursor (`transform-origin: x% y%`), permitindo ler os roletes numéricos sem clicar em nenhum modal.
-  - O cursor do mouse exibe feedback visual (`zoom-in`) e badge indicativo "🔍 Lupa 2.3× ativa".
-  - Mantido suporte a clique/toque para abrir lightbox em tela cheia caso necessário.
-- **Alertas Inteligentes de Índice Que Não Condiz / Muito Alto** (`src/lib/validate.ts` + `validate.test.ts` + `src/screens/Indices.tsx` + `src/styles.css`):
-  - Verificação em tempo real enquanto o usuário digita:
-    - **Regressão**: alerta se o valor for menor que a medição do mês anterior.
-    - **Consumo Excessivo**: alerta se o consumo mensal calculado ultrapassar 30 m³ ou 50 m³ (anomalia em hidrômetro residencial).
-    - **Confusão de Litros**: alerta se o índice ultrapassar 50.000 m³, avisando que o leiturista pode ter incluído os números vermelhos (litros) por engano.
-    - **Salto vs. Média da Torre**: alerta se o índice destoar da média dos outros apartamentos da mesma torre já preenchidos.
-  - Exibição em banner chamativo de alto contraste (vermelho/âmbar com ícone de alerta) abaixo do campo de entrada.
-  - Atualizado `save()` em `Indices.tsx` para validar contra o `prevIdx` real do mês anterior com limite `{ maxDiff: 30 }`.
-- **Carga da Base Histórica de Julho/2026** (`src/data/july2026Records.json` + `src/lib/seedJuly2026.ts` + `DataScreen.tsx` + `public/backup-julho-2026.json`):
-  - Inclusão dos 1.435 índices anteriores de Julho/2026 das Torres A–H fornecidos pelo cliente.
-  - Botão de 1 clique na tela de Dados: *"Carregar Base de Julho/2026"*, inserindo no Dexie com status concluído sem apagar medições existentes.
-  - Arquivo de backup exportado disponível para restauração direta (`backup-julho-2026.json`).
-  - Confirmação de que o apartamento `236` da Torre E existe e tem leitura (`2408,72 m³`).
-  - **Ajuste Estrutural da Torre H**: confirmado que a Torre H vai do andar 03 ao 24 (não tem 25º andar), totalizando exatamente 173 apartamentos (21 andares com 8 aps + andar 3 com 5 aps). O condomínio possui exatamente 1.435 apartamentos no total, batendo 100% com a base histórica fornecida.
-- **Índice Anterior Flutuante Sobre a Foto nos Índices** (`src/screens/Indices.tsx` + `src/styles.css`):
-  - Badge no canto superior direito da imagem (`.iv-prev-overlay-badge`) exibindo o índice anterior em destaque (`Ant: 1533,45`) em JetBrains Mono com fundo translúcido e borda ciano brilhante.
-  - Permite ao leiturista comparar visualmente a foto do hidrômetro com a leitura do mês anterior instantaneamente sem desviar os olhos da foto.
-  - Suporte ao badge também no modal ampliado (Lightbox) da foto.
-- **Botão de Câmera & Captura na Toolbar da Home** (`src/screens/Home.tsx` + `src/styles.css`):
-  - Inserido botão com ícone de Câmera na barra superior da Home, ao lado dos ícones de Dados e Sincronização, mantendo o padrão visual idêntico (`icon-btn glass`).
-  - Removido o card estático do rodapé da tela inicial, abrindo em seu lugar um modal dedicado de configurações com Modo Burst e Lanterna Contínua.
-  - Ponto indicador ativo (`.has-badge`) quando alguma das opções estiver habilitada.
-- **Correção da Exibição dos Índices Anteriores em Campanhas Seguintes** (`src/screens/Indices.tsx`):
-  - Corrigido o mapeamento do `prevIndexMap` para indexar tanto pela chave `torre:ap` quanto diretamente por `aptCode` (`92`, `232`, etc.). Agora a campanha de Agosto/Setembro carrega com 100% de precisão os índices do mês anterior.
-- **Correção no Salvamento de Índices (ex: Torre C 92 e Torre D 232)** (`src/db/records.ts` + `src/lib/utils.ts` + `src/screens/Indices.tsx`):
-  - `upsertRecord`: atualizado para usar `db.records.put(merged)` e realizar limpeza automática de duplicatas no IndexedDB, impedindo travamento de chave primária.
-  - `parseIndex`: suporte aprimorado para teclado numérico do PC (onde o ponto '.' é usado para decimais), evitando conversão errônea de valores e bloqueios na validação.
-  - `Indices.tsx`: adicionado bloco try/catch e toast de confirmação mesmo no último apartamento da torre.
-- **Ajustes nos Relatórios PDF e Excel** (`src/lib/exportPdf.ts` + `src/lib/exportExcel.ts`):
-  - **PDF**: removidas as colunas *Andar* e *Lado*, adicionada a coluna *Índice Anterior* (`Ap | Índice Anterior | Índice Atual | Consumo | Foto`).
-  - **Excel**: removida a coluna *Andar*, adicionada a coluna *Índice Anterior* na planilha de Índices.
-- **Ajuste Estrutural da Torre E (Apt 35 não existe)** (`src/lib/towers.ts` + `towers.test.ts`):
-  - Confirmado pelo leiturista que o apartamento `35` da Torre E não existe. O 3º andar da Torre E possui apenas 4 unidades (31, 32, 33 e 34), alinhando a Torre E com 180 apartamentos no total. Removido o botão do apt 35 das telas de fotos e índices.
-
-- **Auditoria Geral e Correção da Contagem de Índices (1.438 → 1.435)** (`src/lib/towers.ts` + `src/db/records.ts` + `src/screens/Export.tsx` + `src/screens/Home.tsx` + `src/screens/ConsumptionScreen.tsx` + `src/lib/exportExcel.ts` + `src/lib/exportPdf.ts` + `src/lib/exportZip.ts`):
-  - **Diagnóstico do número 1.438**: o condomínio possui matematicamente e fisicamente **1.435 apartamentos** (A: 180, B: 180, C: 181, D: 180, E: 180, F: 180, G: 181, H: 173). O contador exibia 1.438 devido a 3 registros extras no banco de dados local:
-    1. O apartamento 35 da Torre E preenchido antes de ser confirmado que ele não existia (+1 registro órfão).
-    2. Registros duplicados gerados nas tentativas anteriores de salvar Torre C 92 e Torre D 232 (+2 registros duplicados).
-  - **Função de Limpeza e Higienização do Banco** (`cleanOrphanAndDuplicateRecords` em `src/db/records.ts`):
-    - Executa automaticamente na abertura da tela de Resumo/Exportação e da Home.
-    - Remove definitivamente registros órfãos que não pertencem a nenhuma torre/andar/unidade oficial (`!isValidCondoUnit`).
-    - Agrupa e funde registros duplicados do mesmo apartamento (`campaignId + towerId + aptCode`), preservando foto e índice mais recentes e expurgando duplicatas.
-  - **Deduplicação e Validação nas Telas e Exportadores**:
-    - `Export.tsx`: tanto o resumo por torre quanto a contagem geral deduplicam por apartamento e filtram unidades válidas, garantindo exibição de 1.435 índices preenchidos de 1.435.
-    - `Home.tsx`: cards de progresso exibem 1.435 / 1.435 com deduplicação segura.
-    - `exportExcel.ts` e `exportPdf.ts`: garantem que o resumo e tabelas exportem exatamente as 1.435 unidades oficiais sem linhas fantasmas.
-  - **Exportação de Utilitários em `towers.ts`**:
-    - `CONDO_TOTAL_UNITS = 1435`
-    - `VALID_UNIT_KEYS = Set<string>`
-    - `isValidCondoUnit(towerId, aptCode): boolean`
-
-### Testes
-
-- `npm run test`: **65/65** testes unitários aprovados (9 arquivos de teste).
-- `npm run build`: build Vite e typecheck aprovados com sucesso sem erros.
+    - `Esc`: fecha o Lightbox, a barra de busca, os atalhos ou cancela o foco.
+  - **Lupa com Zoom Interativo no Mouse** (`src/screens/Indices.tsx` + `src/styles.css`):
+    - Ao passar o mouse sobre a foto principal nos Índices, uma lente de aumento de 2.3× acompanha a posição do cursor (`transform-origin`).
+  - **Guia Visual de Atalhos de Teclado** (`src/components/ShortcutsModal.tsx` + `src/styles.css`):
+    - Modal interativo pressionando `?` ou clicando no ícone de teclado (`Keyboard`).
+- **Higienização de Registros Órfãos no Banco Dexie** (`src/db/records.ts`):
+  - Função `cleanOrphanAndDuplicateRecords` que remove automaticamente registros com códigos inválidos e mescla duplicatas.
+- **Calibração do Total do Condomínio para 1.435 Unidades**:
+  - Removido apartamento 35 da Torre E (o 3º andar da Torre E possui 4 unidades: 31, 32, 33, 34).
 
 ---
 
@@ -178,162 +131,42 @@
 
 ---
 
-- **Download automático no Modo Burst** (`src/components/CameraOverlay.tsx`): o disparo rápido agora salva a foto com marca d'água diretamente na pasta de Downloads do dispositivo enquanto avança imediatamente para o próximo apartamento.
-- **Persistência da câmera sem tela preta** (`src/components/CameraOverlay.tsx`): eliminado o fechamento prematuro do stream de vídeo na captura manual. A transição para o próximo apartamento mantém o hardware da câmera pronto e a lanterna ligada, com reinício automático garantido caso o stream precise ser reaberto.
-- **Backup em streaming de baixo consumo de memória** (`src/lib/backup.ts` + `src/screens/DataScreen.tsx`):
-  - Substituída a conversão byte-a-byte em JavaScript pelo `FileReader.readAsDataURL` nativo do navegador.
-  - Substituído o `JSON.stringify` monolítico por geração de `Blob` em streaming paginado (lotes de 15 registros), evitando picos de consumo de RAM que travavam ou recarregavam navegadores em celulares antigos.
-  - Adicionado indicador visual de progresso (`Gerando (X/Y)...`) no botão de Backup.
-- **Gerenciamento de memória e cache de fotos** (`src/hooks/usePhotoUrl.ts` + `src/lib/camera.ts`):
-  - Adicionado cache LRU com capacidade máxima de 40 URLs e revogação automática (`URL.revokeObjectURL`) das fotos antigas.
-  - Liberação imediata da memória do canvas de captura de fotos.
-  - Adicionado `touch-action: manipulation` para remover atraso de 300ms de toque em navegadores móveis mais antigos.
-
-### Testes
-
-- `npm run test`: **54/54** testes unitários aprovados.
-- `npm run test:e2e`: **3/3** testes E2E Playwright aprovados.
-- `npm run build`: build Vite concluído com sucesso.
-
----
-
-- **Auditoria de código e correção de bugs**:
-  - **Exportação de PDF** (`src/lib/exportPdf.ts`): corrigida sobreposição da tabela da Torre A em cima da capa escura ao adicionar quebra de página apropriada para cada torre com registros.
-  - **Sincronização Supabase** (`src/lib/sync.ts`): adicionada checagem de `towerId` e preservação do `id` do Dexie ao fazer merge dos registros no `pullAll`, evitando duplicatas de apartamentos de mesmo número em torres diferentes.
-  - **Transmissão de OCR na captura** (`src/screens/Collect.tsx`): corrigido callback `onSaved` no `<CameraOverlay>` que ignorava o valor lido pelo OCR no disparo normal.
-  - **Visualização de fotos no Histórico** (`src/screens/HistoryScreen.tsx` + `src/styles.css`): thumbnails ajustadas para `object-fit: contain` em fundo escuro sem cortes indesejados; adicionado modal de ampliação (lightbox) ao tocar em qualquer foto do histórico.
-  - **Prevenção de vazamento de memória com ObjectURLs** (`src/lib/watermark.ts`): envolvido em bloco `try/finally` para assegurar que `URL.revokeObjectURL` seja sempre chamado mesmo em caso de erro na manipulação do canvas.
-  - **Reset do input file** (`src/components/CameraOverlay.tsx`): limpa `e.target.value = ''` ao selecionar arquivos para permitir re-seleção da mesma foto sem travar o evento `onChange`.
-  - **Ajustes nos testes E2E do Playwright** (`e2e/app.spec.ts`): resolvido conflito de strict mode nos seletores com `{ exact: true }` e escopo do modal de restauração.
-
-### Testes
-
-- `npm run test`: **54/54** testes unitários aprovados (7 arquivos de teste).
-- `npm run test:e2e`: **3/3** testes E2E Playwright aprovados.
-- `npm run build`: typecheck (`tsc -b`) e build Vite de produção concluídos sem erros.
-
----
-
 ## 2026-08-02 — Consumo, marca d'água, export por torre e busca de apt
 
 ### Feito
 
-- **Consumo vs. mês anterior** (`src/lib/consumption.ts` + `consumption.test.ts`): `selectPreviousCampaign` escolhe a campanha imediatamente anterior (cruzando ano — janeiro → dezembro anterior); `computeConsumption` calcula `consumo = atual - anterior` com status `ok`/`anomaly` (fora de `0..30 m³` ou regressão negativa)/`no-base` (sem campanha ou índice anterior); `loadConsumption` monta `Map<torre:apt, Consumo>`. 9 testes.
+- **Consumo vs. mês anterior** (`src/lib/consumption.ts` + `consumption.test.ts`): `selectPreviousCampaign` escolhe a campanha imediatamente anterior; `computeConsumption` calcula `consumo = atual - anterior` com status `ok`/`anomaly`/`no-base`; `loadConsumption` monta `Map<torre:apt, Consumo>`. 9 testes.
 - **Marca d'água nas fotos** (`src/lib/watermark.ts`): `watermarkPhoto(blob, text)` redimensiona para `maxW=1280`, desenha barra `rgba(7,24,34,0.72)` com texto branco em JetBrains Mono (label `${aptCode} · dd/mm/aaaa HH:mm`), salva JPEG 0.85; usada no PDF e no ZIP quando a opção está ativa.
-- **Export por torre + consumo** (`exportPdf/exportExcel/exportZip.ts`): opções `{ towerId?, watermark? }`; PDF com coluna "Consumo" e anomalias destacadas em vermelho/negrito via `didParseCell`; Excel com sheet "Consumo" nova (`Torre/Ap/Índice Anterior/Índice Atual/Consumo/Status`) e coluna Consumo no sheet Índices; ZIP filtra por torre. `Export.tsx` ganhou chips "Todas" + A–H e checkbox de marca d'água.
-- **Busca/atalho por apt** (`Collect.tsx` + `Indices.tsx`): form `.apt-jump` com ícone de busca — no Collect pula para o andar e abre a câmera do apt; no Indices navega direto para o apt fotografado; aviso "Apt não encontrado nesta torre." quando não acha. Estilos `.apt-jump`/`.apt-jump-msg` em `styles.css`.
-- **Deps atualizadas** (npm audit): `jspdf@^4.2.1`, `jspdf-autotable@^5.0.8`, `xlsx@0.20.3` (cdn SheetJS). Resta risco aceito: `vite ≤6.4.2` → `esbuild ≤0.24.2` (GHSA-67mh-4wv8-2f99, só dev server; `--force` quebraria com vite 8).
-- **Fix autotable v5**: `doc.getLastAutoTable` não existe em runtime (é do `DocHandler`) → posicionamento das fotos usa `doc.lastAutoTable.finalY` (com narrowing TS); augmentação em `src/lib/jspdf-autotable.d.ts`.
-- **Lighthouse** (dev server): a11y 90→**100**, SEO 82→**100**, Agentic 67→**100**; removido `user-scalable=no` do viewport, meta description, `h1→h3` corrigido para `h1→h2→h2` no Home, criados `public/robots.txt` e `public/llms.txt`. Best Practices 81 é só `is-on-https` (http do dev server; em produção é https).
+- **Export por torre + consumo** (`exportPdf/exportExcel/exportZip.ts`): opções `{ towerId?, watermark? }`; PDF com coluna "Consumo" e anomalias destacadas em vermelho/negrito via `didParseCell`; Excel com sheet "Consumo" nova e coluna Consumo no sheet Índices; ZIP filtra por torre.
+- **Busca/atalho por apt** (`Collect.tsx` + `Indices.tsx`): form `.apt-jump` com ícone de busca.
 
-### Testes
-
-- `npm run test`: 39 testes verdes (6 arquivos — towers, utils, camera, validate, backup, consumption). `npm run build`: passa. `npm run test:e2e`: 3 verdes.
-- Verificação manual: jump `258` no Collect abre Andar 25 + câmera; foto injetada salva e auto-avança para `257`; índice `1.234` preenchido no Indices e **preservado ao refotografar**; jump inválido mostra aviso; exports PDF (com marca d'água)/Excel/ZIP sem erros de console; filtro de torre "Exportando apenas a Torre A.".
-
-### Pendências
-
-- [ ] Sync Supabase: credenciais reais rejeitadas (`AUTH_FAIL invalid_credentials`) — conferir/criar usuário em `wfjbvrneeukfbghhmcqs` (Authentication → Users) antes de liberar o sync.
-- [ ] Confirmar com o cliente se a Torre E tem o ap `236`.
-- [ ] Testar câmera real (torch/zoom) em celular (Chrome Android, HTTPS) em https://fotos-hidrometros.vercel.app.
-- [ ] Teste offline completo (PWA).
+---
 
 ## 2026-08-02 — Rodada funcionalidades: backup, sync, torch/zoom, validação, export completo e CI
 
 ### Feito
 
-- **Backup/Restore local** (`src/lib/backup.ts`): card "Seus dados" no Home com botões Backup (baixa JSON com campanhas + registros e fotos base64) e Restaurar (substitui tudo após `confirm()`).
-- **Sync Supabase** (`src/lib/sync.ts` + `supabase/schema.sql`): login e-mail/senha, `pushAll` (upsert em lotes de 50, fotos em base64), `pullAll` (merge LWW por `updatedAt`), `syncAll` = push → pull → push se houve pull; RLS por `auth.uid()`; sem `.env.local` o app degrada com aviso e segue 100% local.
-- **Câmera torch + zoom** (`camera.ts` + `CameraOverlay.tsx`): capabilities (`isTorchSupported`/`isZoomSupported`), `setTorch`/`setZoom`, botão de luz e controles de zoom (+/− e pinch).
-- **Validação de índices + rascunho automático** (`validate.ts` + `Indices.tsx`): `validateIndex` (decimal pt-BR, outliers por desvio padrão com avisos `IV_NEGATIVE`/`IV_HIGH`/`IV_LOW`), input com aviso de inválido e dica de índice provável; validação não bloqueia (salva no blur se válido).
-- **Export completo + Compartilhar** (`exportZip/exportPdf/exportExcel.ts` + `Export.tsx`): `build*` retornam `NamedBlob` reutilizados no botão Compartilhar (`navigator.share` com PDF+Excel, fallback download + toast); ZIP organizado `Torre {id}/Andar {pad}/ap_{aptCode}.jpg`; resumo por torre com fotos+índices vs. total e pills de status.
-- **CI** (`.github/workflows/ci.yml`): job `test` (vitest + build) e job `e2e` (Playwright chromium em servidor dev).
-- **Estrutura de testes:** Vitest (5 arquivos, 30 testes: towers, utils, camera, validate, backup) + Playwright (`e2e/app.spec.ts`, 3 testes: fluxo completo com auto-avanço e resumo no export, backup+restore, índice inválido).
+- **Backup/Restore local** (`src/lib/backup.ts`): card "Seus dados" no Home com botões Backup e Restaurar.
+- **Sync Supabase** (`src/lib/sync.ts` + `supabase/schema.sql`): login e-mail/senha, `pushAll`, `pullAll`, `syncAll`.
+- **Câmera torch + zoom** (`camera.ts` + `CameraOverlay.tsx`): capabilities, `setTorch`/`setZoom`, botão de luz e controles de zoom (+/− e pinch).
+- **Validação de índices** (`validate.ts` + `Indices.tsx`): `validateIndex` (decimal pt-BR, outliers por desvio padrão).
+- **Export completo + Compartilhar** (`exportZip/exportPdf/exportExcel.ts` + `Export.tsx`): PDF + Excel + ZIP.
+- **CI** (`.github/workflows/ci.yml`): job `test` (vitest + build) e job `e2e` (Playwright).
 
-### Testes
-
-- `npm run test`: 30 testes verdes. `npm run build`: passa (tsc + vite). `npx playwright test`: 3 testes verdes (viewport 390×844).
-
-### Correções pós-CI
-
-- **Lockfile consistente no `npm ci`**: `vitest@4.1.10` exigia `vite ^6||^7||^8` → instalava `vite 8.2.0` aninhado com peer opcional `esbuild ^0.27||^0.28` que no Linux resolvia para `esbuild@0.28.1` (ausente no lock gerado no Windows). Downgrade para `vitest@^3.2.4` (compatível com vite 5) elimina o vite aninhado e o peer problemático.
-- **Actions CI**: `actions/checkout@v4`/`actions/setup-node@v4` → `@v5` (fim do aviso de depreciação do Node 20; `upload-artifact@v4` segue, sem warning bloqueante).
-- **Race na câmera (causa de E2E flaky)**: quando o `getUserMedia` falhava **depois** da foto já ter sido tirada via arquivo (fallback), o `catch` de `start()` reescrevia `phase` para `'error'` e destruía o preview/"Salvar e próximo". Fix: ref `photoTakenRef` impede `start()` (sucesso ou falha tardia) de sobrescrever o estado de preview; E2E subiu de 3m30s para 1m no CI e está estável.
-- **E2E mais robusto**: timeout global 60s + `expect` 15s no `playwright.config.ts`.
-
-### Pendências
-
-- [ ] Confirmar com o cliente se a Torre E tem o ap `236`.
-- [ ] Testar câmera real (torch/zoom) em celular (Chrome Android, HTTPS) em https://fotos-hidrometros.vercel.app.
-- [ ] Teste offline completo (PWA).
-- [ ] Testar sync com credenciais reais (`.env.local` + schema aplicado no Supabase).
+---
 
 ## 2026-07-31 — Implementação v1.0.0
 
 ### Feito
 
 - **Repo GitHub criado e conectado à Vercel** — `Henrique1601/fotos-hidrometros` (privado), push na `main` = deploy automático de produção.
-- **Deploy Vercel concluído** — https://fotos-hidrometros.vercel.app (project `fotos-hidrometros`, target production, status Ready, HTTP 200).
-- **Spec aprovada** em `docs/superpowers/specs/2026-07-31-foto-hidrometros-design.md` (ajuste: códigos de ap sem zero à esquerda).
-- **Banco:** schema Dexie `fotos-hidrometros` v1 (tabelas `campaigns` e `records`), índice único `[campaignId + towerId + aptCode]`.
-- **CRUD:** `records.ts` com `upsertRecord` que preserva o índice ao refotografar.
+- **Deploy Vercel concluído** — https://fotos-hidrometros.vercel.app.
+- **Banco:** schema Dexie `fotos-hidrometros` v1 (tabelas `campaigns` e `records`).
+- **CRUD:** `records.ts` com `upsertRecord`.
 - **Telas:** Home, NewCampaign, Collect, Indices, Export.
-- **Componentes:** CameraOverlay (getUserMedia + fallback de arquivo + auto-avanço), AptButton, ProgressRing, GlassCard, Background.
-- **Navegação:** `App.tsx` com troca de telas GSAP, toast global e banner de atualização PWA (registerType `prompt`).
-- **Exports:** `exportPdf` (jspdf + autotable, inclui fotos opcional), `exportExcel` (xlsx), `exportPhotosZip` (jszip + file-saver). Assinaturas recebem o objeto campanha.
-- **Ícones PWA** gerados via `npm run icons`.
-- **Build:** `npm run build` passa (tsc + vite).
+- **Componentes:** CameraOverlay, AptButton, ProgressRing, GlassCard, Background.
+- **Navegação:** `App.tsx` com troca de telas GSAP, toast global e banner de atualização PWA.
 
-### Correções
-
-- `exportPdf.ts`: `forEach` com `await` dentro → trocado por `for...of`.
-- `Export.tsx`: corrigido nome `exportPhotosZip` e assinaturas (`exportPdf(campaign, includePhotos)`, `exportExcel(campaign)`).
-- `Indices.tsx`: prop `toast` não usada removida; tipo de miniatura corrigido.
-- **Bug de preview obsoleto** no auto-avanço da câmera: resolvido remontando `CameraOverlay` com `key={aptCode}`.
-
-### Testes
-
-- Fluxo completo validado em Chrome headless (playwright-core): criar campanha → coleta 0/180 → upload de foto → contador 1/180 → preencher índice com Enter → exportar XLSX/ZIP/PDF com zero erros JS.
-- Overlay de câmera: após salvar `33`, abre `34` limpo (sem preview velho).
-
-## 2026-07-31 — Ordem decrescente, botão voltar e overlay full-screen
-
-### Feito
-
-- **Coleta em ordem decrescente** dentro de cada andar: `columnSequence` em `towers.ts` agora inverte a ordem de unidades (`108 → 107 → ... → 101`), com auto-avanço por índice e grid em `Collect.tsx` exibido também decrescente.
-- **Botão voltar** no topo do overlay da câmera (`Undo2`): retorna ao ap anterior da sequência; `handlePrev` + memo `camPrev` em `Collect.tsx`, prop `onPrev` em `CameraOverlay`.
-- **Overlay da câmera full-screen**: era quebrado pelo `transform` que o GSAP deixa no `ScreenSwitch` (ancestral vira containing block do `position: fixed`). Corrigido renderizando o `CameraOverlay` via **portal** para `document.body`. Agora preview cobre a tela (390×685 em viewport 390×844) e `.cam-actions` fica abaixo da foto com fundo semi-opaco.
-
-### Testes
-
-- `test_order.py` (Playwright): grid em ordem decrescente, auto-avanço `108 → 107`, voltar `107 → 108`, registro `108:photo` persistido, zero erros JS.
-- `check_layout.py`: preview full-bleed, botões abaixo da foto, sem sobreposição.
-- `npm run build` passa.
-
-### Pendências
-
-- [ ] Confirmar com o cliente se a Torre E tem o ap `236`.
-- [ ] Testar câmera real em celular (Chrome Android, HTTPS) em https://fotos-hidrometros.vercel.app.
-- [ ] Teste offline completo (PWA).
-
-## 2026-08-01 — Ordem por andar, Índices foto-primeiro, repo público e bug da tela preta
-
-### Feito
-
-- **Captura por andar inteiro** (item 1): `floorSequence(tower)` em `towers.ts` — andares ascendentes (03→25) e, dentro de cada andar, lado esquerdo descendente e depois direito descendente (`46→45→44→43→48→47→42→41`). `Collect.tsx` usa essa sequência no auto-avanço (`handleSaved`), no voltar (`handlePrev`/`camPrev`) e no grid.
-- **Índices redesenhado** (item 2): `Indices.tsx` reescrito como viewer foto-primeiro — foto em destaque (objeto `iv-photo`), badge com código do apt, meta andar/lado, selo "Salvo", input de índice abaixo com Enter salvando e avançando, botões Voltar/Avançar e contador posição; chips de torre A–H; auto-posiciona no primeiro índice faltante. Novos estilos `.iv-*`/`.chip-*` em `styles.css`.
-- **Repo público** (item 3): `Henrique1601/fotos-hidrometros` agora é **público** (`gh repo edit --visibility public`); criado `README.md` detalhado (fluxo, layout do condomínio, stack, exports, privacidade) e seção "Skills disponíveis" no `AGENTS.md`.
-- **Bug tela preta ao refazer** (item 4): `CameraOverlay` agora mantém o `<video>` sempre montado; `beginCamera` renomeado para `start` (lança erro em vez de `return` silencioso); `handleRetake` chama `start()` novamente e volta para `live`.
-
-### Testes
-
-- `test_flow.py` (Playwright, câmera fake via `canvas.captureStream`): grid do andar 04 em ordem, refazer volta ao vivo sem tela preta, auto-avanço `46→45→44→43→48→47→42→41→56` cruzando para o andar 05, chip ativo `05`, 8 registros com foto, Índices abrindo no primeiro faltante (46), layout foto > painel, Enter salva e avança, voltar/avançar, índice `1234` persistido e exibido formatado (`1.234`), zero erros JS.
-- `npm run build` passa (tsc + vite).
-
-### Pendências
-
-- [ ] Confirmar com o cliente se a Torre E tem o ap `236`.
-- [ ] Testar câmera real em celular (Chrome Android, HTTPS) em https://fotos-hidrometros.vercel.app.
-- [ ] Teste offline completo (PWA).
+---
 
 Ver também: [[00 - Visão Geral]] · [[06 - Deploy]]

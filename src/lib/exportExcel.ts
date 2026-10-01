@@ -74,6 +74,10 @@ export async function buildExcel(campaign: Campaign, opts: ExcelOptions = {}): P
   for (const [id, t] of [...towers.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
     sumRows.push([`Torre ${id}`, t.total, t.photos, t.indices]);
   }
+  if (campaign.leiturista) {
+    sumRows.push([]);
+    sumRows.push(['Leiturista:', campaign.leiturista]);
+  }
   const sumSheet = XLSX.utils.aoa_to_sheet(sumRows);
   sumSheet['!cols'] = [{ wch: 10 }, { wch: 10 }, { wch: 8 }, { wch: 10 }];
 
