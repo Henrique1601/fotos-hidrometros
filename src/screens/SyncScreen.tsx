@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Cloud, CloudOff, Info, LogIn, LogOut, UserPlus } from 'lucide-react';
-import { isSupabaseConfigured, getSession, signIn, signUp, signOut, syncAll } from '../lib/sync';
+import { ArrowLeft, Cloud, CloudOff, Eye, EyeOff, Info, LogIn, LogOut, UserPlus } from 'lucide-react';
+import { isSupabaseConfigured, getSession, signIn, signUp, signOut, syncAll, resetPassword } from '../lib/sync';
 import GlassCard from '../components/GlassCard';
 import { Screen } from '../nav';
 
@@ -13,6 +13,7 @@ export default function SyncScreen({ go, toast }: Props) {
   const [session, setSession] = useState<Awaited<ReturnType<typeof getSession>>>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [syncBusy, setSyncBusy] = useState(false);
 
@@ -25,24 +26,48 @@ export default function SyncScreen({ go, toast }: Props) {
     setSyncBusy(true);
     try {
       if (isSignUp) {
-        await signUp(email.trim(), password);
-        toast('Conta criada com sucesso! Conectando...');
-        try {
-          await signIn(email.trim(), password);
-          setSession(await getSession());
-        } catch {
-          // Caso precise de confirmação
+        if (password.length < 6) {
+          toast('A senha deve ter no mínimo 6 caracteres.');
+          return;
         }
-      } else {
-        await signIn(email.trim(), password);
+        const { isNewUser, needsEmailConfirmation } = await signUp(email.trim(), password);
+        if (!isNewUser) {
+          toast('Este e-mail já está cadastrado. Alterne para "Já tenho conta" para entrar.');
+          setIsSignUp(false);
+          return;
+        }
+        if (needsEmailConfirmation) {
+          toast('Conta criada! Verifique o link de confirmação no seu e-mail para ativar o acesso.');
+          setIsSignUp(false);
+          return;
+        }
+        const newSession = await signIn(email.trim(), password);
+        setSession(newSession);
         setPassword('');
-        setSession(await getSession());
+        toast('Conta criada e conectada com sucesso à nuvem!');
+      } else {
+        const currentSession = await signIn(email.trim(), password);
+        setPassword('');
+        setSession(currentSession);
         toast('Conectado à nuvem Supabase!');
       }
     } catch (e) {
       toast((e as Error).message);
     } finally {
       setSyncBusy(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!email) {
+      toast('Digite seu e-mail no campo acima para recuperar a senha.');
+      return;
+    }
+    try {
+      await resetPassword(email.trim());
+      toast('Link de redefinição de senha enviado para seu e-mail.');
+    } catch (e) {
+      toast((e as Error).message);
     }
   };
 
@@ -142,15 +167,40 @@ export default function SyncScreen({ go, toast }: Props) {
                 placeholder="seu@email.com"
                 className="text-input"
               />
-              <label className="field-label">Senha</label>
-              <input
-                type="password"
-                autoComplete={isSignUp ? 'new-password' : 'current-password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="text-input"
-              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                <label className="field-label" style={{ margin: 0 }}>Senha</label>
+                {!isSignUp && (
+                  <button
+                    type="button"
+                    className="btn-ghost-sm"
+                    style={{ fontSize: '0.72rem', border: 'none', padding: '2px 0' }}
+                    onClick={() => void handleResetPassword()}
+                  >
+                    Esqueci a senha
+                  </button>
+                )}
+              </div>
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete={isSignUp ? 'new-password' : 'current-password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder={isSignUp ? 'Mínimo 6 caracteres' : '••••••••'}
+                  className="text-input"
+                  style={{ paddingRight: 40 }}
+                />
+                <button
+                  type="button"
+                  className="icon-btn"
+                  style={{ position: 'absolute', right: 4, width: 32, height: 32, opacity: 0.7 }}
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? 'Ocultar senha' : 'Ver senha'}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+
               <button
                 className="btn-primary btn-full"
                 disabled={syncBusy || !email || !password}

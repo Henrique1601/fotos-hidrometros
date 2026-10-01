@@ -24,17 +24,45 @@ export async function getSession(): Promise<Session | null> {
   return data.session;
 }
 
-export async function signIn(email: string, password: string): Promise<void> {
+export async function signIn(email: string, password: string): Promise<Session | null> {
   const sb = getSupabase();
   if (!sb) throw new Error('Supabase não configurado.');
-  const { error } = await sb.auth.signInWithPassword({ email, password });
-  if (error) throw new Error('E-mail ou senha inválidos.');
+  const { data, error } = await sb.auth.signInWithPassword({ email: email.trim(), password });
+  if (error) {
+    const msg = error.message.toLowerCase();
+    if (msg.includes('email not confirmed')) {
+      throw new Error('E-mail ainda não confirmado. Verifique sua caixa de entrada.');
+    }
+    if (msg.includes('invalid login credentials') || msg.includes('invalid credentials')) {
+      throw new Error('E-mail ou senha incorretos. Se ainda não possui conta, clique em "Criar nova conta".');
+    }
+    throw new Error(error.message);
+  }
+  return data.session;
 }
 
-export async function signUp(email: string, password: string): Promise<void> {
+export async function signUp(
+  email: string,
+  password: string,
+): Promise<{ isNewUser: boolean; needsEmailConfirmation: boolean }> {
   const sb = getSupabase();
   if (!sb) throw new Error('Supabase não configurado.');
-  const { error } = await sb.auth.signUp({ email, password });
+  const { data, error } = await sb.auth.signUp({ email: email.trim(), password });
+  if (error) throw new Error(error.message);
+
+  // Se o usuário já existe no Supabase, a lista de identities vem vazia
+  if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+    return { isNewUser: false, needsEmailConfirmation: false };
+  }
+
+  const needsEmailConfirmation = !data.session && !data.user?.email_confirmed_at;
+  return { isNewUser: true, needsEmailConfirmation };
+}
+
+export async function resetPassword(email: string): Promise<void> {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase não configurado.');
+  const { error } = await sb.auth.resetPasswordForEmail(email.trim());
   if (error) throw new Error(error.message);
 }
 
