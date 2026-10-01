@@ -1589,7 +1589,6 @@ select.text-input {
   backdrop-filter: blur(6px);
 }
 
-<<<<<<< HEAD
 .photo-lightbox-nav {
   position: absolute;
   top: 50%;
@@ -1760,23 +1759,15 @@ select.text-input {
   border-top: 1px solid var(--border);
 }
 
-@media (max-height: 740px), (max-width: 390px) {
-=======
 @media (max-height: 760px), (max-width: 480px) {
->>>>>>> cf1a10e (feat: implement flexible backup, precise continue navigation, audio/haptic feedback, whatsapp summary, pending filter and leiturista identification)
   .iv {
     min-height: auto;
     gap: 8px;
   }
 
   .iv-photo-wrap {
-<<<<<<< HEAD
-    min-height: 220px;
-    max-height: none;
-=======
     min-height: 140px;
     max-height: clamp(140px, 28vh, 220px);
->>>>>>> cf1a10e (feat: implement flexible backup, precise continue navigation, audio/haptic feedback, whatsapp summary, pending filter and leiturista identification)
   }
 
   .iv-panel {

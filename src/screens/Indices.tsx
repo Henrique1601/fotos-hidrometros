@@ -10,7 +10,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
-  Filter,
   ImageOff,
   Keyboard,
   Maximize2,
@@ -123,11 +122,14 @@ export default function Indices({ campaignId, go, toast }: Props) {
     void loadPrev();
   }, [campaign, towerId]);
 
-  const photoUnits = allPhotoUnits;
+  const photoUnits = useMemo(
+    () => floorSequence(tower).filter((u: UnitRef) => Boolean(recordByApt.get(u.aptCode)?.photo)),
+    [tower, recordByApt],
+  );
 
   const pendingUnits = useMemo(
     () =>
-      photoUnits.filter((u) => {
+      photoUnits.filter((u: UnitRef) => {
         const idx = recordByApt.get(u.aptCode)?.index;
         return idx === null || idx === undefined;
       }),
@@ -136,7 +138,7 @@ export default function Indices({ campaignId, go, toast }: Props) {
 
   const alertUnits = useMemo(
     () =>
-      photoUnits.filter((u) => {
+      photoUnits.filter((u: UnitRef) => {
         const rec = recordByApt.get(u.aptCode);
         const prev = prevIndexMap.get(u.aptCode);
         return unitHasAlert(rec, prev);
@@ -156,7 +158,7 @@ export default function Indices({ campaignId, go, toast }: Props) {
     setFilterMode(mode);
     const target = mode === 'pending' ? pendingUnits : mode === 'alerts' ? alertUnits : photoUnits;
     if (apt) {
-      const idx = target.findIndex((u) => u.aptCode === apt.aptCode);
+      const idx = target.findIndex((u: UnitRef) => u.aptCode === apt.aptCode);
       setPos(idx >= 0 ? idx : 0);
     } else {
       setPos(0);
@@ -165,7 +167,7 @@ export default function Indices({ campaignId, go, toast }: Props) {
 
   const indexDone = useMemo(
     () =>
-      photoUnits.filter((u) => {
+      photoUnits.filter((u: UnitRef) => {
         const idx = recordByApt.get(u.aptCode)?.index;
         return idx !== null && idx !== undefined;
       }).length,
@@ -185,7 +187,7 @@ export default function Indices({ campaignId, go, toast }: Props) {
 
   useEffect(() => {
     const target = filterMode === 'pending' ? pendingUnits : filterMode === 'alerts' ? alertUnits : photoUnits;
-    const firstMissing = target.findIndex((u) => {
+    const firstMissing = target.findIndex((u: UnitRef) => {
       const idx = recordByApt.get(u.aptCode)?.index;
       return idx === null || idx === undefined;
     });
@@ -356,16 +358,16 @@ export default function Indices({ campaignId, go, toast }: Props) {
     e.preventDefault();
     const code = jump.trim();
     if (!code) return;
-    const idx = displayedUnits.findIndex((u) => u.aptCode === code);
+    const idx = displayedUnits.findIndex((u: UnitRef) => u.aptCode === code);
     if (idx >= 0) {
       setPos(idx);
       setJumpMsg(null);
       setShowSearch(false);
     } else {
-      const existsInTower = photoUnits.some((u) => u.aptCode === code);
+      const existsInTower = photoUnits.some((u: UnitRef) => u.aptCode === code);
       if (existsInTower && filterMode !== 'all') {
         setFilterMode('all');
-        const allIdx = photoUnits.findIndex((u) => u.aptCode === code);
+        const allIdx = photoUnits.findIndex((u: UnitRef) => u.aptCode === code);
         setPos(allIdx >= 0 ? allIdx : 0);
         setJumpMsg(null);
         setShowSearch(false);
