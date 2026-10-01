@@ -15,6 +15,7 @@ export interface SerializedRecord extends Omit<MeterRecord, 'photo'> {
 export interface BackupFile {
   app: string;
   version: number;
+  type?: BackupType;
   exportedAt: string;
   campaigns: Campaign[];
   records: SerializedRecord[];
@@ -201,27 +202,67 @@ export async function serializeBackup(): Promise<BackupFile> {
   return file;
 }
 
+export type RestoreContentType = 'all' | 'indices' | 'photos';
+
+export interface RestoreOptions {
+  mode?: 'replace' | 'merge';
+  contentType?: RestoreContentType;
+  selectedCampaignIds?: number[];
+}
+
 export async function restoreBackup(
   data: unknown,
-  mode: 'replace' | 'merge' = 'replace',
+  optionsOrMode: RestoreOptions | 'replace' | 'merge' = 'replace',
 ): Promise<{ campaigns: number; records: number }> {
   if (!isValidBackup(data)) {
     throw new Error('Arquivo de backup inválido ou de outra versão.');
   }
   const file = data as BackupFile;
+  const options: RestoreOptions =
+    typeof optionsOrMode === 'string'
+      ? { mode: optionsOrMode }
+      : optionsOrMode || { mode: 'replace' };
+
+  const mode = options.mode || 'replace';
+  const contentType = options.contentType || 'all';
+
+  // Filtra campanhas pelas IDs selecionadas (se informadas)
+  const targetCampaigns =
+    options.selectedCampaignIds && options.selectedCampaignIds.length > 0
+      ? file.campaigns.filter((c) => c.id !== undefined && options.selectedCampaignIds!.includes(c.id))
+      : file.campaigns;
+
+  const validCampIdSet = new Set(
+    targetCampaigns.map((c) => c.id).filter((id): id is number => id !== undefined),
+  );
+
+  // Filtra registros que pertencem às campanhas selecionadas
+  const targetRecords = file.records.filter((r) => validCampIdSet.has(r.campaignId));
 
   if (mode === 'replace') {
-    const campaigns = file.campaigns.map((c, i) => ({ ...c, id: i + 1 }));
+    const campaigns = targetCampaigns.map((c, i) => ({ ...c, id: i + 1 }));
     const idMap = new Map<number, number>();
-    file.campaigns.forEach((c, i) => {
+    targetCampaigns.forEach((c, i) => {
       if (c.id !== undefined) idMap.set(c.id, i + 1);
     });
-    const records = file.records.map((r, i) => ({
-      ...r,
-      id: i + 1,
-      campaignId: idMap.get(r.campaignId) ?? r.campaignId,
-      photo: deserializePhoto(r.photo),
-    }));
+
+    const records = targetRecords.map((r, i) => {
+      const photoBlob = contentType === 'indices' ? null : deserializePhoto(r.photo);
+      const indexVal = contentType === 'photos' ? null : r.index;
+      const indexedAtVal = contentType === 'photos' ? null : r.indexedAt;
+      const capturedAtVal = contentType === 'indices' ? null : r.capturedAt;
+      const mappedCampId = (r.campaignId !== undefined ? idMap.get(r.campaignId) : undefined) ?? r.campaignId;
+
+      return {
+        ...r,
+        id: i + 1,
+        campaignId: mappedCampId,
+        photo: photoBlob,
+        index: indexVal,
+        indexedAt: indexedAtVal,
+        capturedAt: capturedAtVal,
+      };
+    });
 
     await db.transaction('rw', db.campaigns, db.records, async () => {
       await db.campaigns.clear();
@@ -234,45 +275,60 @@ export async function restoreBackup(
   }
 
   // Modo Merge: preserva campanhas existentes e atualiza/adiciona registros
-  let insertedCampaigns = 0;
+  let processedCampaigns = 0;
   let processedRecords = 0;
 
   await db.transaction('rw', db.campaigns, db.records, async () => {
     const existingCampaigns = await db.campaigns.toArray();
     const campIdMap = new Map<number, number>();
 
-    for (const fileCamp of file.campaigns) {
+    for (const fileCamp of targetCampaigns) {
       const match = existingCampaigns.find(
         (ec) => ec.year === fileCamp.year && ec.month === fileCamp.month && (ec.name || '') === (fileCamp.name || ''),
       );
       if (match && match.id) {
         if (fileCamp.id !== undefined) campIdMap.set(fileCamp.id, match.id);
+        processedCampaigns++;
       } else {
         const { id: _, ...campWithoutId } = fileCamp;
         const newId = await db.campaigns.add(campWithoutId as Campaign);
-        insertedCampaigns++;
+        processedCampaigns++;
         if (fileCamp.id !== undefined) campIdMap.set(fileCamp.id, newId);
       }
     }
 
     const existingRecords = await db.records.toArray();
 
-    for (const r of file.records) {
-      const targetCampId = (r.campaignId !== undefined && campIdMap.get(r.campaignId)) || r.campaignId;
-      const photoBlob = deserializePhoto(r.photo);
+    for (const r of targetRecords) {
+      const targetCampId = (r.campaignId !== undefined ? campIdMap.get(r.campaignId) : undefined) ?? r.campaignId;
+      const photoBlob = contentType === 'indices' ? null : deserializePhoto(r.photo);
 
       const match = existingRecords.find(
         (er) => er.campaignId === targetCampId && er.towerId === r.towerId && er.aptCode === r.aptCode,
       );
 
       if (match && match.id) {
-        await db.records.update(match.id, {
-          index: r.index !== null && r.index !== undefined ? r.index : match.index,
-          photo: photoBlob || match.photo,
-          capturedAt: r.capturedAt || match.capturedAt,
-          indexedAt: r.indexedAt || match.indexedAt,
-          updatedAt: Math.max(r.updatedAt || 0, match.updatedAt || 0),
-        });
+        if (contentType === 'indices') {
+          await db.records.update(match.id, {
+            index: r.index !== null && r.index !== undefined ? r.index : match.index,
+            indexedAt: r.indexedAt || match.indexedAt,
+            updatedAt: Math.max(r.updatedAt || 0, match.updatedAt || 0),
+          });
+        } else if (contentType === 'photos') {
+          await db.records.update(match.id, {
+            photo: photoBlob || match.photo,
+            capturedAt: r.capturedAt || match.capturedAt,
+            updatedAt: Math.max(r.updatedAt || 0, match.updatedAt || 0),
+          });
+        } else {
+          await db.records.update(match.id, {
+            index: r.index !== null && r.index !== undefined ? r.index : match.index,
+            photo: photoBlob || match.photo,
+            capturedAt: r.capturedAt || match.capturedAt,
+            indexedAt: r.indexedAt || match.indexedAt,
+            updatedAt: Math.max(r.updatedAt || 0, match.updatedAt || 0),
+          });
+        }
       } else {
         await db.records.add({
           campaignId: targetCampId,
@@ -281,10 +337,10 @@ export async function restoreBackup(
           unit: r.unit,
           side: r.side,
           aptCode: r.aptCode,
-          photo: photoBlob,
-          index: r.index,
-          capturedAt: r.capturedAt,
-          indexedAt: r.indexedAt,
+          photo: contentType === 'indices' ? null : photoBlob,
+          index: contentType === 'photos' ? null : r.index,
+          capturedAt: contentType === 'indices' ? null : r.capturedAt,
+          indexedAt: contentType === 'photos' ? null : r.indexedAt,
           updatedAt: r.updatedAt || Date.now(),
         });
       }
@@ -292,5 +348,5 @@ export async function restoreBackup(
     }
   });
 
-  return { campaigns: insertedCampaigns || file.campaigns.length, records: processedRecords };
+  return { campaigns: processedCampaigns || targetCampaigns.length, records: processedRecords };
 }

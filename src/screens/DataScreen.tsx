@@ -18,7 +18,14 @@ import {
   Upload,
 } from 'lucide-react';
 import { db, Campaign } from '../db/db';
-import { BackupFile, BackupType, generateBackupBlob, isValidBackup, restoreBackup } from '../lib/backup';
+import {
+  BackupFile,
+  BackupType,
+  generateBackupBlob,
+  isValidBackup,
+  restoreBackup,
+  RestoreContentType,
+} from '../lib/backup';
 import { campaignLabel } from '../lib/utils';
 import GlassCard from '../components/GlassCard';
 import { Screen } from '../nav';
@@ -39,6 +46,8 @@ export default function DataScreen({ go, toast }: Props) {
   // Restore state
   const [pendingBackup, setPendingBackup] = useState<BackupFile | null>(null);
   const [restoreMode, setRestoreMode] = useState<'replace' | 'merge'>('replace');
+  const [restoreContentType, setRestoreContentType] = useState<RestoreContentType>('all');
+  const [restoreSelectedIds, setRestoreSelectedIds] = useState<number[] | null>(null);
   const [restoreBusy, setRestoreBusy] = useState(false);
 
   const campaigns = useLiveQuery(() => db.campaigns.toArray(), []) ?? [];
@@ -64,6 +73,29 @@ export default function DataScreen({ go, toast }: Props) {
 
   const selectNone = () => {
     setSelectedIds([]);
+  };
+
+  // Restore active campaign IDs
+  const fileCampaigns = pendingBackup?.campaigns ?? [];
+  const activeRestoreIds = useMemo(() => {
+    if (restoreSelectedIds !== null) return restoreSelectedIds;
+    return fileCampaigns.filter((c) => c.id !== undefined).map((c) => c.id as number);
+  }, [fileCampaigns, restoreSelectedIds]);
+
+  const toggleRestoreCampaign = (id: number) => {
+    if (activeRestoreIds.includes(id)) {
+      setRestoreSelectedIds(activeRestoreIds.filter((x) => x !== id));
+    } else {
+      setRestoreSelectedIds([...activeRestoreIds, id]);
+    }
+  };
+
+  const selectAllRestore = () => {
+    setRestoreSelectedIds(fileCampaigns.filter((c) => c.id !== undefined).map((c) => c.id as number));
+  };
+
+  const selectNoneRestore = () => {
+    setRestoreSelectedIds([]);
   };
 
   const handleBackup = async () => {
@@ -115,19 +147,41 @@ export default function DataScreen({ go, toast }: Props) {
       return;
     }
 
-    setPendingBackup(data as BackupFile);
+    const file = data as BackupFile;
+    setPendingBackup(file);
     setRestoreMode('replace');
+    setRestoreContentType(file.type || 'all');
+    setRestoreSelectedIds(
+      file.campaigns.filter((c) => c.id !== undefined).map((c) => c.id as number),
+    );
   };
 
   const confirmRestore = async () => {
     if (!pendingBackup || restoreBusy) return;
+    if (pendingBackup.campaigns.length > 0 && activeRestoreIds.length === 0) {
+      toast('Selecione ao menos uma medição do arquivo para restaurar.');
+      return;
+    }
+
     setRestoreBusy(true);
     try {
-      const r = await restoreBackup(pendingBackup, restoreMode);
+      const r = await restoreBackup(pendingBackup, {
+        mode: restoreMode,
+        contentType: restoreContentType,
+        selectedCampaignIds: activeRestoreIds,
+      });
+
+      const typeLabel =
+        restoreContentType === 'indices'
+          ? ' (apenas índices)'
+          : restoreContentType === 'photos'
+          ? ' (apenas fotos)'
+          : '';
+
       toast(
         restoreMode === 'replace'
-          ? `Backup restaurado: ${r.campaigns} medições, ${r.records} registros.`
-          : `Backup mesclado: ${r.campaigns} medições processadas, ${r.records} registros sincronizados.`,
+          ? `Backup restaurado${typeLabel}: ${r.campaigns} medições, ${r.records} registros.`
+          : `Backup mesclado${typeLabel}: ${r.campaigns} medições processadas, ${r.records} registros sincronizados.`,
       );
       setPendingBackup(null);
     } catch (e) {
@@ -355,18 +409,35 @@ export default function DataScreen({ go, toast }: Props) {
       {/* ---------- Modal de Confirmação e Modo de Restauração ---------- */}
       {pendingBackup && (
         <div className="modal-overlay" onClick={() => !restoreBusy && setPendingBackup(null)}>
-          <div className="modal-panel glass" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-panel glass modal-panel-scroll" onClick={(e) => e.stopPropagation()}>
             <h3 className="modal-title">Restaurar Backup</h3>
 
+            {/* Resumo do Arquivo */}
             <div className="restore-summary-box">
               <p className="restore-summary-head">
                 <strong>Arquivo de Backup detectado:</strong>
               </p>
               <ul className="restore-summary-list">
-                <li>📅 Medições no arquivo: <strong>{pendingBackup.campaigns.length}</strong></li>
-                <li>📊 Registros / Hidrômetros: <strong>{pendingBackup.records.length}</strong></li>
                 <li>
-                  🕒 Data do backup:{' '}
+                  📅 Medições no arquivo: <strong>{pendingBackup.campaigns.length}</strong>
+                </li>
+                <li>
+                  📊 Registros / Hidrômetros: <strong>{pendingBackup.records.length}</strong>
+                </li>
+                {pendingBackup.type && (
+                  <li>
+                    🏷️ Tipo do arquivo:{' '}
+                    <strong>
+                      {pendingBackup.type === 'indices'
+                        ? 'Apenas Índices'
+                        : pendingBackup.type === 'photos'
+                        ? 'Apenas Fotos'
+                        : 'Completo (Tudo)'}
+                    </strong>
+                  </li>
+                )}
+                <li>
+                  🕒 Data de geração:{' '}
                   <strong>
                     {pendingBackup.exportedAt ? new Date(pendingBackup.exportedAt).toLocaleDateString('pt-BR') : '—'}
                   </strong>
@@ -374,39 +445,136 @@ export default function DataScreen({ go, toast }: Props) {
               </ul>
             </div>
 
-            <div className="restore-mode-picker">
-              <label className="field-label">Escolha como deseja restaurar:</label>
+            {/* 1. Tipo de Conteúdo a Restaurar */}
+            <div className="restore-step-section">
+              <label className="field-label">1. Conteúdo a Restaurar:</label>
+              <div className="backup-type-grid">
+                <button
+                  type="button"
+                  className={`backup-type-card ${restoreContentType === 'all' ? 'active' : ''}`}
+                  onClick={() => setRestoreContentType('all')}
+                  disabled={pendingBackup.type === 'indices'}
+                >
+                  <FileCheck size={18} className="backup-card-icon" />
+                  <div className="backup-card-text">
+                    <strong>Completo (Tudo)</strong>
+                    <span>Fotos e índices presentes no arquivo</span>
+                  </div>
+                  {restoreContentType === 'all' && <Check size={16} className="backup-card-check" />}
+                </button>
 
-              <label className={`restore-mode-option ${restoreMode === 'replace' ? 'active' : ''}`}>
-                <input
-                  type="radio"
-                  name="restoreMode"
-                  value="replace"
-                  checked={restoreMode === 'replace'}
-                  onChange={() => setRestoreMode('replace')}
-                />
-                <div className="restore-mode-desc">
-                  <strong>Substituir tudo</strong>
-                  <span>Apaga todos os dados atuais do aparelho e coloca exatamente o que está no arquivo.</span>
-                </div>
-              </label>
+                <button
+                  type="button"
+                  className={`backup-type-card ${restoreContentType === 'indices' ? 'active' : ''}`}
+                  onClick={() => setRestoreContentType('indices')}
+                >
+                  <FileSpreadsheet size={18} className="backup-card-icon" />
+                  <div className="backup-card-text">
+                    <strong>Apenas Índices</strong>
+                    <span>Restaura/atualiza somente as leituras</span>
+                  </div>
+                  {restoreContentType === 'indices' && <Check size={16} className="backup-card-check" />}
+                </button>
 
-              <label className={`restore-mode-option ${restoreMode === 'merge' ? 'active' : ''}`}>
-                <input
-                  type="radio"
-                  name="restoreMode"
-                  value="merge"
-                  checked={restoreMode === 'merge'}
-                  onChange={() => setRestoreMode('merge')}
-                />
-                <div className="restore-mode-desc">
-                  <strong>Mesclar / Adicionar</strong>
-                  <span>Mantém suas medições locais e adiciona/atualiza registros a partir do arquivo.</span>
-                </div>
-              </label>
+                <button
+                  type="button"
+                  className={`backup-type-card ${restoreContentType === 'photos' ? 'active' : ''}`}
+                  onClick={() => setRestoreContentType('photos')}
+                  disabled={pendingBackup.type === 'indices'}
+                >
+                  <Image size={18} className="backup-card-icon" />
+                  <div className="backup-card-text">
+                    <strong>Apenas Fotos</strong>
+                    <span>Restaura/atualiza somente as fotos</span>
+                  </div>
+                  {restoreContentType === 'photos' && <Check size={16} className="backup-card-check" />}
+                </button>
+              </div>
             </div>
 
-            <div className="modal-actions">
+            {/* 2. Seleção de Períodos / Medições do Arquivo */}
+            <div className="restore-step-section">
+              <div className="page-card-header-row" style={{ marginBottom: 6 }}>
+                <label className="field-label" style={{ margin: 0 }}>
+                  2. Medições do Arquivo:
+                </label>
+                {pendingBackup.campaigns.length > 1 && (
+                  <button
+                    type="button"
+                    className="btn-ghost-sm"
+                    onClick={activeRestoreIds.length === pendingBackup.campaigns.length ? selectNoneRestore : selectAllRestore}
+                  >
+                    {activeRestoreIds.length === pendingBackup.campaigns.length ? 'Desmarcar todos' : 'Marcar todos'}
+                  </button>
+                )}
+              </div>
+
+              {pendingBackup.campaigns.length === 0 ? (
+                <p className="text-dim text-sm">Nenhuma medição encontrada no arquivo.</p>
+              ) : (
+                <div className="backup-campaign-list" style={{ maxHeight: 180 }}>
+                  {pendingBackup.campaigns.map((c: Campaign) => {
+                    if (!c.id) return null;
+                    const selected = activeRestoreIds.includes(c.id);
+                    const recordCount = pendingBackup.records.filter((r) => r.campaignId === c.id).length;
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        className={`backup-campaign-item ${selected ? 'selected' : ''}`}
+                        onClick={() => toggleRestoreCampaign(c.id!)}
+                      >
+                        {selected ? <CheckSquare size={18} className="text-cyan" /> : <Square size={18} />}
+                        <div className="backup-campaign-item-label">
+                          <strong>{campaignLabel(c.name, c.month, c.year)}</strong>
+                          <span className="backup-campaign-item-sub">
+                            {recordCount} registros {c.leiturista ? `· Leiturista: ${c.leiturista}` : ''}
+                          </span>
+                        </div>
+                        <Calendar size={15} className="backup-item-cal" />
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* 3. Modo de Restauração */}
+            <div className="restore-step-section">
+              <label className="field-label">3. Modo de Aplicação:</label>
+
+              <div className="restore-mode-picker">
+                <label className={`restore-mode-option ${restoreMode === 'replace' ? 'active' : ''}`}>
+                  <input
+                    type="radio"
+                    name="restoreMode"
+                    value="replace"
+                    checked={restoreMode === 'replace'}
+                    onChange={() => setRestoreMode('replace')}
+                  />
+                  <div className="restore-mode-desc">
+                    <strong>Substituir tudo</strong>
+                    <span>Apaga os dados atuais do aparelho e coloca os períodos selecionados do arquivo.</span>
+                  </div>
+                </label>
+
+                <label className={`restore-mode-option ${restoreMode === 'merge' ? 'active' : ''}`}>
+                  <input
+                    type="radio"
+                    name="restoreMode"
+                    value="merge"
+                    checked={restoreMode === 'merge'}
+                    onChange={() => setRestoreMode('merge')}
+                  />
+                  <div className="restore-mode-desc">
+                    <strong>Mesclar / Adicionar</strong>
+                    <span>Mantém suas medições locais e adiciona/atualiza registros a partir do arquivo.</span>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <div className="modal-actions" style={{ marginTop: 16 }}>
               <button
                 className="btn-ghost"
                 onClick={() => setPendingBackup(null)}
@@ -417,14 +585,14 @@ export default function DataScreen({ go, toast }: Props) {
               <button
                 className={`btn-primary ${restoreMode === 'replace' ? 'btn-danger' : ''}`}
                 onClick={() => void confirmRestore()}
-                disabled={restoreBusy}
+                disabled={restoreBusy || (pendingBackup.campaigns.length > 0 && activeRestoreIds.length === 0)}
               >
                 {restoreBusy ? <RefreshCw size={16} className="spin" /> : <Upload size={16} />}
                 {restoreBusy
                   ? 'Restaurando…'
                   : restoreMode === 'replace'
-                  ? 'Substituir Tudo'
-                  : 'Mesclar Dados'}
+                  ? `Substituir (${activeRestoreIds.length} ${activeRestoreIds.length === 1 ? 'mês' : 'meses'})`
+                  : `Mesclar (${activeRestoreIds.length} ${activeRestoreIds.length === 1 ? 'mês' : 'meses'})`}
               </button>
             </div>
           </div>

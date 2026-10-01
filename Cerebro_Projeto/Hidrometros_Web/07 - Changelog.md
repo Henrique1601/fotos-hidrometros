@@ -7,10 +7,11 @@
 - **Retomada Precisa da Medição** (`Collect.tsx` + `Home.tsx` + `App.tsx` + `db.ts`):
   - Ao clicar em "Continuar", o app restaura exatamente a torre, andar e apartamento onde a medição foi interrompida, sem resetar para o primeiro andar incompleto.
   - Persistência contínua de `lastTower`, `lastFloor` e `lastApt` no banco de dados da campanha.
-- **Sistema Flexível de Backup & Restauração** (`src/lib/backup.ts` + `src/screens/DataScreen.tsx` + `src/styles.css`):
-  - **Tipo de Conteúdo**: Completo (Fotos + Índices), Apenas Índices (Leve) e Apenas Fotos.
-  - **Seleção de Período**: Seleção individual ou em lote de medições por mês/ano.
-  - **Modos de Restauração**: Escolha entre "Substituir Tudo" (limpeza total) ou "Mesclar / Adicionar" (preserva dados locais e atualiza registros).
+- **Sistema Flexível de Backup & Restauração** (`src/lib/backup.ts` + `src/screens/DataScreen.tsx` + `src/styles.css` + `backup.test.ts` + `e2e/app.spec.ts`):
+  - **Exportação Flexível**: Completo (Fotos + Índices), Apenas Índices (Leve) e Apenas Fotos, com seleção de períodos.
+  - **Restauração com Filtros**: Ao importar um arquivo `.json` de backup, o usuário pode selecionar quais campanhas/meses do arquivo deseja restaurar e escolher o tipo de conteúdo a ser importado (Completo, Apenas Índices ou Apenas Fotos).
+  - **Modos de Restauração**: Escolha entre "Substituir Tudo" (limpeza da base e inserção dos selecionados) ou "Mesclar / Adicionar" (preserva dados locais e atualiza/adiciona seletivamente apenas índices ou fotos).
+  - **Testes**: Cobertura completa de testes unitários para todos os fluxos de restauração com `fake-indexeddb` e teste E2E com Playwright.
 - **Bip Sonoro & Vibração no Disparo** (`src/lib/audioHaptics.ts` + `CameraOverlay.tsx` + `Home.tsx`):
   - Síntese rápida de áudio Web Audio (clique de obturador) + vibração háptica em disparos normais e no modo burst.
   - Botão de alternância rápida de Som no HUD da câmera e na tela inicial.

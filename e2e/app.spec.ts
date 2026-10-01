@@ -59,6 +59,8 @@ test('backup baixa arquivo com dados e restore restaura', async ({ page }) => {
   expect(data.records.length).toBeGreaterThanOrEqual(1);
 
   await page.setInputFiles('.page-card input[type=file]', file!);
+  await expect(page.locator('.restore-summary-box')).toBeVisible();
+  await page.locator('.modal-panel').getByRole('button', { name: /Apenas Índices/ }).click();
   await page.locator('.modal-panel').getByRole('button', { name: /Substituir|Restaurar/ }).click();
   await expect(page.getByText(/Backup restaurado/)).toBeVisible();
 });

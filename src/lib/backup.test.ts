@@ -1,6 +1,14 @@
-import { describe, expect, it } from 'vitest';
-import { BACKUP_APP, buildBackup, createBackupFileName, deserializePhoto, isValidBackup } from './backup';
-import type { Campaign } from '../db/db';
+import 'fake-indexeddb/auto';
+import { describe, expect, it, beforeEach } from 'vitest';
+import {
+  BACKUP_APP,
+  buildBackup,
+  createBackupFileName,
+  deserializePhoto,
+  isValidBackup,
+  restoreBackup,
+} from './backup';
+import { db, Campaign } from '../db/db';
 
 const campaigns: Campaign[] = [
   {
@@ -29,6 +37,11 @@ const records = [
 ];
 
 describe('backup', () => {
+  beforeEach(async () => {
+    await db.campaigns.clear();
+    await db.records.clear();
+  });
+
   it('buildBackup serializa sem fotos quando ausentes', () => {
     const file = buildBackup(campaigns, records);
     expect(file.app).toBe(BACKUP_APP);
@@ -77,4 +90,148 @@ describe('backup', () => {
     const fnMulti = createBackupFileName(multiCamp, 'all');
     expect(fnMulti).toContain('2medicoes');
   });
+
+  it('restoreBackup com selectedCampaignIds restaura apenas campanhas escolhidas', async () => {
+    const testFile = {
+      app: BACKUP_APP,
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      campaigns: [
+        { id: 10, name: 'Julho', month: 7, year: 2026, createdAt: 1, updatedAt: 1, status: 'done' as const },
+        { id: 20, name: 'Agosto', month: 8, year: 2026, createdAt: 2, updatedAt: 2, status: 'done' as const },
+      ],
+      records: [
+        { id: 1, campaignId: 10, towerId: 'A', floor: 4, unit: 6, side: 'left' as const, aptCode: '46', photo: null, index: 100, capturedAt: 1, indexedAt: 1, updatedAt: 1 },
+        { id: 2, campaignId: 20, towerId: 'A', floor: 4, unit: 6, side: 'left' as const, aptCode: '46', photo: null, index: 120, capturedAt: 2, indexedAt: 2, updatedAt: 2 },
+      ],
+    };
+
+    const res = await restoreBackup(testFile, {
+      mode: 'replace',
+      selectedCampaignIds: [20],
+    });
+
+    expect(res.campaigns).toBe(1);
+    expect(res.records).toBe(1);
+
+    const savedCamps = await db.campaigns.toArray();
+    expect(savedCamps).toHaveLength(1);
+    expect(savedCamps[0].month).toBe(8);
+
+    const savedRecs = await db.records.toArray();
+    expect(savedRecs).toHaveLength(1);
+    expect(savedRecs[0].index).toBe(120);
+  });
+
+  it('restoreBackup com contentType: indices no merge preserva foto existente', async () => {
+    // Insere campanha e registro local com foto fictícia
+    const campId = await db.campaigns.add({
+      name: 'Julho',
+      month: 7,
+      year: 2026,
+      createdAt: 1,
+      updatedAt: 1,
+      status: 'collecting',
+    });
+    const fakePhotoBlob = new Blob(['foto-original'], { type: 'image/jpeg' });
+    await db.records.add({
+      campaignId: campId,
+      towerId: 'A',
+      floor: 4,
+      unit: 6,
+      side: 'left',
+      aptCode: '46',
+      photo: fakePhotoBlob,
+      index: null,
+      capturedAt: 100,
+      indexedAt: null,
+      updatedAt: 100,
+    });
+
+    // Backup contém apenas índice
+    const backupData = {
+      app: BACKUP_APP,
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      campaigns: [
+        { id: 1, name: 'Julho', month: 7, year: 2026, createdAt: 1, updatedAt: 1, status: 'done' as const },
+      ],
+      records: [
+        { id: 1, campaignId: 1, towerId: 'A', floor: 4, unit: 6, side: 'left' as const, aptCode: '46', photo: null, index: 350.5, capturedAt: null, indexedAt: 200, updatedAt: 200 },
+      ],
+    };
+
+    await restoreBackup(backupData, {
+      mode: 'merge',
+      contentType: 'indices',
+    });
+
+    const recs = await db.records.toArray();
+    expect(recs).toHaveLength(1);
+    expect(recs[0].index).toBe(350.5);
+    expect(recs[0].photo).not.toBeNull();
+    expect(recs[0].capturedAt).toBe(100);
+  });
+
+  it('restoreBackup com contentType: photos no merge preserva indice existente', async () => {
+    const campId = await db.campaigns.add({
+      name: 'Julho',
+      month: 7,
+      year: 2026,
+      createdAt: 1,
+      updatedAt: 1,
+      status: 'indexing',
+    });
+    await db.records.add({
+      campaignId: campId,
+      towerId: 'A',
+      floor: 4,
+      unit: 6,
+      side: 'left',
+      aptCode: '46',
+      photo: null,
+      index: 890,
+      capturedAt: null,
+      indexedAt: 50,
+      updatedAt: 50,
+    });
+
+    // Backup com foto em base64
+    const backupData = {
+      app: BACKUP_APP,
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      campaigns: [
+        { id: 1, name: 'Julho', month: 7, year: 2026, createdAt: 1, updatedAt: 1, status: 'done' as const },
+      ],
+      records: [
+        {
+          id: 1,
+          campaignId: 1,
+          towerId: 'A',
+          floor: 4,
+          unit: 6,
+          side: 'left' as const,
+          aptCode: '46',
+          photo: { type: 'image/jpeg', data: btoa('foto-backup') },
+          index: null,
+          capturedAt: 150,
+          indexedAt: null,
+          updatedAt: 150,
+        },
+      ],
+    };
+
+    await restoreBackup(backupData, {
+      mode: 'merge',
+      contentType: 'photos',
+    });
+
+    const recs = await db.records.toArray();
+    expect(recs).toHaveLength(1);
+    expect(recs[0].index).toBe(890);
+    expect(recs[0].photo).not.toBeNull();
+    expect(recs[0].capturedAt).toBe(150);
+  });
 });
+
