@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import gsap from 'gsap';
-import { BarChart3, Camera, Clock, Cloud, Droplets, FolderDown, HardDrive, Keyboard, ListOrdered, Pencil, Play, Plus, Search, Trash2, X } from 'lucide-react';
-import { db } from '../db/db';
+import { BarChart3, Camera, Clock, Cloud, Download, Droplets, FolderDown, HardDrive, Keyboard, ListOrdered, Lock, Pencil, Play, Plus, Search, Trash2, Unlock, X } from 'lucide-react';
+import { db, Campaign } from '../db/db';
 import { deleteCampaign, updateCampaign, cleanOrphanAndDuplicateRecords } from '../db/records';
+import { usePwaInstall } from '../hooks/usePwaInstall';
+import { useCloudStatus } from '../hooks/useCloudStatus';
 import { CONDO_TOTAL_UNITS, isValidCondoUnit } from '../lib/towers';
 import { campaignLabel, monthName } from '../lib/utils';
 import { calculateMeasurementStats, formatDuration, formatPace } from '../lib/measurementStats';
@@ -25,17 +27,21 @@ export default function Home({ go, toast }: Props) {
   const campaigns =
     useLiveQuery(() => db.campaigns.orderBy('createdAt').reverse().toArray(), []) ?? [];
   const records = useLiveQuery(() => db.records.toArray(), []) ?? [];
+  const pwa = usePwaInstall();
+  const cloud = useCloudStatus(campaigns, records);
+  const [pwaHelpOpen, setPwaHelpOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmCfg, setConfirmCfg] = useState<{
     title: string;
     message: string;
+    confirmLabel?: string;
     danger?: boolean;
     onConfirm: () => void;
   } | null>(null);
   const [search, setSearch] = useState('');
   const [cameraModalOpen, setCameraModalOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const [editCampaign, setEditCampaign] = useState<{ id: number; name: string; month: number; year: number; leiturista?: string } | null>(null);
+  const [editCampaign, setEditCampaign] = useState<{ id: number; name: string; month: number; year: number; leiturista?: string; status: 'collecting' | 'done' } | null>(null);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
   useEffect(() => {
@@ -209,8 +215,15 @@ export default function Home({ go, toast }: Props) {
     setConfirmOpen(true);
   };
 
-  const openEdit = (c: { id: number; name?: string; month: number; year: number; leiturista?: string }) => {
-    setEditCampaign({ id: c.id, name: c.name ?? '', month: c.month, year: c.year, leiturista: c.leiturista ?? '' });
+  const openEdit = (c: Campaign) => {
+    setEditCampaign({
+      id: c.id!,
+      name: c.name ?? '',
+      month: c.month,
+      year: c.year,
+      leiturista: c.leiturista ?? '',
+      status: c.status === 'done' ? 'done' : 'collecting',
+    });
     setEditOpen(true);
   };
 
@@ -221,9 +234,46 @@ export default function Home({ go, toast }: Props) {
       month: editCampaign.month,
       year: editCampaign.year,
       leiturista: editCampaign.leiturista?.trim() || undefined,
+      status: editCampaign.status,
     });
     toast('Medição atualizada.');
     setEditOpen(false);
+  };
+
+  const handleToggleLock = (c: Campaign) => {
+    if (!c.id) return;
+    const label = campaignLabel(c.name, c.month, c.year);
+    if (c.status === 'done') {
+      setConfirmCfg({
+        title: 'Reabrir medição?',
+        message: `Deseja reabrir a medição "${label}" para edição? Novas fotos e alterações nos índices serão permitidas.`,
+        confirmLabel: 'Reabrir',
+        onConfirm: async () => {
+          await updateCampaign(c.id!, { status: 'collecting' });
+          toast('Medição reaberta para edição.');
+        },
+      });
+    } else {
+      setConfirmCfg({
+        title: 'Concluir medição?',
+        message: `Deseja marcar a medição "${label}" como Concluída? As fotos e índices ficarão protegidos contra alterações acidentais.`,
+        confirmLabel: 'Concluir',
+        onConfirm: async () => {
+          await updateCampaign(c.id!, { status: 'done' });
+          toast('Medição concluída e bloqueada.');
+        },
+      });
+    }
+    setConfirmOpen(true);
+  };
+
+  const handleInstallClick = async () => {
+    const outcome = await pwa.triggerInstall();
+    if (outcome === 'accepted') {
+      toast('Instalação iniciada!');
+    } else if (outcome === 'manual') {
+      setPwaHelpOpen(true);
+    }
   };
 
   return (
@@ -264,12 +314,13 @@ export default function Home({ go, toast }: Props) {
             <HardDrive size={18} />
           </button>
           <button
-            className="icon-btn glass"
+            className={`icon-btn glass cloud-btn cloud-status-${cloud.status}`}
             onClick={() => go({ name: 'sync' })}
-            aria-label="Sincronização (S)"
-            title="Sincronização Nuvem (S)"
+            aria-label={`Sincronização Nuvem (${cloud.tooltip})`}
+            title={cloud.tooltip}
           >
             <Cloud size={18} />
+            <span className={`cloud-dot dot-${cloud.status}`} />
           </button>
         </div>
       </header>
@@ -280,6 +331,28 @@ export default function Home({ go, toast }: Props) {
       >
         <Plus size={20} /> Nova medição
       </button>
+
+      {pwa.canInstall && (
+        <div className="pwa-install-card gs-home-item">
+          <div className="pwa-install-left">
+            <span className="pwa-install-icon">
+              <Download size={18} />
+            </span>
+            <div className="pwa-install-text">
+              <strong className="pwa-install-title">Instalar FotoHidro</strong>
+              <p className="pwa-install-desc">Acesso rápido e offline na tela inicial</p>
+            </div>
+          </div>
+          <div className="pwa-install-actions">
+            <button className="btn-primary pwa-install-btn" onClick={() => void handleInstallClick()}>
+              Instalar
+            </button>
+            <button className="icon-btn pwa-install-close" onClick={pwa.dismiss} aria-label="Dispensar aviso">
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+      )}
 
       {campaigns.length > 0 && (
         <div className="search-bar gs-home-item">
@@ -319,7 +392,14 @@ export default function Home({ go, toast }: Props) {
             <GlassCard key={c.id} className="campaign-card gs-home-item">
               <div className="campaign-head">
                 <div>
-                  <h2 className="campaign-name">{label}</h2>
+                  <div className="campaign-title-row">
+                    <h2 className="campaign-name">{label}</h2>
+                    {c.status === 'done' && (
+                      <span className="campaign-status-badge done" title="Medição concluída e bloqueada contra alterações">
+                        <Lock size={11} /> Concluída
+                      </span>
+                    )}
+                  </div>
                   <p className="campaign-meta">
                     <span>{photos}/{TOTAL_UNITS} fotos · {idx} índices</span>
                     {stats.activeTimeMs > 0 && (
@@ -331,8 +411,16 @@ export default function Home({ go, toast }: Props) {
                 </div>
                 <div className="campaign-head-actions">
                   <button
+                    className={`icon-btn${c.status === 'done' ? ' is-locked' : ''}`}
+                    onClick={() => handleToggleLock(c)}
+                    aria-label={c.status === 'done' ? 'Reabrir medição' : 'Concluir medição'}
+                    title={c.status === 'done' ? 'Medição concluída e bloqueada. Clique para reabrir.' : 'Concluir e bloquear medição'}
+                  >
+                    {c.status === 'done' ? <Lock size={16} style={{ color: 'var(--amber)' }} /> : <Unlock size={16} style={{ color: 'var(--text-dim)' }} />}
+                  </button>
+                  <button
                     className="icon-btn"
-                    onClick={() => openEdit({ id: c.id!, name: c.name, month: c.month, year: c.year, leiturista: c.leiturista })}
+                    onClick={() => openEdit(c)}
                     aria-label="Editar medição"
                   >
                     <Pencil size={16} />
@@ -384,7 +472,7 @@ export default function Home({ go, toast }: Props) {
         title={confirmCfg?.title ?? ''}
         message={confirmCfg?.message ?? ''}
         danger={confirmCfg?.danger}
-        confirmLabel={confirmCfg?.danger ? 'Excluir' : 'Confirmar'}
+        confirmLabel={confirmCfg?.confirmLabel ?? (confirmCfg?.danger ? 'Excluir' : 'Confirmar')}
         onConfirm={() => {
           confirmCfg?.onConfirm();
           setConfirmOpen(false);
@@ -516,10 +604,62 @@ export default function Home({ go, toast }: Props) {
                 onChange={(e) => setEditCampaign({ ...editCampaign, leiturista: e.target.value })}
               />
             </label>
+            <label className="field-label">
+              Status da medição
+              <select
+                className="modal-input"
+                value={editCampaign.status}
+                onChange={(e) => setEditCampaign({ ...editCampaign, status: e.target.value as 'collecting' | 'done' })}
+              >
+                <option value="collecting">Em andamento (Edição liberada)</option>
+                <option value="done">Concluída (Bloqueada contra alterações)</option>
+              </select>
+            </label>
             <div className="modal-actions">
               <button className="btn-ghost" onClick={() => setEditOpen(false)}>Cancelar</button>
               <button className="btn-primary" onClick={handleSaveEdit}>Salvar</button>
             </div>
+            </div>
+          </GlassCard>
+        </div>
+      )}
+
+      {pwaHelpOpen && (
+        <div className="modal-overlay" onClick={() => setPwaHelpOpen(false)}>
+          <GlassCard className="edit-campaign-modal">
+            <div onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                <h2 className="modal-title" style={{ margin: 0 }}>Como instalar o FotoHidro</h2>
+                <button type="button" className="icon-btn" onClick={() => setPwaHelpOpen(false)} aria-label="Fechar">
+                  <X size={18} />
+                </button>
+              </div>
+              <p style={{ color: 'var(--text-dim)', fontSize: '0.88rem', lineHeight: 1.5, marginBottom: 16 }}>
+                Instale o FotoHidro para ter carregamento instantâneo, funcionamento 100% offline e tela cheia sem a barra do navegador.
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ padding: 12, borderRadius: 10, background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)' }}>
+                  <strong style={{ display: 'block', color: 'var(--cyan)', fontSize: '0.86rem', marginBottom: 4 }}>
+                    No iPhone / iPad (Safari):
+                  </strong>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text)' }}>
+                    Toque no botão de <strong>Compartilhar</strong> (ícone com quadrado e seta para cima) e selecione <strong>Adicionar à Tela de Início</strong>.
+                  </span>
+                </div>
+                <div style={{ padding: 12, borderRadius: 10, background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)' }}>
+                  <strong style={{ display: 'block', color: 'var(--teal)', fontSize: '0.86rem', marginBottom: 4 }}>
+                    No Android / Chrome / Edge:
+                  </strong>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text)' }}>
+                    Abra o menu do navegador (três pontinhos no topo) e toque em <strong>Instalar aplicativo</strong> ou <strong>Adicionar à tela inicial</strong>.
+                  </span>
+                </div>
+              </div>
+              <div className="modal-actions" style={{ marginTop: 20 }}>
+                <button className="btn-primary" style={{ width: '100%' }} onClick={() => setPwaHelpOpen(false)}>
+                  Entendi
+                </button>
+              </div>
             </div>
           </GlassCard>
         </div>

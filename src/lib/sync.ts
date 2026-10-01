@@ -141,7 +141,26 @@ export interface SyncStats {
   records: number;
 }
 
-export async function pushAll(): Promise<SyncStats> {
+export const LAST_SYNC_KEY = 'foto-hidro:last-sync-at';
+
+export function getLastSyncAt(): number {
+  try {
+    const v = localStorage.getItem(LAST_SYNC_KEY);
+    return v ? parseInt(v, 10) : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export function setLastSyncAt(ts: number = Date.now()): void {
+  try {
+    localStorage.setItem(LAST_SYNC_KEY, String(ts));
+  } catch {
+    // Ignore localStorage errors
+  }
+}
+
+export async function pushAll(onProgress?: (done: number, total: number) => void): Promise<SyncStats> {
   const sb = getSupabase();
   if (!sb) throw new Error('Supabase não configurado.');
   const session = await getSession();
@@ -169,42 +188,48 @@ export async function pushAll(): Promise<SyncStats> {
     if (error) throw new Error(`Erro ao enviar campanhas: ${error.message}`);
   }
 
-  const photos = new Map<number, string | null>();
-  for (const r of records) {
-    photos.set(r.id!, r.photo ? await blobToBase64(r.photo) : null);
-  }
+  // Envia registros em lotes de 25 com streaming para economizar memória em celulares antigos
+  const BATCH_SIZE = 25;
+  const total = records.length;
+  let processed = 0;
 
-  const recRows: RemoteRecord[] = records.map((r) => ({
-    ...toRemoteRecord(r),
-    photo_base64: photos.get(r.id!) ?? null,
-    photo_type: r.photo?.type ?? null,
-  }));
+  for (let i = 0; i < total; i += BATCH_SIZE) {
+    const slice = records.slice(i, i + BATCH_SIZE);
+    const batch: RemoteRecord[] = [];
 
-  for (let i = 0; i < recRows.length; i += 50) {
-    const batch = recRows.slice(i, i + 50);
+    for (const r of slice) {
+      let b64: string | null = null;
+      if (r.photo) {
+        b64 = await blobToBase64(r.photo);
+      }
+      batch.push({
+        ...toRemoteRecord(r),
+        photo_base64: b64,
+        photo_type: r.photo?.type ?? null,
+      });
+    }
+
     const { error } = await sb.from('records').upsert(batch);
     if (error) throw new Error(`Erro ao enviar registros: ${error.message}`);
+
+    processed += slice.length;
+    onProgress?.(processed, total);
   }
 
-  return { campaigns: campaigns.length, records: records.length };
+  return { campaigns: campaigns.length, records: total };
 }
 
-export async function pullAll(): Promise<SyncStats> {
+export async function pullAll(onProgress?: (done: number, total: number) => void): Promise<SyncStats> {
   const sb = getSupabase();
   if (!sb) throw new Error('Supabase não configurado.');
   const session = await getSession();
   if (!session) throw new Error('Faça login antes de sincronizar.');
 
-  const [campRes, recRes] = await Promise.all([
-    sb.from('campaigns').select('*').limit(1000),
-    sb.from('records').select('*').limit(5000),
-  ]);
+  // Baixa campanhas
+  const campRes = await sb.from('campaigns').select('*').limit(200);
   if (campRes.error) throw new Error(`Erro ao baixar campanhas: ${campRes.error.message}`);
-  if (recRes.error) throw new Error(`Erro ao baixar registros: ${recRes.error.message}`);
 
   const localCamps = await db.campaigns.toArray();
-  const localRecs = await db.records.toArray();
-
   let campCount = 0;
   for (const row of campRes.data as RemoteCampaign[]) {
     const local = localCamps.find((c) => c.id === row.client_id);
@@ -226,8 +251,30 @@ export async function pullAll(): Promise<SyncStats> {
     }
   }
 
+  // Baixa registros com paginação progressiva (.range) eliminando o limite fixo de 5000
+  let allRemoteRecords: RemoteRecord[] = [];
+  const PAGE_SIZE = 1000;
+  let from = 0;
+
+  while (true) {
+    const { data, error } = await sb
+      .from('records')
+      .select('*')
+      .range(from, from + PAGE_SIZE - 1);
+    if (error) throw new Error(`Erro ao baixar registros: ${error.message}`);
+    if (!data || data.length === 0) break;
+
+    allRemoteRecords = allRemoteRecords.concat(data as RemoteRecord[]);
+    onProgress?.(allRemoteRecords.length, allRemoteRecords.length);
+
+    if (data.length < PAGE_SIZE) break;
+    from += PAGE_SIZE;
+  }
+
+  const localRecs = await db.records.toArray();
   let recCount = 0;
-  for (const row of recRes.data as RemoteRecord[]) {
+
+  for (const row of allRemoteRecords) {
     const local = localRecs.find(
       (r) =>
         r.campaignId === row.campaign_client_id &&
@@ -248,11 +295,14 @@ export async function pullAll(): Promise<SyncStats> {
   return { campaigns: campCount, records: recCount };
 }
 
-export async function syncAll(): Promise<SyncStats> {
-  const pushed = await pushAll();
-  const pulled = await pullAll();
+export async function syncAll(
+  onProgress?: (info: { stage: 'push' | 'pull'; done: number; total: number }) => void,
+): Promise<SyncStats> {
+  const pushed = await pushAll((done, total) => onProgress?.({ stage: 'push', done, total }));
+  const pulled = await pullAll((done, total) => onProgress?.({ stage: 'pull', done, total }));
   if (pulled.campaigns > 0 || pulled.records > 0) {
-    await pushAll();
+    await pushAll((done, total) => onProgress?.({ stage: 'push', done, total }));
   }
+  setLastSyncAt();
   return { campaigns: pushed.campaigns + pulled.campaigns, records: pushed.records + pulled.records };
 }

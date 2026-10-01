@@ -12,6 +12,7 @@ import {
   Clock,
   ImageOff,
   Keyboard,
+  Lock,
   Maximize2,
   Pause,
   Play,
@@ -23,7 +24,7 @@ import {
   X,
 } from 'lucide-react';
 import { db, MeterRecord } from '../db/db';
-import { upsertRecord } from '../db/records';
+import { updateCampaign, upsertRecord } from '../db/records';
 import { floorSequence, towerById, UnitRef } from '../lib/towers';
 import { campaignLabel, formatIndex, pad2, parseIndex, sideLabel } from '../lib/utils';
 import { mean, stddev, validateIndex } from '../lib/validate';
@@ -33,6 +34,7 @@ import { useBgOcr } from '../lib/bgOcr';
 import { selectPreviousCampaign } from '../lib/consumption';
 import { shareVoucher } from '../lib/voucher';
 import GlassCard from '../components/GlassCard';
+import ConfirmModal from '../components/ConfirmModal';
 import ShortcutsModal from '../components/ShortcutsModal';
 import { usePhotoUrl } from '../hooks/usePhotoUrl';
 import { Screen } from '../nav';
@@ -72,10 +74,12 @@ export default function Indices({ campaignId, go, toast }: Props) {
   const [lastSaved, setLastSaved] = useState<{ aptCode: string; prevIndex: number | null; prevRaw: string } | null>(null);
   const [zoomModal, setZoomModal] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [unlockModalOpen, setUnlockModalOpen] = useState(false);
   const bgOcr = useBgOcr(campaignId);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const campaign = useLiveQuery(() => db.campaigns.get(campaignId), [campaignId]);
+  const isLocked = campaign?.status === 'done';
   const tower = useMemo(() => towerById(towerId), [towerId]);
   const records =
     useLiveQuery(() => db.records.where('campaignId').equals(campaignId).toArray(), [campaignId]) ?? [];
@@ -259,6 +263,10 @@ export default function Indices({ campaignId, go, toast }: Props) {
 
   const save = useCallback(
     async (u: UnitRef, raw: string): Promise<boolean> => {
+      if (isLocked) {
+        toast('Medição concluída e bloqueada. Reabra para editar.');
+        return false;
+      }
       try {
         const parsed = parseIndex(raw);
         if (parsed === null) {
@@ -292,10 +300,14 @@ export default function Indices({ campaignId, go, toast }: Props) {
         return false;
       }
     },
-    [campaignId, towerId, towerRecords, recordByApt, prevIdx, toast],
+    [isLocked, campaignId, towerId, towerRecords, recordByApt, prevIdx, toast],
   );
 
   const handleUndo = useCallback(async () => {
+    if (isLocked) {
+      toast('Medição concluída e bloqueada. Reabra para editar.');
+      return;
+    }
     if (!lastSaved || !apt || lastSaved.aptCode !== apt.aptCode) return;
     const rec = recordByApt.get(apt.aptCode);
     if (!rec) return;
@@ -314,7 +326,7 @@ export default function Indices({ campaignId, go, toast }: Props) {
     setInvalid(false);
     setLastSaved(null);
     toast('Índice desfeito.');
-  }, [lastSaved, apt, campaignId, towerId, recordByApt, toast]);
+  }, [isLocked, lastSaved, apt, campaignId, towerId, recordByApt, toast]);
 
   const canGo = useCallback((): boolean => {
     if (!value.trim()) return true;
@@ -400,6 +412,10 @@ export default function Indices({ campaignId, go, toast }: Props) {
   }, [apt, campaign, recordByApt, towerId, prevIdx, value, toast]);
 
   const handleReadPhoto = async () => {
+    if (isLocked) {
+      toast('Medição concluída e bloqueada. Reabra para editar.');
+      return;
+    }
     if (!apt || ocrBusy) return;
     const rec = recordByApt.get(apt.aptCode);
     if (!rec?.photo) {
@@ -643,6 +659,18 @@ export default function Indices({ campaignId, go, toast }: Props) {
         </div>
       </header>
 
+      {isLocked && (
+        <div className="campaign-locked-banner gs-home-item">
+          <div className="campaign-locked-info">
+            <Lock size={16} />
+            <span>Medição Concluída (Bloqueada) · Modo somente leitura</span>
+          </div>
+          <button className="btn-ghost btn-sm" onClick={() => setUnlockModalOpen(true)}>
+            Reabrir
+          </button>
+        </div>
+      )}
+
       <div className="chip-row indices-tower-chips">
         {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'].map((id) => (
           <button
@@ -704,7 +732,7 @@ export default function Indices({ campaignId, go, toast }: Props) {
         </form>
       )}
 
-      {pendingPhotosCount > 0 && (
+      {pendingPhotosCount > 0 && !isLocked && (
         <div className="bg-ocr-banner compact">
           <div className="bg-ocr-info">
             <Sparkles size={14} className={`bg-ocr-icon${bgOcr.isRunning ? ' spin' : ''}`} />
@@ -801,7 +829,8 @@ export default function Indices({ campaignId, go, toast }: Props) {
                 className={`iv-input${invalid || liveWarning ? ' iv-input-invalid' : ''}`}
                 inputMode="decimal"
                 autoComplete="off"
-                placeholder="Digite o índice"
+                disabled={isLocked}
+                placeholder={isLocked ? 'Medição concluída (bloqueada)' : 'Digite o índice'}
                 value={value}
                 onChange={(e) => {
                   setValue(e.target.value);
@@ -821,9 +850,9 @@ export default function Indices({ campaignId, go, toast }: Props) {
               <button
                 className="ocr-btn"
                 onClick={() => void handleReadPhoto()}
-                disabled={ocrBusy || !recordByApt.get(apt.aptCode)?.photo}
+                disabled={isLocked || ocrBusy || !recordByApt.get(apt.aptCode)?.photo}
                 aria-label="Ler índice da foto"
-                title="Ler índice da foto com OCR"
+                title={isLocked ? 'Medição bloqueada' : 'Ler índice da foto com OCR'}
               >
                 <ScanText size={18} />
                 {ocrBusy ? 'Lendo…' : 'OCR'}
@@ -998,6 +1027,19 @@ export default function Indices({ campaignId, go, toast }: Props) {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        open={unlockModalOpen}
+        title="Reabrir medição?"
+        message="Deseja reabrir esta medição para edição? Você poderá alterar índices e capturar fotos novamente."
+        confirmLabel="Reabrir"
+        onConfirm={async () => {
+          await updateCampaign(campaignId, { status: 'collecting' });
+          toast('Medição reaberta para edição.');
+          setUnlockModalOpen(false);
+        }}
+        onCancel={() => setUnlockModalOpen(false)}
+      />
 
       <ShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
     </div>

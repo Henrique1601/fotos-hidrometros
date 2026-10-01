@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Camera, Focus, Layers, Minus, Plus, RotateCcw, ScanText, Undo2, Upload, Volume2, VolumeX, X, Zap, ZapOff } from 'lucide-react';
+import { Camera, Focus, Layers, Lock, Minus, Plus, RotateCcw, ScanText, Undo2, Upload, Volume2, VolumeX, X, Zap, ZapOff } from 'lucide-react';
 import {
   ActiveCamera,
   CameraCapabilities,
@@ -22,6 +22,8 @@ interface Props {
   campaignId: number;
   towerId: string;
   apt: UnitRef;
+  initialPhoto?: Blob | null;
+  readOnly?: boolean;
   onPrev?: () => void;
   onSaved: (ocrIndex?: number) => void;
   onClose: () => void;
@@ -30,16 +32,16 @@ interface Props {
 
 type Phase = 'opening' | 'live' | 'preview' | 'error';
 
-export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSaved, onClose, toast }: Props) {
+export default function CameraOverlay({ campaignId, towerId, apt, initialPhoto, readOnly, onPrev, onSaved, onClose, toast }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const camRef = useRef<ActiveCamera | null>(null);
   const startedRef = useRef(false);
   const photoTakenRef = useRef(false);
 
-  const [phase, setPhase] = useState<Phase>('opening');
-  const [preview, setPreview] = useState<string | null>(null);
-  const [blob, setBlob] = useState<Blob | null>(null);
+  const [phase, setPhase] = useState<Phase>(() => (readOnly && initialPhoto ? 'preview' : 'opening'));
+  const [preview, setPreview] = useState<string | null>(() => (readOnly && initialPhoto ? URL.createObjectURL(initialPhoto) : null));
+  const [blob, setBlob] = useState<Blob | null>(() => (readOnly && initialPhoto ? initialPhoto : null));
   const [flash, setFlash] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -116,6 +118,7 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
   }, [torchOn]);
 
   useEffect(() => {
+    if (readOnly) return;
     if (startedRef.current) return;
     startedRef.current = true;
     void start();
@@ -123,9 +126,18 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
       stop();
       startedRef.current = false;
     };
-  }, [start, stop]);
+  }, [readOnly, start, stop]);
 
   useEffect(() => {
+    if (readOnly) {
+      if (initialPhoto) {
+        if (preview) URL.revokeObjectURL(preview);
+        setPreview(URL.createObjectURL(initialPhoto));
+        setBlob(initialPhoto);
+        setPhase('preview');
+      }
+      return;
+    }
     if (preview) {
       URL.revokeObjectURL(preview);
       setPreview(null);
@@ -143,7 +155,7 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
       void start();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [apt.aptCode]);
+  }, [apt.aptCode, readOnly, initialPhoto]);
 
   const downloadWatermarked = useCallback(async (photoBlob: Blob) => {
     try {
@@ -162,7 +174,7 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
   }, [towerId, apt]);
 
   const handleCapture = useCallback(async () => {
-    if (!videoRef.current || saving) return;
+    if (readOnly || !videoRef.current || saving) return;
     try {
       setFlash(true);
       playShutterFeedback();
@@ -341,6 +353,7 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
 
   const handleFile = useCallback(
     async (file: File) => {
+      if (readOnly) return;
       if (burstMode) {
         await upsertRecord({
           campaignId,
@@ -573,12 +586,25 @@ export default function CameraOverlay({ campaignId, towerId, apt, onPrev, onSave
 
       {phase === 'preview' && (
         <div className="cam-actions">
-          <button className="btn-ghost" onClick={handleRetake}>
-            <RotateCcw size={18} /> Refazer
-          </button>
-          <button className="btn-primary" onClick={handleSave}>
-            <Camera size={18} /> {ocr?.value != null ? `Salvar ${formatOcrValue(ocr.value)}` : 'Salvar e próximo'}
-          </button>
+          {readOnly ? (
+            <>
+              <div className="cam-readonly-badge">
+                <Lock size={15} /> Medição Concluída (Bloqueada)
+              </div>
+              <button className="btn-primary" onClick={onClose}>
+                Fechar
+              </button>
+            </>
+          ) : (
+            <>
+              <button className="btn-ghost" onClick={handleRetake}>
+                <RotateCcw size={18} /> Refazer
+              </button>
+              <button className="btn-primary" onClick={handleSave}>
+                <Camera size={18} /> {ocr?.value != null ? `Salvar ${formatOcrValue(ocr.value)}` : 'Salvar e próximo'}
+              </button>
+            </>
+          )}
         </div>
       )}
 

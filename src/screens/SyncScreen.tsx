@@ -77,16 +77,22 @@ export default function SyncScreen({ go, toast }: Props) {
     toast('Sessão encerrada.');
   };
 
+  const [syncProgress, setSyncProgress] = useState<{ stage: 'push' | 'pull'; done: number; total: number } | null>(null);
+
   const handleSync = async () => {
     if (syncBusy || !session) return;
     setSyncBusy(true);
+    setSyncProgress(null);
     try {
-      const s = await syncAll();
+      const s = await syncAll((p) => {
+        setSyncProgress(p);
+      });
       toast(`Sincronizado com a nuvem: ${s.campaigns} medições, ${s.records} registros.`);
     } catch (e) {
       toast((e as Error).message);
     } finally {
       setSyncBusy(false);
+      setSyncProgress(null);
     }
   };
 
@@ -136,7 +142,14 @@ export default function SyncScreen({ go, toast }: Props) {
             </div>
             <div className="page-card-actions">
               <button className="btn-primary btn-full" onClick={() => void handleSync()} disabled={syncBusy}>
-                <Cloud size={16} /> {syncBusy ? 'Sincronizando…' : 'Sincronizar agora'}
+                <Cloud size={16} />
+                {syncBusy
+                  ? syncProgress
+                    ? syncProgress.stage === 'push'
+                      ? `Enviando fotos (${syncProgress.done}/${syncProgress.total})…`
+                      : `Baixando dados (${syncProgress.done})…`
+                    : 'Sincronizando…'
+                  : 'Sincronizar agora'}
               </button>
               <button className="btn-ghost btn-full" onClick={() => void handleLogout()}>
                 <LogOut size={16} /> Sair da conta

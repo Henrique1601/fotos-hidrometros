@@ -6,11 +6,13 @@ import {
   FileSpreadsheet,
   FileText,
   FolderDown,
+  Lock,
   MessageSquare,
   Share2,
+  Unlock,
 } from 'lucide-react';
 import { db, MeterRecord } from '../db/db';
-import { cleanOrphanAndDuplicateRecords } from '../db/records';
+import { cleanOrphanAndDuplicateRecords, updateCampaign } from '../db/records';
 import { TOWERS, towerTotalUnits, isValidCondoUnit } from '../lib/towers';
 import { campaignLabel } from '../lib/utils';
 import { calculateMeasurementStats, formatDuration, formatPace } from '../lib/measurementStats';
@@ -18,6 +20,7 @@ import { buildExcel, exportExcel } from '../lib/exportExcel';
 import { buildPdf, exportPdf } from '../lib/exportPdf';
 import { exportPhotosZip, NamedBlob } from '../lib/exportZip';
 import GlassCard from '../components/GlassCard';
+import ConfirmModal from '../components/ConfirmModal';
 import { Screen } from '../nav';
 
 interface Props {
@@ -33,12 +36,40 @@ export default function Export({ campaignId, go, toast }: Props) {
   const [withPhotos, setWithPhotos] = useState(true);
   const [towerId, setTowerId] = useState<string>('');
   const [watermark, setWatermark] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmCfg, setConfirmCfg] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null);
+
   const campaign = useLiveQuery(() => db.campaigns.get(campaignId), [campaignId]);
   const records =
     useLiveQuery(
       () => db.records.where('campaignId').equals(campaignId).toArray(),
       [campaignId],
     ) ?? [];
+
+  const handleToggleStatus = () => {
+    if (!campaign || !campaign.id) return;
+    const isDone = campaign.status === 'done';
+    if (isDone) {
+      setConfirmCfg({
+        title: 'Reabrir medição?',
+        message: 'Deseja reabrir esta medição para edição? Você poderá capturar fotos e alterar índices novamente.',
+        onConfirm: async () => {
+          await updateCampaign(campaign.id!, { status: 'collecting' });
+          toast('Medição reaberta para edição.');
+        },
+      });
+    } else {
+      setConfirmCfg({
+        title: 'Concluir medição?',
+        message: 'Deseja marcar esta medição como Concluída? As fotos e índices ficarão protegidos contra alterações acidentais.',
+        onConfirm: async () => {
+          await updateCampaign(campaign.id!, { status: 'done' });
+          toast('Medição concluída e bloqueada com sucesso!');
+        },
+      });
+    }
+    setConfirmOpen(true);
+  };
 
   useEffect(() => {
     void cleanOrphanAndDuplicateRecords(campaignId);
@@ -169,9 +200,16 @@ export default function Export({ campaignId, go, toast }: Props) {
           <ArrowLeft size={22} />
         </button>
         <div className="header-center">
-          <h2 className="header-title">
-            {campaign ? campaignLabel(campaign.name, campaign.month, campaign.year) : ''}
-          </h2>
+          <div className="campaign-title-row" style={{ justifyContent: 'center' }}>
+            <h2 className="header-title">
+              {campaign ? campaignLabel(campaign.name, campaign.month, campaign.year) : ''}
+            </h2>
+            {campaign?.status === 'done' && (
+              <span className="campaign-status-badge done" title="Medição concluída e bloqueada">
+                <Lock size={12} /> Concluída
+              </span>
+            )}
+          </div>
           <span className="header-sub">
             Resumo e exportação {campaign?.leiturista ? `· Leiturista: ${campaign.leiturista}` : ''}
           </span>
@@ -316,6 +354,14 @@ export default function Export({ campaignId, go, toast }: Props) {
             <Share2 size={16} />
             {busy === 'share' ? 'Compartilhando…' : 'Compartilhar'}
           </button>
+          <button
+            className={`btn-ghost btn-share btn-conclude${campaign?.status === 'done' ? ' is-done' : ''}`}
+            onClick={handleToggleStatus}
+            aria-label={campaign?.status === 'done' ? 'Reabrir medição' : 'Concluir medição'}
+          >
+            {campaign?.status === 'done' ? <Unlock size={16} /> : <Lock size={16} />}
+            {campaign?.status === 'done' ? 'Reabrir Medição' : 'Concluir Medição'}
+          </button>
         </div>
 
         <p className="hint">
@@ -323,6 +369,18 @@ export default function Export({ campaignId, go, toast }: Props) {
           arquivos são salvos na pasta de downloads do seu dispositivo.
         </p>
       </GlassCard>
+
+      <ConfirmModal
+        open={confirmOpen}
+        title={confirmCfg?.title ?? ''}
+        message={confirmCfg?.message ?? ''}
+        confirmLabel={campaign?.status === 'done' ? 'Reabrir' : 'Concluir'}
+        onConfirm={() => {
+          confirmCfg?.onConfirm();
+          setConfirmOpen(false);
+        }}
+        onCancel={() => setConfirmOpen(false)}
+      />
     </div>
   );
 }

@@ -77,3 +77,27 @@ test('índice inválido mostra aviso e não bloqueia', async ({ page }) => {
   await page.keyboard.press('Enter');
   await expect(page.locator('.iv-filled')).toBeVisible();
 });
+
+test('bloqueio de medição concluída protege fotos e índices', async ({ page }) => {
+  await criarCampanhaComFoto(page);
+
+  await page.getByRole('button', { name: 'Concluir medição' }).click();
+  await expect(page.getByText('Concluir medição?')).toBeVisible();
+  await page.locator('.modal-panel').getByRole('button', { name: 'Concluir' }).click();
+
+  await expect(page.locator('.campaign-status-badge.done')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Índices' }).click();
+  await expect(page.locator('.campaign-locked-banner')).toBeVisible();
+  await expect(page.locator('#iv-input')).toBeDisabled();
+  await page.getByRole('button', { name: 'Voltar', exact: true }).click();
+
+  await page.getByRole('button', { name: 'Fotos' }).click();
+  await expect(page.locator('.campaign-locked-banner')).toBeVisible();
+
+  await page.locator('.campaign-locked-banner').getByRole('button', { name: 'Reabrir' }).click();
+  await expect(page.getByText('Reabrir medição?')).toBeVisible();
+  await page.locator('.modal-panel').getByRole('button', { name: 'Reabrir' }).click();
+
+  await expect(page.locator('.campaign-locked-banner')).not.toBeVisible();
+});

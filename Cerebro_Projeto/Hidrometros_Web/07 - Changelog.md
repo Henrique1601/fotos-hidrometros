@@ -1,5 +1,38 @@
 # 07 - Changelog
 
+## 2026-10-01 — Indicador de Status Nuvem, Instalação PWA, Bloqueio de Medições Concluídas e Otimização de Sync
+
+### Feito
+
+- **Indicador Dinâmico de Status na Nuvem no Topo** (`src/hooks/useCloudStatus.ts` + `src/screens/Home.tsx` + `src/styles.css`):
+  - Criado o hook `useCloudStatus` que reage em tempo real a alterações nas campanhas/registros locais e no estado de autenticação do Supabase.
+  - Indicador visual colorido integrado no botão Nuvem do cabeçalho da Home com feedback por tooltip:
+    - 🟢 **Verde** (`synced`): banco local 100% sincronizado com a nuvem Supabase.
+    - 🟡 **Âmbar pulsante** (`pending`): alterações locais pendentes de envio para a nuvem.
+    - ⚪ **Cinza** (`offline` / `unconfigured`): nuvem desconectada ou pendente de login.
+- **Botão e Card de Instalação do PWA na Tela Inicial** (`src/hooks/usePwaInstall.ts` + `src/screens/Home.tsx` + `src/styles.css`):
+  - Captura antecipada e global do evento nativo `beforeinstallprompt` sem perda de disparos pré-montagem.
+  - Card estilizado "Instalar FotoHidro" na tela inicial com botão direto de instalação, detecção de modo *standalone* e opção de dispensar.
+  - Modal auxiliar inteligente com instruções passo a passo para instalação no iOS Safari ("Compartilhar ➔ Adicionar à Tela de Início") e Android/Chrome.
+- **Bloqueio de Segurança para Medições Concluídas** (`Collect.tsx` + `Indices.tsx` + `Export.tsx` + `Home.tsx` + `CameraOverlay.tsx`):
+  - Botão e selo de status "Concluída" (`status === 'done'`) nos cards da tela inicial e no cabeçalho do Export.
+  - Diálogos de confirmação explícitos para Concluir ou Reabrir medições.
+  - **Bloqueio na Coleta de Fotos (`Collect.tsx`)**: Banner persistente de medição bloqueada; câmera abre em modo somente leitura para inspeção das fotos já salvas, impedindo novas capturas, substituições ou exclusões acidentais.
+  - **Bloqueio nos Índices (`Indices.tsx`)**: Banner com botão de reabrir; campo de digitação de índice e botões de OCR desabilitados em modo somente leitura.
+  - Seletor de status integrado na edição de campanhas e botão direto de conclusão na tela de Exportação.
+- **Otimização de Performance e Memória no Sync Supabase** (`src/lib/sync.ts` + `src/screens/SyncScreen.tsx`):
+  - **Streaming em Lotes (Push)**: Envio particionado em batches de 25 registros com limpeza de memória intermediária, reduzindo o pico de consumo de RAM de ~800MB para ~15MB.
+  - **Paginação Progressiva (Pull)**: Remoção do gargalo fixo de 5.000 registros com leitura progressiva em `.range()` sem limites.
+  - Indicador numérico em tempo real de registros processados na tela de Sincronização.
+
+### Testes
+
+- `npm run test`: **81/81** testes unitários aprovados (12 arquivos de teste com `cloudAndLock.test.ts`).
+- `npm run test:e2e`: **4/4** testes Playwright E2E aprovados, incluindo novo teste dedicado de bloqueio/desbloqueio de medições.
+- `npm run build`: Typecheck TypeScript (`tsc -b`) e build Vite de produção 100% aprovados.
+
+---
+
 ## 2026-10-01 — Retomada de Navegação, Backup Flexível, Bip/Vibração, Resumo WhatsApp, Filtro de Pendências e Nome do Leiturista
 
 ### Feito

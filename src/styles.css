@@ -3164,4 +3164,212 @@ select.text-input {
   gap: 8px;
 }
 
+/* ---------- Cloud Status Indicator ---------- */
+.cloud-btn {
+  position: relative;
+}
+
+.cloud-dot {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  pointer-events: none;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.cloud-dot.dot-synced {
+  background: #34d399;
+  box-shadow: 0 0 8px #34d399;
+}
+
+.cloud-dot.dot-pending {
+  background: #fbbf24;
+  box-shadow: 0 0 8px #fbbf24;
+  animation: pulse-amber 2s infinite ease-in-out;
+}
+
+.cloud-dot.dot-offline {
+  background: #64748b;
+}
+
+.cloud-dot.dot-unconfigured {
+  background: #475569;
+}
+
+@keyframes pulse-amber {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.3);
+    opacity: 0.7;
+  }
+}
+
+/* ---------- PWA Install Card ---------- */
+.pwa-install-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(94, 234, 212, 0.25);
+  background: rgba(15, 33, 47, 0.75);
+  backdrop-filter: blur(12px);
+  margin-bottom: 14px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.25);
+}
+
+.pwa-install-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.pwa-install-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: rgba(94, 234, 212, 0.12);
+  color: var(--cyan);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.pwa-install-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.pwa-install-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pwa-install-desc {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pwa-install-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.pwa-install-btn {
+  padding: 7px 12px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  border-radius: 10px;
+}
+
+.pwa-install-close {
+  width: 30px;
+  height: 30px;
+  color: var(--text-dim);
+}
+
+.pwa-install-close:hover {
+  color: var(--text);
+}
+
+/* ---------- Campaign Lock & Status Badges ---------- */
+.campaign-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.campaign-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.campaign-status-badge.done {
+  background: rgba(251, 191, 36, 0.15);
+  color: var(--amber);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+.icon-btn.is-locked {
+  background: rgba(251, 191, 36, 0.1);
+  border-color: rgba(251, 191, 36, 0.3);
+}
+
+/* ---------- Locked Campaign Banners ---------- */
+.campaign-locked-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  color: var(--amber);
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.campaign-locked-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-conclude {
+  border-color: rgba(251, 191, 36, 0.4);
+  color: var(--amber);
+}
+
+.btn-conclude:hover {
+  background: rgba(251, 191, 36, 0.12);
+}
+
+.btn-conclude.is-done {
+  border-color: var(--border-strong);
+  color: var(--text-dim);
+}
+
+.cam-readonly-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: rgba(251, 191, 36, 0.2);
+  border: 1px solid rgba(251, 191, 36, 0.4);
+  color: var(--amber);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+
 

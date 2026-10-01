@@ -3,9 +3,9 @@ import type { FormEvent } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
-import { ArrowLeft, ArrowRight, Check, Filter, Keyboard, Loader2, ScanText, Search, Trophy } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Filter, Keyboard, Loader2, Lock, ScanText, Search, Trophy } from 'lucide-react';
 import { db } from '../db/db';
-import { resetRecord } from '../db/records';
+import { resetRecord, updateCampaign } from '../db/records';
 import { batchRecognizeMeters } from '../lib/ocr';
 import { aptCode, floorSequence, SIDE_ORDER, Side, towerById, UnitRef } from '../lib/towers';
 import { campaignLabel, pad2 } from '../lib/utils';
@@ -44,9 +44,11 @@ export default function Collect({
   const [batchProgress, setBatchProgress] = useState({ done: 0, total: 0 });
   const [deleteTarget, setDeleteTarget] = useState<UnitRef | null>(null);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [unlockModalOpen, setUnlockModalOpen] = useState(false);
 
   const initialMountRef = useRef(true);
   const campaign = useLiveQuery(() => db.campaigns.get(campaignId), [campaignId]);
+  const isLocked = campaign?.status === 'done';
   const tower = useMemo(() => towerById(towerId), [towerId]);
   const records =
     useLiveQuery(() => db.records.where('campaignId').equals(campaignId).toArray(), [campaignId]) ?? [];
@@ -190,14 +192,31 @@ export default function Collect({
     }
   };
 
+  const handleAptTap = (a: UnitRef) => {
+    if (isLocked && !photoSet.has(a.aptCode)) {
+      toast('Medição concluída e bloqueada. Reabra a medição para fotografar.');
+      return;
+    }
+    setCamApt(a);
+  };
+
   const handleDeletePhoto = async () => {
     if (!deleteTarget) return;
+    if (isLocked) {
+      toast('Medição concluída e bloqueada contra alterações.');
+      setDeleteTarget(null);
+      return;
+    }
     await resetRecord(campaignId, towerId, deleteTarget.aptCode);
     toast(`Foto do ap ${deleteTarget.aptCode} removida.`);
     setDeleteTarget(null);
   };
 
   const handleBatchOcr = async () => {
+    if (isLocked) {
+      toast('Medição concluída e bloqueada. Reabra para executar OCR.');
+      return;
+    }
     const photosToOcr = towerRecords
       .filter((r) => r.photo && (r.index === null || r.index === undefined))
       .map((r) => ({ aptCode: r.aptCode, photo: r.photo! }));
@@ -313,6 +332,18 @@ export default function Collect({
         </div>
       </header>
 
+      {isLocked && (
+        <div className="campaign-locked-banner gs-home-item">
+          <div className="campaign-locked-info">
+            <Lock size={16} />
+            <span>Medição Concluída (Bloqueada) · Fotos protegidas contra alterações</span>
+          </div>
+          <button className="btn-ghost btn-sm" onClick={() => setUnlockModalOpen(true)}>
+            Reabrir
+          </button>
+        </div>
+      )}
+
       <div className="chip-row">
         {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'].map((id) => (
           <button
@@ -409,8 +440,8 @@ export default function Collect({
                   hasPhoto={photoSet.has(a.aptCode)}
                   hasIndex={indexSet.has(a.aptCode)}
                   photo={towerRecords.find((r) => r.aptCode === a.aptCode)?.photo}
-                  onTap={() => setCamApt(a)}
-                  onDelete={() => setDeleteTarget(a)}
+                  onTap={() => handleAptTap(a)}
+                  onDelete={isLocked ? undefined : () => setDeleteTarget(a)}
                   onHistory={() => go({ name: 'history', towerId, aptCode: a.aptCode })}
                 />
               ))}
@@ -438,8 +469,8 @@ export default function Collect({
                   hasPhoto={photoSet.has(a.aptCode)}
                   hasIndex={indexSet.has(a.aptCode)}
                   photo={towerRecords.find((r) => r.aptCode === a.aptCode)?.photo}
-                  onTap={() => setCamApt(a)}
-                  onDelete={() => setDeleteTarget(a)}
+                  onTap={() => handleAptTap(a)}
+                  onDelete={isLocked ? undefined : () => setDeleteTarget(a)}
                   onHistory={() => go({ name: 'history', towerId, aptCode: a.aptCode })}
                 />
               ))}
@@ -459,6 +490,8 @@ export default function Collect({
           campaignId={campaignId}
           towerId={towerId}
           apt={camApt}
+          initialPhoto={towerRecords.find((r) => r.aptCode === camApt.aptCode)?.photo}
+          readOnly={isLocked}
           onPrev={camPrev ? handlePrev : undefined}
           onSaved={(ocr) => void handleSaved(ocr)}
           onClose={() => setCamApt(null)}
@@ -474,6 +507,19 @@ export default function Collect({
         confirmLabel="Remover"
         onConfirm={() => void handleDeletePhoto()}
         onCancel={() => setDeleteTarget(null)}
+      />
+
+      <ConfirmModal
+        open={unlockModalOpen}
+        title="Reabrir medição?"
+        message="Deseja reabrir esta medição para edição? Você poderá capturar novas fotos e alterar registros novamente."
+        confirmLabel="Reabrir"
+        onConfirm={async () => {
+          await updateCampaign(campaignId, { status: 'collecting' });
+          toast('Medição reaberta para edição.');
+          setUnlockModalOpen(false);
+        }}
+        onCancel={() => setUnlockModalOpen(false)}
       />
 
       <ShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
