@@ -1,19 +1,33 @@
 import { createClient, SupabaseClient, Session } from '@supabase/supabase-js';
-import { db, MeterRecord } from '../db/db';
-import { blobToBase64, deserializePhoto } from './backup';
+import { db, MeterRecord, Campaign } from '../db/db';
+import {
+  BACKUP_APP,
+  BACKUP_VERSION,
+  BackupFile,
+  blobToBase64,
+  deserializePhoto,
+  restoreBackup,
+  RestoreOptions,
+} from './backup';
 
 const url = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.trim();
 const anonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined)?.trim();
 
 export function isSupabaseConfigured(): boolean {
+  if (client) return true;
   return !!url && !!anonKey;
 }
 
 let client: SupabaseClient | null = null;
 
+export function setSupabaseClientForTesting(mock: unknown): void {
+  client = mock as SupabaseClient | null;
+}
+
 export function getSupabase(): SupabaseClient | null {
+  if (client) return client;
   if (!isSupabaseConfigured()) return null;
-  if (!client) client = createClient(url!, anonKey!);
+  client = createClient(url!, anonKey!);
   return client;
 }
 
@@ -305,4 +319,121 @@ export async function syncAll(
   }
   setLastSyncAt();
   return { campaigns: pushed.campaigns + pulled.campaigns, records: pushed.records + pulled.records };
+}
+
+export async function fetchCloudBackupData(
+  onProgress?: (done: number, total: number) => void,
+): Promise<BackupFile> {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase não configurado.');
+  const session = await getSession();
+  if (!session) throw new Error('Faça login antes de baixar o backup da nuvem.');
+
+  const campRes = await sb
+    .from('campaigns')
+    .select('*')
+    .order('client_id', { ascending: true })
+    .limit(500);
+
+  if (campRes.error) {
+    throw new Error(`Erro ao baixar campanhas da nuvem: ${campRes.error.message}`);
+  }
+
+  const remoteCampaigns: Campaign[] = (campRes.data as RemoteCampaign[]).map((row) => ({
+    id: row.client_id,
+    name: row.name ?? undefined,
+    month: row.month,
+    year: row.year,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    status: row.status,
+    leiturista: row.leiturista ?? undefined,
+    lastTower: row.last_tower ?? undefined,
+    lastFloor: row.last_floor ?? undefined,
+    lastApt: row.last_apt ?? undefined,
+  }));
+
+  let allRemoteRecords: RemoteRecord[] = [];
+  const PAGE_SIZE = 1000;
+  let from = 0;
+
+  while (true) {
+    const { data, error } = await sb
+      .from('records')
+      .select('*')
+      .order('campaign_client_id', { ascending: true })
+      .range(from, from + PAGE_SIZE - 1);
+
+    if (error) {
+      throw new Error(`Erro ao baixar registros da nuvem: ${error.message}`);
+    }
+    if (!data || data.length === 0) break;
+
+    allRemoteRecords = allRemoteRecords.concat(data as RemoteRecord[]);
+    onProgress?.(allRemoteRecords.length, allRemoteRecords.length);
+
+    if (data.length < PAGE_SIZE) break;
+    from += PAGE_SIZE;
+  }
+
+  const backup: BackupFile = {
+    app: BACKUP_APP,
+    version: BACKUP_VERSION,
+    type: 'all',
+    exportedAt: new Date().toISOString(),
+    campaigns: remoteCampaigns,
+    records: allRemoteRecords.map((r) => ({
+      campaignId: r.campaign_client_id,
+      towerId: r.tower_id,
+      floor: r.floor,
+      unit: r.unit,
+      side: r.side,
+      aptCode: r.apt_code,
+      index: r.index_value,
+      capturedAt: r.captured_at,
+      indexedAt: r.indexed_at,
+      updatedAt: r.updated_at,
+      photo: r.photo_base64
+        ? {
+            type: r.photo_type ?? 'image/jpeg',
+            data: r.photo_base64,
+          }
+        : null,
+    })),
+  };
+
+  return backup;
+}
+
+export async function downloadCloudBackup(
+  onProgress?: (done: number, total: number) => void,
+): Promise<{ fileName: string; campaigns: number; records: number; blob: Blob }> {
+  const backup = await fetchCloudBackupData(onProgress);
+  const json = JSON.stringify(backup, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const fileName = `foto-hidro-backup-nuvem-${backup.campaigns.length}medicoes-${Date.now()}.json`;
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+  return {
+    fileName,
+    campaigns: backup.campaigns.length,
+    records: backup.records.length,
+    blob,
+  };
+}
+
+export async function restoreFromCloud(
+  optionsOrMode: RestoreOptions | 'replace' | 'merge' = 'merge',
+  onProgress?: (done: number, total: number) => void,
+): Promise<{ campaigns: number; records: number }> {
+  const backup = await fetchCloudBackupData(onProgress);
+  return restoreBackup(backup, optionsOrMode);
 }

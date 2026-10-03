@@ -283,14 +283,14 @@ export default function Home({ go, toast }: Props) {
           <span className="logo-badge">
             <Droplets size={22} />
           </span>
-          <div>
+          <div className="logo-text">
             <h1 className="display-title">FotoHidro</h1>
             <p className="app-subtitle">Leitura e fotos de hidrômetros</p>
           </div>
         </div>
         <div className="home-toolbar">
           <button
-            className="icon-btn glass"
+            className="icon-btn glass home-shortcuts-btn"
             onClick={() => setShortcutsOpen(true)}
             aria-label="Atalhos de teclado (?)"
             title="Atalhos de teclado (?)"

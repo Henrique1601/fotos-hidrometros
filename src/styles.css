@@ -120,21 +120,34 @@ body {
   margin: 2px 0 0;
   color: var(--text-dim);
   font-size: 0.82rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ---------- Header ---------- */
 .app-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
   margin-bottom: 18px;
+  width: 100%;
+  min-width: 0;
 }
 
 .logo-row {
   display: flex;
   align-items: center;
   gap: 12px;
-  flex: 1;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.logo-text {
+  min-width: 0;
+  overflow: hidden;
 }
 
 .logo-badge {
@@ -274,7 +287,74 @@ body {
 /* ---------- Home layout ---------- */
 .home-toolbar {
   display: flex;
+  align-items: center;
   gap: 8px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 480px) {
+  .app-header {
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .logo-row {
+    gap: 8px;
+  }
+
+  .logo-badge {
+    width: 38px;
+    height: 38px;
+    border-radius: 11px;
+  }
+
+  .logo-badge svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .display-title {
+    font-size: 1.25rem;
+    letter-spacing: 0.01em;
+  }
+
+  .app-subtitle {
+    font-size: 0.72rem;
+    max-width: 135px;
+  }
+
+  .home-toolbar {
+    gap: 6px;
+  }
+
+  .home-toolbar .icon-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 11px;
+  }
+
+  .home-toolbar .home-shortcuts-btn {
+    display: none;
+  }
+}
+
+@media (max-width: 370px) {
+  .app-subtitle {
+    display: none;
+  }
+
+  .display-title {
+    font-size: 1.15rem;
+  }
+
+  .home-toolbar {
+    gap: 4px;
+  }
+
+  .home-toolbar .icon-btn {
+    width: 36px;
+    height: 36px;
+  }
 }
 
 /* ---------- Campaign list ---------- */
@@ -3167,9 +3247,11 @@ select.text-input {
 /* ---------- Cloud Status Indicator ---------- */
 .cloud-btn {
   position: relative;
+  flex-shrink: 0;
 }
 
-.cloud-dot {
+.cloud-dot,
+.cloud-dot-badge {
   position: absolute;
   top: 5px;
   right: 5px;
@@ -3180,22 +3262,26 @@ select.text-input {
   transition: background-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.cloud-dot.dot-synced {
+.cloud-dot.dot-synced,
+.cloud-dot-badge.synced {
   background: #34d399;
   box-shadow: 0 0 8px #34d399;
 }
 
-.cloud-dot.dot-pending {
+.cloud-dot.dot-pending,
+.cloud-dot-badge.pending {
   background: #fbbf24;
   box-shadow: 0 0 8px #fbbf24;
   animation: pulse-amber 2s infinite ease-in-out;
 }
 
-.cloud-dot.dot-offline {
+.cloud-dot.dot-offline,
+.cloud-dot-badge.offline {
   background: #64748b;
 }
 
-.cloud-dot.dot-unconfigured {
+.cloud-dot.dot-unconfigured,
+.cloud-dot-badge.unconfigured {
   background: #475569;
 }
 

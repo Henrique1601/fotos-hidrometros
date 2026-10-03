@@ -28,6 +28,7 @@ import {
   RestoreContentType,
 } from '../lib/backup';
 import { campaignLabel } from '../lib/utils';
+import { getSession, downloadCloudBackup } from '../lib/sync';
 import GlassCard from '../components/GlassCard';
 import { Screen } from '../nav';
 
@@ -203,6 +204,27 @@ export default function DataScreen({ go, toast }: Props) {
       toast('Erro ao carregar base de Julho.');
     } finally {
       setLoadingJuly(false);
+    }
+  };
+
+  const [cloudDownloadBusy, setCloudDownloadBusy] = useState(false);
+
+  const handleDownloadCloudDirect = async () => {
+    if (cloudDownloadBusy) return;
+    setCloudDownloadBusy(true);
+    try {
+      const session = await getSession();
+      if (!session) {
+        toast('Faça login na Nuvem para baixar o backup remoto.');
+        go({ name: 'sync' });
+        return;
+      }
+      const res = await downloadCloudBackup();
+      toast(`Backup da nuvem baixado com sucesso: ${res.campaigns} medições, ${res.records} registros!`);
+    } catch (e) {
+      toast((e as Error).message);
+    } finally {
+      setCloudDownloadBusy(false);
     }
   };
 
@@ -407,12 +429,22 @@ export default function DataScreen({ go, toast }: Props) {
             <div className="page-card-row-info">
               <h3 className="page-card-title-sm">Nuvem Supabase (PostgreSQL)</h3>
               <p className="page-card-desc-sm">
-                Sincronize medições e fotos na nuvem para manter backup online e acessar de múltiplos aparelhos.
+                Sincronize medições e fotos na nuvem ou baixe diretamente o arquivo de backup remoto.
               </p>
             </div>
-            <button className="btn-ghost" onClick={() => go({ name: 'sync' })}>
-              <Cloud size={16} /> Abrir Nuvem
-            </button>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+              <button
+                className="btn-primary"
+                onClick={() => void handleDownloadCloudDirect()}
+                disabled={cloudDownloadBusy}
+              >
+                {cloudDownloadBusy ? <Loader2 size={16} className="spin" /> : <Download size={16} />}
+                {cloudDownloadBusy ? 'Baixando…' : 'Baixar da Nuvem'}
+              </button>
+              <button className="btn-ghost" onClick={() => go({ name: 'sync' })}>
+                <Cloud size={16} /> Abrir Nuvem
+              </button>
+            </div>
           </div>
         </GlassCard>
 

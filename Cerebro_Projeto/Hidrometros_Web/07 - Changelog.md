@@ -1,5 +1,32 @@
 # 07 - Changelog
 
+## 2026-10-03 — Download de Backup da Nuvem Supabase e Correção de Alinhamento Mobile
+
+### Feito
+
+- **Download de Backup da Nuvem Supabase (`src/lib/sync.ts` + `SyncScreen.tsx` + `DataScreen.tsx`)**:
+  - Implementada a função `fetchCloudBackupData` com paginação progressiva (`.range()`), gerando um objeto `BackupFile` idêntico e 100% compatível com o formato JSON local oficial do FotoHidro (`isValidBackup`).
+  - Implementada a função `downloadCloudBackup`, que faz download automático de arquivo `.json` com nome semântico `foto-hidro-backup-nuvem-Xmedicoes-TIMESTAMP.json`, contendo todas as campanhas e fotos base64 salvas no banco remoto.
+  - Implementada a função `restoreFromCloud`, permitindo puxar os dados da nuvem diretamente para o banco IndexedDB local nos modos 'replace' e 'merge'.
+  - Adicionado botão explícito **"Baixar Backup da Nuvem (.json)"** com indicador de progresso e botão **"Restaurar Nuvem para este Aparelho"** com diálogo de confirmação seguro na tela `SyncScreen.tsx`.
+  - Integrado botão de atalho **"Baixar da Nuvem"** no card da Nuvem Supabase da tela `DataScreen.tsx`.
+
+- **Correção de Alinhamento e Overflow do Botão da Nuvem no Mobile (`src/styles.css` + `Home.tsx`)**:
+  - Diagnosticada e corrigida a sobreposição/corte horizontal em telas de smartphones estreitas (360px a 430px).
+  - Adicionada contenção `min-width: 0`, `overflow: hidden` e `flex: 1 1 auto` no `.logo-row` com encapsulamento `.logo-text`.
+  - Configurada `white-space: nowrap; overflow: hidden; text-overflow: ellipsis;` no subtítulo, ocultando-o em larguras <= 370px para garantir respiro total ao cabeçalho.
+  - Otimizada a `.home-toolbar` para `flex-shrink: 0`, com botões de 38px e gap de 6px em telas <= 480px.
+  - Ocultado o botão de atalhos de teclado (`.home-shortcuts-btn`) em viewports móveis (telas touch não possuem teclado físico), garantindo que os 3 botões essenciais (Câmera, Dados e Nuvem com dot de status) fiquem 100% visíveis, confortáveis ao toque e perfeitamente alinhados à direita.
+  - Corrigida a sincronia de seletores CSS `.cloud-dot-badge` com os estados `synced`, `pending`, `offline` e `unconfigured`.
+
+### Testes
+
+- `npm run test`: **86/86** testes unitários aprovados (adicionado `cloudBackup.test.ts` com cobertura de geração de backup, sessão e restauração local).
+- `npm run test:e2e`: **7/7** testes Playwright E2E aprovados, incluindo testes específicos de contenção mobile a 360px (`cloudBtn.boundingBox().x + width <= 360`) e fluxo de backup na nuvem.
+- `npm run build`: Typecheck TypeScript (`tsc -b`) e build Vite de produção 100% aprovados.
+
+---
+
 ## 2026-10-01 — Correção da Exclusão de Fotos na Grade de Hidrômetros
 
 ### Feito

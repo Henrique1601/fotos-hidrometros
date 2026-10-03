@@ -51,7 +51,7 @@ test('backup baixa arquivo com dados e restore restaura', async ({ page }) => {
 
   const [download] = await Promise.all([
     page.waitForEvent('download'),
-    page.getByRole('button', { name: /Baixar/ }).click(),
+    page.getByRole('button', { name: /Baixar Backup/ }).click(),
   ]);
   const file = await download.path();
   expect(file).toBeTruthy();
@@ -120,4 +120,39 @@ test('remover foto pelo botão X atualiza o card e limpa o registro', async ({ p
   await expect(apt256).toHaveClass(/apt-empty/);
   await expect(btnX).not.toBeVisible();
 });
+
+test('header mobile estreito (360px) exibe o botão da nuvem alinhado e clicável', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 740 });
+  await page.goto('/');
+
+  const cloudBtn = page.locator('.cloud-btn');
+  await expect(cloudBtn).toBeVisible();
+
+  // Verifica que o botão está totalmente contido na viewport (sem corte ou overflow horizontal)
+  const box = await cloudBtn.boundingBox();
+  expect(box).toBeTruthy();
+  expect(box!.x + box!.width).toBeLessThanOrEqual(360);
+
+  // Clica no botão e navega até a tela de sincronização
+  await cloudBtn.click();
+  await expect(page.getByRole('heading', { name: 'Sincronização' })).toBeVisible();
+});
+
+test('telas de dados e sincronização exibem opções de backup da nuvem', async ({ page }) => {
+  await page.goto('/');
+
+  await page.getByRole('button', { name: /Dados/ }).click();
+  await expect(page.getByRole('heading', { name: 'Dados', exact: true })).toBeVisible();
+
+  // Botões de nuvem na tela de dados
+  const downloadCloudBtn = page.getByRole('button', { name: 'Baixar da Nuvem' });
+  const openCloudBtn = page.getByRole('button', { name: 'Abrir Nuvem' });
+  await expect(downloadCloudBtn).toBeVisible();
+  await expect(openCloudBtn).toBeVisible();
+
+  // Clicar em Abrir Nuvem deve levar para a tela de Sincronização
+  await openCloudBtn.click();
+  await expect(page.getByRole('heading', { name: 'Sincronização' })).toBeVisible();
+});
+
 

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Cloud, CloudOff, Eye, EyeOff, Info, LogIn, LogOut, UserPlus } from 'lucide-react';
-import { isSupabaseConfigured, getSession, signIn, signUp, signOut, syncAll, resetPassword } from '../lib/sync';
+import { ArrowLeft, Cloud, CloudOff, Download, Eye, EyeOff, Info, Loader2, LogIn, LogOut, RefreshCw, UserPlus } from 'lucide-react';
+import { isSupabaseConfigured, getSession, signIn, signUp, signOut, syncAll, resetPassword, downloadCloudBackup, pullAll } from '../lib/sync';
 import GlassCard from '../components/GlassCard';
+import ConfirmModal from '../components/ConfirmModal';
 import { Screen } from '../nav';
 
 interface Props {
@@ -16,6 +17,10 @@ export default function SyncScreen({ go, toast }: Props) {
   const [showPassword, setShowPassword] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [syncBusy, setSyncBusy] = useState(false);
+  const [downloadBusy, setDownloadBusy] = useState(false);
+  const [downloadCount, setDownloadCount] = useState<number | null>(null);
+  const [pullBusy, setPullBusy] = useState(false);
+  const [pullModalOpen, setPullModalOpen] = useState(false);
 
   useEffect(() => {
     void getSession().then(setSession);
@@ -96,6 +101,37 @@ export default function SyncScreen({ go, toast }: Props) {
     }
   };
 
+  const handleDownloadCloud = async () => {
+    if (downloadBusy || !session) return;
+    setDownloadBusy(true);
+    setDownloadCount(null);
+    try {
+      const res = await downloadCloudBackup((done) => {
+        setDownloadCount(done);
+      });
+      toast(`Backup da nuvem baixado com sucesso: ${res.campaigns} medições, ${res.records} registros salvos!`);
+    } catch (e) {
+      toast((e as Error).message);
+    } finally {
+      setDownloadBusy(false);
+      setDownloadCount(null);
+    }
+  };
+
+  const handlePullCloud = async () => {
+    if (pullBusy || !session) return;
+    setPullBusy(true);
+    try {
+      const s = await pullAll();
+      toast(`Dados baixados da nuvem: ${s.campaigns} medições e ${s.records} registros atualizados neste aparelho.`);
+      setPullModalOpen(false);
+    } catch (e) {
+      toast((e as Error).message);
+    } finally {
+      setPullBusy(false);
+    }
+  };
+
   const configured = isSupabaseConfigured();
 
   return (
@@ -141,7 +177,11 @@ export default function SyncScreen({ go, toast }: Props) {
               <span className="sync-status-email">{session.user.email}</span>
             </div>
             <div className="page-card-actions">
-              <button className="btn-primary btn-full" onClick={() => void handleSync()} disabled={syncBusy}>
+              <button
+                className="btn-primary btn-full"
+                onClick={() => void handleSync()}
+                disabled={syncBusy || downloadBusy || pullBusy}
+              >
                 <Cloud size={16} />
                 {syncBusy
                   ? syncProgress
@@ -151,7 +191,34 @@ export default function SyncScreen({ go, toast }: Props) {
                     : 'Sincronizando…'
                   : 'Sincronizar agora'}
               </button>
-              <button className="btn-ghost btn-full" onClick={() => void handleLogout()}>
+
+              <button
+                className="btn-ghost btn-full"
+                onClick={() => void handleDownloadCloud()}
+                disabled={syncBusy || downloadBusy || pullBusy}
+              >
+                {downloadBusy ? <Loader2 size={16} className="spin" /> : <Download size={16} />}
+                {downloadBusy
+                  ? downloadCount !== null
+                    ? `Baixando da nuvem (${downloadCount} hidrômetros)…`
+                    : 'Baixando backup da nuvem…'
+                  : 'Baixar Backup da Nuvem (.json)'}
+              </button>
+
+              <button
+                className="btn-ghost btn-full"
+                onClick={() => setPullModalOpen(true)}
+                disabled={syncBusy || downloadBusy || pullBusy}
+              >
+                {pullBusy ? <Loader2 size={16} className="spin" /> : <RefreshCw size={16} />}
+                {pullBusy ? 'Restaurando…' : 'Restaurar Nuvem para este Aparelho'}
+              </button>
+
+              <button
+                className="btn-ghost btn-full"
+                onClick={() => void handleLogout()}
+                disabled={syncBusy || downloadBusy || pullBusy}
+              >
                 <LogOut size={16} /> Sair da conta
               </button>
             </div>
@@ -240,6 +307,15 @@ export default function SyncScreen({ go, toast }: Props) {
           </span>
         </div>
       </div>
+
+      <ConfirmModal
+        open={pullModalOpen}
+        title="Restaurar dados da Nuvem?"
+        message="Deseja baixar todas as medições e fotos salvas na nuvem Supabase e atualizar este aparelho? Os dados locais mais antigos serão atualizados com os dados da nuvem."
+        confirmLabel={pullBusy ? 'Restaurando…' : 'Restaurar da Nuvem'}
+        onConfirm={() => void handlePullCloud()}
+        onCancel={() => setPullModalOpen(false)}
+      />
     </div>
   );
 }
