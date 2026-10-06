@@ -5,14 +5,18 @@ import {
   ActiveCamera,
   CameraCapabilities,
   captureFrame,
+  checkVideoSharpness,
+  setFocusPoint,
   setTorch,
   setZoom,
+  SHARPNESS_THRESHOLD,
   startCamera,
   stopCamera,
+  triggerAutoFocus,
 } from '../lib/camera';
 import { recognizeMeter, OcrResult } from '../lib/ocr';
 import { watermarkPhoto, formatWatermarkDate } from '../lib/watermark';
-import { isSoundEnabled, playShutterFeedback, setSoundEnabled } from '../lib/audioHaptics';
+import { isSoundEnabled, playFocusFeedback, playShutterFeedback, setSoundEnabled } from '../lib/audioHaptics';
 import { upsertRecord } from '../db/records';
 import { bgOcr } from '../lib/bgOcr';
 import { pad2 } from '../lib/utils';
@@ -80,6 +84,13 @@ export default function CameraOverlay({ campaignId, towerId, apt, initialPhoto, 
   const [ocr, setOcr] = useState<OcrResult | null>(null);
   const [ocrBusy, setOcrBusy] = useState(false);
 
+  const [focusTarget, setFocusTarget] = useState<{ x: number; y: number } | null>(null);
+  const [isRefocusing, setIsRefocusing] = useState(false);
+  const focusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const touchStartPos = useRef<{ x: number; y: number; time: number } | null>(null);
+  const hasPinchedRef = useRef(false);
+  const lastTapTimeRef = useRef(0);
+
   const pinches = useRef<{ start: number; startZoom: number } | null>(null);
 
   const stop = useCallback(() => {
@@ -125,6 +136,7 @@ export default function CameraOverlay({ campaignId, towerId, apt, initialPhoto, 
     return () => {
       stop();
       startedRef.current = false;
+      if (focusTimerRef.current) clearTimeout(focusTimerRef.current);
     };
   }, [readOnly, start, stop]);
 
@@ -173,9 +185,55 @@ export default function CameraOverlay({ campaignId, towerId, apt, initialPhoto, 
     }
   }, [towerId, apt]);
 
+  const handleFocusAt = useCallback(
+    (clientX: number, clientY: number) => {
+      if (phase !== 'live') return;
+      lastTapTimeRef.current = Date.now();
+
+      const video = videoRef.current;
+      if (!video) return;
+
+      const rect = video.getBoundingClientRect();
+      const normX = Math.max(0, Math.min(1, (clientX - rect.left) / (rect.width || 1)));
+      const normY = Math.max(0, Math.min(1, (clientY - rect.top) / (rect.height || 1)));
+
+      setFocusTarget({ x: clientX, y: clientY });
+      if (focusTimerRef.current) clearTimeout(focusTimerRef.current);
+      focusTimerRef.current = setTimeout(() => {
+        setFocusTarget(null);
+      }, 1400);
+
+      playFocusFeedback();
+
+      if (camRef.current) {
+        void setFocusPoint(camRef.current, { x: normX, y: normY });
+      }
+    },
+    [phase],
+  );
+
   const handleCapture = useCallback(async () => {
     if (readOnly || !videoRef.current || saving) return;
     try {
+      if (camRef.current && videoRef.current) {
+        const sharpness = checkVideoSharpness(videoRef.current);
+        if (sharpness < SHARPNESS_THRESHOLD) {
+          setIsRefocusing(true);
+          const rect = videoRef.current.getBoundingClientRect();
+          setFocusTarget({
+            x: rect.left + rect.width / 2,
+            y: rect.top + rect.height / 2,
+          });
+          playFocusFeedback();
+
+          await triggerAutoFocus(camRef.current);
+          await new Promise((r) => setTimeout(r, 260));
+          setIsRefocusing(false);
+          if (focusTimerRef.current) clearTimeout(focusTimerRef.current);
+          focusTimerRef.current = setTimeout(() => setFocusTarget(null), 800);
+        }
+      }
+
       setFlash(true);
       playShutterFeedback();
       setTimeout(() => setFlash(false), 220);
@@ -307,7 +365,15 @@ export default function CameraOverlay({ campaignId, towerId, apt, initialPhoto, 
   );
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length === 2) {
+    if (e.touches.length === 1) {
+      touchStartPos.current = {
+        x: e.touches[0].clientX,
+        y: e.touches[0].clientY,
+        time: Date.now(),
+      };
+    } else if (e.touches.length === 2) {
+      touchStartPos.current = null;
+      hasPinchedRef.current = true;
       const startDist = Math.hypot(
         e.touches[0].clientX - e.touches[1].clientX,
         e.touches[0].clientY - e.touches[1].clientY,
@@ -318,6 +384,13 @@ export default function CameraOverlay({ campaignId, towerId, apt, initialPhoto, 
 
   const handleTouchMove = useCallback(
     async (e: React.TouchEvent) => {
+      if (touchStartPos.current && e.touches.length === 1) {
+        const dx = e.touches[0].clientX - touchStartPos.current.x;
+        const dy = e.touches[0].clientY - touchStartPos.current.y;
+        if (Math.hypot(dx, dy) > 14) {
+          touchStartPos.current = null;
+        }
+      }
       const cam = camRef.current;
       if (!cam || !pinches.current || e.touches.length !== 2) return;
       const d = Math.hypot(
@@ -331,9 +404,32 @@ export default function CameraOverlay({ campaignId, towerId, apt, initialPhoto, 
     [],
   );
 
-  const handleTouchEnd = useCallback(() => {
-    pinches.current = null;
-  }, []);
+  const handleTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      if (touchStartPos.current && !hasPinchedRef.current) {
+        const elapsed = Date.now() - touchStartPos.current.time;
+        if (elapsed < 500) {
+          handleFocusAt(touchStartPos.current.x, touchStartPos.current.y);
+        }
+      }
+      touchStartPos.current = null;
+      pinches.current = null;
+      if (e.touches.length === 0) {
+        setTimeout(() => {
+          hasPinchedRef.current = false;
+        }, 350);
+      }
+    },
+    [handleFocusAt],
+  );
+
+  const handleVideoClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (Date.now() - lastTapTimeRef.current < 450) return;
+      handleFocusAt(e.clientX, e.clientY);
+    },
+    [handleFocusAt],
+  );
 
   const handleSave = useCallback(async () => {
     if (!blob) return;
@@ -467,8 +563,30 @@ export default function CameraOverlay({ campaignId, towerId, apt, initialPhoto, 
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
+        onClick={handleVideoClick}
         aria-label="Câmera"
       />
+
+      {phase === 'live' && focusTarget && (
+        <div
+          className="cam-focus-ring"
+          style={{ left: focusTarget.x, top: focusTarget.y }}
+          aria-hidden="true"
+        >
+          <span className="cam-focus-corner cam-focus-tl" />
+          <span className="cam-focus-corner cam-focus-tr" />
+          <span className="cam-focus-corner cam-focus-bl" />
+          <span className="cam-focus-corner cam-focus-br" />
+          <span className="cam-focus-dot" />
+        </div>
+      )}
+
+      {isRefocusing && (
+        <div className="cam-autofocus-badge" aria-live="polite">
+          <Focus size={15} className="spin" />
+          <span>Focando hidrômetro…</span>
+        </div>
+      )}
 
       {phase === 'live' && (
         <>

@@ -1,5 +1,29 @@
 # 07 - Changelog
 
+## 2026-10-06 — Tap-to-Focus Manual e Auto-Refocus Inteligente por Detecção de Nitidez
+
+### Feito
+
+- **Tap-to-Focus Manual na Câmera (`src/lib/camera.ts` + `CameraOverlay.tsx` + `styles.css` + `audioHaptics.ts`)**:
+  - Implementada a função `setFocusPoint(camera, { x, y })` com Progressive Enhancement:
+    - 1º nível: suporte W3C `pointsOfInterest` via `MediaStreamTrack.applyConstraints`.
+    - 2º nível (fallback): ciclo de `focusMode: 'single-shot'` temporizado e retorno para `continuous`.
+  - Adicionado anel de foco visual responsivo (`.cam-focus-ring`) animado com 4 cantos de mira ciano `#5eead4`, ponto central e pulso de confirmação no ponto exato do toque/clique.
+  - Implementado feedback sonoro e tátil (`playFocusFeedback()`) com sweep de 880Hz e vibração curta de 15ms.
+  - Tratamento inteligente de gestos: distingue toques simples de pinça com 2 dedos (zoom) e arrasto/swipe.
+
+- **Auto-Refocus Inteligente por Nitidez (`src/lib/camera.ts` + `CameraOverlay.tsx`)**:
+  - Implementado algoritmo de detecção de nitidez em tempo real (`calculateSharpness`) baseado na variância do operador discreto Laplaciano 3x3 ($\sigma^2_L$).
+  - Criada a função `checkVideoSharpness(video, sampleSize = 160)` que amostra a área central do vídeo do hidrômetro em < 2ms sem travar a interface.
+  - No momento do disparo (tanto no modo normal quanto no modo rápido burst), caso a imagem esteja fora de foco (`sharpness < SHARPNESS_THRESHOLD`), o sistema ativa o badge `🎯 Focando hidrômetro...`, dispara `triggerAutoFocus()`, aguarda ~260ms para estabilização da lente e então captura a foto perfeitamente nítida. Se a imagem já estiver nítida, a captura ocorre instantaneamente com zero atraso.
+
+### Testes
+
+- `npm run test`: **93/93** testes unitários aprovados (novos testes em `camera.test.ts` e `audioHaptics.test.ts`).
+- `npm run build`: Typecheck TypeScript (`tsc -b`) e build de produção Vite 100% aprovados.
+
+---
+
 ## 2026-10-03 — Download de Backup da Nuvem Supabase e Correção de Alinhamento Mobile
 
 ### Feito

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { isSoundEnabled, setSoundEnabled, playShutterFeedback } from './audioHaptics';
+import { isSoundEnabled, setSoundEnabled, playShutterFeedback, playFocusFeedback } from './audioHaptics';
 
 describe('audioHaptics', () => {
   let store: Record<string, string> = {};
@@ -30,6 +30,16 @@ describe('audioHaptics', () => {
 
   it('playShutterFeedback executes without crashing in test environment', () => {
     expect(() => playShutterFeedback()).not.toThrow();
+  });
+
+  it('playFocusFeedback executes without crashing and triggers vibrate if available', () => {
+    const vibrateSpy = vi.fn();
+    vi.stubGlobal('navigator', { vibrate: vibrateSpy });
+
+    expect(() => playFocusFeedback()).not.toThrow();
+    expect(vibrateSpy).toHaveBeenCalledWith(15);
+
+    vi.unstubAllGlobals();
   });
 
   it('playShutterFeedback triggers vibrate if available', () => {
