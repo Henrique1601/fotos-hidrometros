@@ -108,6 +108,20 @@ export default function ShortcutsModal({ open, onClose }: Props) {
                 </div>
               </div>
               <div className="shortcut-row">
+                <span className="shortcut-desc">Girar foto 90° horário</span>
+                <div className="shortcut-keys">
+                  <kbd className="key-cap">R</kbd>
+                  <span className="key-or">ou</span>
+                  <kbd className="key-cap">Alt</kbd>+<kbd className="key-cap">R</kbd>
+                </div>
+              </div>
+              <div className="shortcut-row">
+                <span className="shortcut-desc">Girar foto 90° anti-horário</span>
+                <div className="shortcut-keys">
+                  <kbd className="key-cap">Shift</kbd>+<kbd className="key-cap">R</kbd>
+                </div>
+              </div>
+              <div className="shortcut-row">
                 <span className="shortcut-desc">Buscar apartamento</span>
                 <div className="shortcut-keys">
                   <kbd className="key-cap">/</kbd>

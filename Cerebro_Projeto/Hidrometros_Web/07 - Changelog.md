@@ -1,5 +1,33 @@
 # 07 - Changelog
 
+## 2026-10-06 — Edição e Rotação de Imagens nos Índices (Girar Foto 90° e Persistência)
+
+### Feito
+
+- **Módulo de Edição de Imagens (`src/lib/imageEdit.ts` + `imageEdit.test.ts`)**:
+  - Implementada a função `rotateImageBlob(blob, degrees = 90)` que aceita múltiplos de 90° positivos e negativos.
+  - Utiliza `createImageBitmap` de alta performance em navegadores modernos (sem criar nós de DOM) e fallback com `HTMLImageElement` + `URL.createObjectURL`.
+  - Processa rotação exata pixel-a-pixel em Canvas com recalculação precisa de dimensões para 90°/270°, gerando novo `Blob` JPEG de alta fidelidade (qualidade 0.88).
+  - Normalização matemática `normalizeRotationAngle` tratando ângulos arbitrários e negativos.
+- **Botão de Rotação na Grade dos Índices (`src/screens/Indices.tsx` + `src/styles.css`)**:
+  - Adicionado botão flutuante **"Girar 90°"** (`.iv-rotate-btn`) no canto inferior direito do card da foto (`.iv-photo-wrap`) com ícone `RotateCw`, animação suave e glassmorphism.
+  - Rotação com feedback sonoro/tátil instantâneo (`playFocusFeedback`) e salvamento automático do Blob rotacionado no IndexedDB (`upsertRecord`).
+  - O salvamento direto preserva o índice digitado, reflete imediatamente na tela via `useLiveQuery` e garante que exportações em PDF, Excel, ZIP e relatórios também contenham a foto em pé e alinhada.
+- **Ferramentas de Rotação no Modo Lightbox Ampliado (`src/screens/Indices.tsx` + `src/styles.css`)**:
+  - No visualizador em tela cheia (lightbox), adicionados botões de rotação horária (`RotateCw`) e anti-horária (`RotateCcw`) no cabeçalho superior direito.
+- **Atalhos de Teclado no Desktop (`Indices.tsx` + `ShortcutsModal.tsx`)**:
+  - Tecla `R` ou `Alt+R`: Gira a foto 90° no sentido horário.
+  - Teclas `Shift+R`: Gira a foto 90° no sentido anti-horário.
+  - Atalhos devidamente documentados no modal de ajuda de atalhos (`?`).
+
+### Testes
+
+- `npm run test`: **98/98** testes unitários aprovados (adicionados 5 testes em `imageEdit.test.ts`).
+- `npm run test:e2e`: **7/7** testes Playwright E2E aprovados.
+- `npm run build`: Typecheck TypeScript (`tsc -b`) e build de produção Vite 100% aprovados.
+
+---
+
 ## 2026-10-06 — Tap-to-Focus Manual e Auto-Refocus Inteligente por Detecção de Nitidez
 
 ### Feito

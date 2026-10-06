@@ -16,6 +16,8 @@ import {
   Maximize2,
   Pause,
   Play,
+  RotateCcw,
+  RotateCw,
   ScanText,
   Search,
   Share2,
@@ -33,6 +35,8 @@ import { recognizeMeter } from '../lib/ocr';
 import { useBgOcr } from '../lib/bgOcr';
 import { selectPreviousCampaign } from '../lib/consumption';
 import { shareVoucher } from '../lib/voucher';
+import { rotateImageBlob } from '../lib/imageEdit';
+import { playFocusFeedback } from '../lib/audioHaptics';
 import GlassCard from '../components/GlassCard';
 import ConfirmModal from '../components/ConfirmModal';
 import ShortcutsModal from '../components/ShortcutsModal';
@@ -71,6 +75,7 @@ export default function Indices({ campaignId, go, toast }: Props) {
   const [jumpMsg, setJumpMsg] = useState<string | null>(null);
   const [showSearch, setShowSearch] = useState(false);
   const [ocrBusy, setOcrBusy] = useState(false);
+  const [rotating, setRotating] = useState(false);
   const [lastSaved, setLastSaved] = useState<{ aptCode: string; prevIndex: number | null; prevRaw: string } | null>(null);
   const [zoomModal, setZoomModal] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
@@ -442,6 +447,44 @@ export default function Indices({ campaignId, go, toast }: Props) {
     }
   };
 
+  const handleRotate = useCallback(
+    async (degrees: number = 90) => {
+      if (isLocked) {
+        toast('Medição concluída e bloqueada. Reabra para editar.');
+        return;
+      }
+      if (!apt) return;
+      const rec = recordByApt.get(apt.aptCode);
+      if (!rec?.photo) {
+        toast('Sem foto cadastrada para este hidrômetro.');
+        return;
+      }
+      if (rotating) return;
+
+      setRotating(true);
+      try {
+        playFocusFeedback();
+        const rotated = await rotateImageBlob(rec.photo, degrees);
+        await upsertRecord({
+          campaignId,
+          towerId,
+          floor: apt.floor,
+          unit: apt.unit,
+          side: apt.side,
+          aptCode: apt.aptCode,
+          photo: rotated,
+        });
+        toast(degrees === 90 ? 'Foto girada 90° e salva.' : `Foto girada ${degrees}° e salva.`);
+      } catch (err) {
+        console.error('Erro ao girar foto:', err);
+        toast('Erro ao girar a foto.');
+      } finally {
+        setRotating(false);
+      }
+    },
+    [isLocked, apt, recordByApt, rotating, campaignId, towerId, toast],
+  );
+
   const handleLightboxNext = useCallback(() => {
     if (pos < displayedUnits.length - 1) {
       setPos((prev) => prev + 1);
@@ -513,6 +556,14 @@ export default function Indices({ campaignId, go, toast }: Props) {
       if ((e.key === 'o' || e.key === 'O') && (e.altKey || !isTextInput)) {
         e.preventDefault();
         void handleReadPhoto();
+        return;
+      }
+
+      // 5.1 GIRAR FOTO: Alt+R ou (R quando fora de input ou em Lightbox)
+      if ((e.key === 'r' || e.key === 'R') && (e.altKey || !isTextInput || zoomModal)) {
+        e.preventDefault();
+        const angle = e.shiftKey ? -90 : 90;
+        void handleRotate(angle);
         return;
       }
 
@@ -619,6 +670,7 @@ export default function Indices({ campaignId, go, toast }: Props) {
     handleLightboxBack,
     handleUndo,
     handleReadPhoto,
+    handleRotate,
     lastSaved,
     recordByApt,
   ]);
@@ -809,6 +861,25 @@ export default function Indices({ campaignId, go, toast }: Props) {
                   </span>
                 )}
             </div>
+
+            {recordByApt.get(apt.aptCode)?.photo && (
+              <div className="iv-photo-actions">
+                <button
+                  type="button"
+                  className="iv-rotate-btn glass"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void handleRotate(90);
+                  }}
+                  disabled={isLocked || rotating}
+                  aria-label="Girar foto 90° horário (R)"
+                  title="Girar foto 90° horário (R)"
+                >
+                  <RotateCw size={14} className={rotating ? 'spin' : ''} />
+                  <span>Girar 90°</span>
+                </button>
+              </div>
+            )}
           </div>
 
           {/* PAINEL INFERIOR COMPACTO E FOCADO NA DIGITAÇÃO */}
@@ -977,14 +1048,43 @@ export default function Indices({ campaignId, go, toast }: Props) {
       {zoomModal && apt && recordByApt.get(apt.aptCode)?.photo && (
         <div className="photo-lightbox" onClick={() => setZoomModal(false)}>
           <div className="photo-lightbox-content" onClick={(e) => e.stopPropagation()}>
-            <button
-              className="icon-btn glass photo-lightbox-close"
-              onClick={() => setZoomModal(false)}
-              aria-label="Fechar ampliação (Esc ou Z)"
-              title="Fechar (Esc ou Z)"
-            >
-              <X size={24} />
-            </button>
+            <div className="photo-lightbox-actions">
+              <button
+                type="button"
+                className="icon-btn glass photo-lightbox-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void handleRotate(-90);
+                }}
+                disabled={isLocked || rotating}
+                aria-label="Girar 90° anti-horário (Shift+R)"
+                title="Girar 90° anti-horário (Shift+R)"
+              >
+                <RotateCcw size={20} className={rotating ? 'spin' : ''} />
+              </button>
+              <button
+                type="button"
+                className="icon-btn glass photo-lightbox-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void handleRotate(90);
+                }}
+                disabled={isLocked || rotating}
+                aria-label="Girar 90° horário (R)"
+                title="Girar 90° horário (R)"
+              >
+                <RotateCw size={20} className={rotating ? 'spin' : ''} />
+              </button>
+              <button
+                type="button"
+                className="icon-btn glass photo-lightbox-close"
+                onClick={() => setZoomModal(false)}
+                aria-label="Fechar ampliação (Esc ou Z)"
+                title="Fechar (Esc ou Z)"
+              >
+                <X size={24} />
+              </button>
+            </div>
 
             {pos > 0 && (
               <button
@@ -1022,7 +1122,7 @@ export default function Indices({ campaignId, go, toast }: Props) {
             </span>
 
             <span className="photo-lightbox-hint">
-              Navegar: ← → ou A/D · Fechar: Esc ou Z
+              Navegar: ← → ou A/D · Girar: R / Shift+R · Fechar: Esc ou Z
             </span>
           </div>
         </div>
