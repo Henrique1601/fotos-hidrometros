@@ -1,5 +1,42 @@
 # 07 - Changelog
 
+## 2026-10-30 — Otimização de Consumo de Bateria: Toggles de Download com Marca d'Água e OCR Neural, e Suspensão em Background
+
+### Feito
+
+- **Diagnóstico e Resolução do Dreno Excessivo de Bateria no Celular**:
+  - Identificados os 4 maiores vilões térmicos e de consumo energético durante a captura contínua de fotos nos hidrômetros:
+    1. *Rede Neural LSTM (Tesseract.js)* executando inferência pesada em WebAssembly a 100% de CPU a cada foto tirada (`recognizeMeter` / `bgOcr.enqueue`).
+    2. *Download Automático de Fotos com Marca d'Água* (`downloadWatermarked`): decodificação e re-codificação em canvas (3 vezes por foto) e acionamento de downloads em massa no navegador a cada clique.
+    3. *Lanterna/Flash LED contínuo*: consumo elétrico contínuo de 2.0W a 2.8W.
+    4. *Câmera ativa com tela bloqueada ou em segundo plano*: consumo contínuo sem suspensão quando o celular era colocado no bolso.
+
+- **Toggle e Desativação Padrão do Download Automático de Fotos (`CameraOverlay.tsx` + `Home.tsx`)**:
+  - Adicionado toggle persistente (`foto-hidro:auto-download`, padrão `false`) para o salvamento automático de fotos carimbadas no rolo de fotos do aparelho.
+  - Adicionado botão de atalho visual `BAIXAR` com feedback de status na barra lateral da câmera HUD.
+  - Adicionado atalho de teclado `D` e controle no modal de configurações de Câmera da Home com aviso de consumo de bateria.
+  - Usuário agora tem total liberdade para ativar ou desativar conforme desejar; com ele desativado, o clique é 100% instantâneo e economiza ciclos de CPU/GPU e armazenamento do aparelho.
+
+- **Toggle e Desativação Padrão do OCR em Tempo Real na Captura (`CameraOverlay.tsx` + `Home.tsx`)**:
+  - Adicionado toggle persistente (`foto-hidro:realtime-ocr`, padrão `false`) na câmera e no modal da Home.
+  - Adicionado botão de atalho visual `OCR` na câmera HUD e atalho de teclado `O`.
+  - Com o OCR em tempo real desativado na captura, a CPU móvel permanece fria (0% de pico térmico no disparo), permitindo que o leiturista reconheça os números depois na tela de Índices por lote de forma otimizada.
+
+- **Proteção contra Gastos em Segundo Plano / Modo Bolso (`CameraOverlay.tsx`)**:
+  - Implementada integração com a Page Visibility API (`visibilitychange`): quando a tela do celular é bloqueada ou o leiturista troca de aplicativo/minimiza o browser, a lanterna LED é automaticamente desligada e o stream de vídeo da câmera é pausado imediatamente, religando suavemente apenas quando o aplicativo volta ao foco.
+
+- **Ajustes de UI Responsiva para Câmera HUD (`styles.css`)**:
+  - `.cam-controls` otimizado com `max-height: calc(100dvh - 200px)` e overflow sutil para caber confortavelmente em smartphones compactos sem sobrepor o botão de obturador.
+  - Botões `.cam-tool` padronizados em 44px com `flex-shrink: 0`.
+
+### Testes
+
+- `npm run test`: **98/98** testes unitários aprovados.
+- `npm run test:e2e`: **8/8** testes Playwright E2E aprovados, incluindo novo teste para os toggles de economia de bateria.
+- `npm run build`: Typecheck TypeScript (`tsc -b`) e build Vite 100% aprovados.
+
+---
+
 ## 2026-10-06 — Edição e Rotação de Imagens nos Índices (Girar Foto 90° e Persistência)
 
 ### Feito

@@ -172,6 +172,18 @@ export default function ShortcutsModal({ open, onClose }: Props) {
                 </div>
               </div>
               <div className="shortcut-row">
+                <span className="shortcut-desc">Alternar Download automático</span>
+                <div className="shortcut-keys">
+                  <kbd className="key-cap">D</kbd>
+                </div>
+              </div>
+              <div className="shortcut-row">
+                <span className="shortcut-desc">Alternar OCR em tempo real</span>
+                <div className="shortcut-keys">
+                  <kbd className="key-cap">O</kbd>
+                </div>
+              </div>
+              <div className="shortcut-row">
                 <span className="shortcut-desc">Zoom da câmera</span>
                 <div className="shortcut-keys">
                   <kbd className="key-cap">+</kbd>

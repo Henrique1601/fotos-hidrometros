@@ -155,4 +155,40 @@ test('telas de dados e sincronização exibem opções de backup da nuvem', asyn
   await expect(page.getByRole('heading', { name: 'Sincronização' })).toBeVisible();
 });
 
+test('modal de câmera e captura permite alternar download automático e OCR para economia de bateria', async ({ page }) => {
+  await page.goto('/');
+
+  // Abre modal de Câmera & Captura
+  const camBtn = page.getByRole('button', { name: /Câmera e Captura/i });
+  await expect(camBtn).toBeVisible();
+  await camBtn.click();
+
+  await expect(page.getByRole('heading', { name: 'Câmera & Captura' })).toBeVisible();
+
+  // Verifica as opções de economia de bateria
+  const autoDownloadCheck = page.getByLabel(/Download automático com marca d'água/i);
+  const realtimeOcrCheck = page.getByLabel(/OCR em tempo real na captura/i);
+
+  await expect(autoDownloadCheck).toBeVisible();
+  await expect(realtimeOcrCheck).toBeVisible();
+
+  // Ambos desativados por padrão para economizar bateria
+  await expect(autoDownloadCheck).not.toBeChecked();
+  await expect(realtimeOcrCheck).not.toBeChecked();
+
+  // Ativa e desativa download automático
+  await autoDownloadCheck.check();
+  await expect(autoDownloadCheck).toBeChecked();
+  await expect(page.getByText('Download automático das fotos ativado.')).toBeVisible();
+
+  await autoDownloadCheck.uncheck();
+  await expect(autoDownloadCheck).not.toBeChecked();
+  await expect(page.getByText('Download automático desativado (economiza bateria).')).toBeVisible();
+
+  // Fecha modal
+  await page.getByRole('button', { name: 'Concluído' }).click();
+  await expect(page.getByRole('heading', { name: 'Câmera & Captura' })).not.toBeVisible();
+});
+
+
 

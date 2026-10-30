@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Camera, Focus, Layers, Lock, Minus, Plus, RotateCcw, ScanText, Undo2, Upload, Volume2, VolumeX, X, Zap, ZapOff } from 'lucide-react';
+import { Camera, Download, Focus, Layers, Lock, Minus, Plus, RotateCcw, ScanText, Undo2, Upload, Volume2, VolumeX, X, Zap, ZapOff } from 'lucide-react';
 import {
   ActiveCamera,
   CameraCapabilities,
@@ -77,6 +77,22 @@ export default function CameraOverlay({ campaignId, towerId, apt, initialPhoto, 
 
   const [soundOn, setSoundOn] = useState<boolean>(() => isSoundEnabled());
 
+  const [autoDownload, setAutoDownload] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('foto-hidro:auto-download') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const [realtimeOcr, setRealtimeOcr] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('foto-hidro:realtime-ocr') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
   const [saving, setSaving] = useState(false);
   const [zoom, setZoomState] = useState(1);
   const [zoomCaps, setZoomCaps] = useState({ min: 1, max: 1, step: 0.1 });
@@ -139,6 +155,31 @@ export default function CameraOverlay({ campaignId, towerId, apt, initialPhoto, 
       if (focusTimerRef.current) clearTimeout(focusTimerRef.current);
     };
   }, [readOnly, start, stop]);
+
+  // Economia de bateria: suspende câmera e desliga lanterna se a tela for bloqueada ou o app minimizado
+  useEffect(() => {
+    if (readOnly) return;
+    const handleVisibility = () => {
+      const cam = camRef.current;
+      if (document.hidden) {
+        if (cam && torchOn && cam.caps.torchSupported) {
+          void setTorch(cam, false);
+        }
+        if (videoRef.current && !videoRef.current.paused) {
+          videoRef.current.pause();
+        }
+      } else {
+        if (videoRef.current && phase === 'live') {
+          void videoRef.current.play().catch(() => {});
+        }
+        if (cam && torchOn && cam.caps.torchSupported) {
+          void setTorch(cam, true);
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [readOnly, torchOn, phase]);
 
   useEffect(() => {
     if (readOnly) {
@@ -253,8 +294,10 @@ export default function CameraOverlay({ campaignId, towerId, apt, initialPhoto, 
             photo: b,
             capturedAt: Date.now(),
           });
-          void downloadWatermarked(b);
-          if (recordId) {
+          if (autoDownload) {
+            void downloadWatermarked(b);
+          }
+          if (realtimeOcr && recordId) {
             void bgOcr.enqueue(recordId, b);
           }
           onSaved();
@@ -267,29 +310,33 @@ export default function CameraOverlay({ campaignId, towerId, apt, initialPhoto, 
         const url = URL.createObjectURL(b);
         setPreview(url);
         setPhase('preview');
-        void downloadWatermarked(b);
-        setOcrBusy(true);
-        recognizeMeter(b)
-          .then((r) => {
-            if (r.value !== null) {
-              setOcr(r);
-              toast?.(`OCR detectou: ${formatOcrValue(r.value)}`);
-            } else {
-              toast?.('Não li o índice. Preencha manualmente.');
-            }
-          })
-          .catch((e) => {
-            console.warn('OCR erro:', e);
-            toast?.('OCR indisponível. Preencha manualmente.');
-          })
-          .finally(() => setOcrBusy(false));
+        if (autoDownload) {
+          void downloadWatermarked(b);
+        }
+        if (realtimeOcr) {
+          setOcrBusy(true);
+          recognizeMeter(b)
+            .then((r) => {
+              if (r.value !== null) {
+                setOcr(r);
+                toast?.(`OCR detectou: ${formatOcrValue(r.value)}`);
+              } else {
+                toast?.('Não li o índice. Preencha manualmente.');
+              }
+            })
+            .catch((e) => {
+              console.warn('OCR erro:', e);
+              toast?.('OCR indisponível. Preencha manualmente.');
+            })
+            .finally(() => setOcrBusy(false));
+        }
       }
     } catch (e) {
       console.error('Falha ao capturar a imagem:', e);
       setErrorMsg('Falha ao capturar a imagem.');
       setPhase('error');
     }
-  }, [burstMode, campaignId, towerId, apt, onSaved, saving, downloadWatermarked, toast]);
+  }, [burstMode, autoDownload, realtimeOcr, campaignId, towerId, apt, onSaved, saving, downloadWatermarked, toast]);
 
   const handleRetake = useCallback(() => {
     if (preview) URL.revokeObjectURL(preview);
@@ -353,6 +400,32 @@ export default function CameraOverlay({ campaignId, towerId, apt, initialPhoto, 
       return next;
     });
   }, []);
+
+  const toggleAutoDownload = useCallback(() => {
+    setAutoDownload((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('foto-hidro:auto-download', String(next));
+      } catch {
+        // ignore
+      }
+      toast?.(next ? 'Download automático ativado' : 'Download automático desativado (economiza bateria)');
+      return next;
+    });
+  }, [toast]);
+
+  const toggleRealtimeOcr = useCallback(() => {
+    setRealtimeOcr((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('foto-hidro:realtime-ocr', String(next));
+      } catch {
+        // ignore
+      }
+      toast?.(next ? 'OCR em tempo real ativado' : 'OCR em tempo real desativado (economiza bateria)');
+      return next;
+    });
+  }, [toast]);
 
   const changeZoom = useCallback(
     async (delta: number) => {
@@ -451,7 +524,7 @@ export default function CameraOverlay({ campaignId, towerId, apt, initialPhoto, 
     async (file: File) => {
       if (readOnly) return;
       if (burstMode) {
-        await upsertRecord({
+        const recordId = await upsertRecord({
           campaignId,
           towerId,
           floor: apt.floor,
@@ -461,7 +534,12 @@ export default function CameraOverlay({ campaignId, towerId, apt, initialPhoto, 
           photo: file,
           capturedAt: Date.now(),
         });
-        void downloadWatermarked(file);
+        if (autoDownload) {
+          void downloadWatermarked(file);
+        }
+        if (realtimeOcr && recordId) {
+          void bgOcr.enqueue(recordId, file);
+        }
         onSaved();
       } else {
         photoTakenRef.current = true;
@@ -471,25 +549,29 @@ export default function CameraOverlay({ campaignId, towerId, apt, initialPhoto, 
         setFlash(true);
         setTimeout(() => setFlash(false), 220);
         setPhase('preview');
-        void downloadWatermarked(file);
-        setOcrBusy(true);
-        recognizeMeter(file)
-          .then((r) => {
-            if (r.value !== null) {
-              setOcr(r);
-              toast?.(`OCR detectou: ${formatOcrValue(r.value)}`);
-            } else {
-              toast?.('Não li o índice. Preencha manualmente.');
-            }
-          })
-          .catch((e) => {
-            console.warn('OCR erro:', e);
-            toast?.('OCR indisponível. Preencha manualmente.');
-          })
-          .finally(() => setOcrBusy(false));
+        if (autoDownload) {
+          void downloadWatermarked(file);
+        }
+        if (realtimeOcr) {
+          setOcrBusy(true);
+          recognizeMeter(file)
+            .then((r) => {
+              if (r.value !== null) {
+                setOcr(r);
+                toast?.(`OCR detectou: ${formatOcrValue(r.value)}`);
+              } else {
+                toast?.('Não li o índice. Preencha manualmente.');
+              }
+            })
+            .catch((e) => {
+              console.warn('OCR erro:', e);
+              toast?.('OCR indisponível. Preencha manualmente.');
+            })
+            .finally(() => setOcrBusy(false));
+        }
       }
     },
-    [burstMode, campaignId, towerId, apt, onSaved, downloadWatermarked, toast],
+    [burstMode, autoDownload, realtimeOcr, campaignId, towerId, apt, onSaved, downloadWatermarked, toast],
   );
 
   useEffect(() => {
@@ -521,6 +603,12 @@ export default function CameraOverlay({ campaignId, towerId, apt, initialPhoto, 
         } else if (e.key === 'b' || e.key === 'B') {
           e.preventDefault();
           toggleBurst();
+        } else if (e.key === 'd' || e.key === 'D') {
+          e.preventDefault();
+          toggleAutoDownload();
+        } else if (e.key === 'o' || e.key === 'O') {
+          e.preventDefault();
+          toggleRealtimeOcr();
         } else if (e.key === '+' || e.key === '=') {
           e.preventDefault();
           void changeZoom(0.2);
@@ -533,7 +621,7 @@ export default function CameraOverlay({ campaignId, towerId, apt, initialPhoto, 
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [phase, handleCapture, handleSave, handleRetake, onClose, toggleTorch, toggleBurst, changeZoom]);
+  }, [phase, handleCapture, handleSave, handleRetake, onClose, toggleTorch, toggleBurst, toggleAutoDownload, toggleRealtimeOcr, changeZoom]);
 
   return createPortal(
     <div className={`camera-overlay${flash ? ' cam-flash' : ''}`}>
@@ -647,6 +735,26 @@ export default function CameraOverlay({ campaignId, towerId, apt, initialPhoto, 
             >
               {soundOn ? <Volume2 size={20} /> : <VolumeX size={20} />}
               <span className="cam-tool-sub">SOM</span>
+            </button>
+
+            <button
+              className={`cam-tool glass${autoDownload ? ' is-on' : ''}`}
+              onClick={toggleAutoDownload}
+              aria-label={autoDownload ? 'Desativar download automático das fotos' : 'Ativar download automático das fotos'}
+              aria-pressed={autoDownload}
+            >
+              <Download size={20} />
+              <span className="cam-tool-sub">BAIXAR</span>
+            </button>
+
+            <button
+              className={`cam-tool glass${realtimeOcr ? ' is-on' : ''}`}
+              onClick={toggleRealtimeOcr}
+              aria-label={realtimeOcr ? 'Desativar OCR em tempo real' : 'Ativar OCR em tempo real'}
+              aria-pressed={realtimeOcr}
+            >
+              <ScanText size={20} />
+              <span className="cam-tool-sub">OCR</span>
             </button>
 
             {zoomSupported && (

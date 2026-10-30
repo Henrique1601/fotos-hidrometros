@@ -153,6 +153,42 @@ export default function Home({ go, toast }: Props) {
     toast(checked ? 'Lanterna contínua ativada.' : 'Lanterna contínua desativada.');
   };
 
+  const [autoDownloadSetting, setAutoDownloadSetting] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('foto-hidro:auto-download') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const [realtimeOcrSetting, setRealtimeOcrSetting] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('foto-hidro:realtime-ocr') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleAutoDownloadSetting = (checked: boolean) => {
+    setAutoDownloadSetting(checked);
+    try {
+      localStorage.setItem('foto-hidro:auto-download', String(checked));
+    } catch {
+      // ignore
+    }
+    toast(checked ? 'Download automático das fotos ativado.' : 'Download automático desativado (economiza bateria).');
+  };
+
+  const toggleRealtimeOcrSetting = (checked: boolean) => {
+    setRealtimeOcrSetting(checked);
+    try {
+      localStorage.setItem('foto-hidro:realtime-ocr', String(checked));
+    } catch {
+      // ignore
+    }
+    toast(checked ? 'OCR em tempo real ativado.' : 'OCR em tempo real desativado (economiza bateria).');
+  };
+
   const { photosByCampaign, idxByCampaign } = useMemo(() => {
     const photos = new Map<number, number>();
     const idxs = new Map<number, number>();
@@ -298,7 +334,7 @@ export default function Home({ go, toast }: Props) {
             <Keyboard size={18} />
           </button>
           <button
-            className={`icon-btn glass${burstSetting || torchSetting ? ' has-badge' : ''}`}
+            className={`icon-btn glass${burstSetting || torchSetting || autoDownloadSetting || realtimeOcrSetting ? ' has-badge' : ''}`}
             onClick={() => setCameraModalOpen(true)}
             aria-label="Câmera e Captura (C)"
             title="Opções de Câmera e Captura (C)"
@@ -540,7 +576,43 @@ export default function Home({ go, toast }: Props) {
                   <div>
                     <strong style={{ display: 'block', color: 'var(--text)', fontSize: '0.9rem' }}>Lanterna contínua</strong>
                     <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)', lineHeight: 1.3, display: 'block', marginTop: 2 }}>
-                      Manter o flash/lanterna sempre ligado durante a captura das fotos
+                      Manter o flash/lanterna sempre ligado durante a captura das fotos (consome mais bateria)
+                    </span>
+                  </div>
+                </label>
+
+                <label className="check-row" style={{ cursor: 'pointer', display: 'flex', alignItems: 'flex-start', gap: 10, padding: '12px', background: 'rgba(255, 255, 255, 0.03)', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
+                  <input
+                    type="checkbox"
+                    checked={autoDownloadSetting}
+                    onChange={(e) => toggleAutoDownloadSetting(e.target.checked)}
+                    style={{ marginTop: 3 }}
+                  />
+                  <div>
+                    <strong style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text)', fontSize: '0.9rem' }}>
+                      Download automático com marca d'água
+                      {!autoDownloadSetting && <span style={{ fontSize: '0.68rem', padding: '1px 6px', borderRadius: 999, background: 'rgba(94, 234, 212, 0.15)', color: 'var(--cyan)' }}>Econômico</span>}
+                    </strong>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)', lineHeight: 1.3, display: 'block', marginTop: 2 }}>
+                      Baixa cada foto com tarja carimbada no aparelho logo após disparar. Desative para economizar bateria e armazenamento.
+                    </span>
+                  </div>
+                </label>
+
+                <label className="check-row" style={{ cursor: 'pointer', display: 'flex', alignItems: 'flex-start', gap: 10, padding: '12px', background: 'rgba(255, 255, 255, 0.03)', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
+                  <input
+                    type="checkbox"
+                    checked={realtimeOcrSetting}
+                    onChange={(e) => toggleRealtimeOcrSetting(e.target.checked)}
+                    style={{ marginTop: 3 }}
+                  />
+                  <div>
+                    <strong style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text)', fontSize: '0.9rem' }}>
+                      OCR em tempo real na captura
+                      {!realtimeOcrSetting && <span style={{ fontSize: '0.68rem', padding: '1px 6px', borderRadius: 999, background: 'rgba(94, 234, 212, 0.15)', color: 'var(--cyan)' }}>Econômico</span>}
+                    </strong>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)', lineHeight: 1.3, display: 'block', marginTop: 2 }}>
+                      Reconhece o hidrômetro via rede neural no exato momento do clique. Desative para captura ultrarrápida e menor uso de CPU.
                     </span>
                   </div>
                 </label>
