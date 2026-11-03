@@ -1,21 +1,22 @@
 :root {
-  --bg: #071822;
-  --bg-2: #0a2030;
-  --surface: rgba(13, 37, 52, 0.55);
-  --surface-strong: rgba(16, 45, 63, 0.78);
-  --border: rgba(94, 234, 212, 0.14);
-  --border-strong: rgba(94, 234, 212, 0.34);
-  --cyan: #5eead4;
-  --cyan-dim: #2dd4bf;
-  --teal: #14b8a6;
-  --text: #e6f6f4;
-  --text-dim: #8fb7b3;
-  --danger: #f87171;
-  --amber: #fbbf24;
-  --radius: 18px;
-  --font-display: 'Unbounded', system-ui, sans-serif;
-  --font-body: 'Outfit', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --bg: #030F16;
+  --bg-2: #081E29;
+  --surface: rgba(12, 40, 55, 0.65);
+  --surface-strong: rgba(8, 30, 41, 0.82);
+  --border: rgba(45, 212, 191, 0.14);
+  --border-strong: rgba(45, 212, 191, 0.32);
+  --cyan: #5EEAD4;
+  --cyan-dim: #2DD4BF;
+  --teal: #14B8A6;
+  --text: #F1F5F9;
+  --text-dim: #94A3B8;
+  --danger: #FB7185;
+  --amber: #FBBF24;
+  --emerald: #34D399;
+  --radius: 20px;
+  --font-display: "DM Sans", "Outfit", system-ui, sans-serif;
+  --font-body: "DM Sans", "Outfit", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
 }
 
 * {

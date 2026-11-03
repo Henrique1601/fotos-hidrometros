@@ -1,5 +1,34 @@
 # 07 - Changelog
 
+## 2026-11-03 — Modernização Visual Estética Fluida (Padrão Hidrômetro-Motion)
+
+### Feito
+
+- **Redesign Visual Completo com Paleta Profunda e Frosted Glassmorphism**:
+  - Alinhado com a referência estética de alta fidelidade (`hidrometro-motion`), preservando 100% das regras de negócio, dados e integrações.
+  - **Fundo Atmosférico Profundo**: Substituído o fundo plano pela paleta oceano ultra-escuro (`#030F16` e `#081E29`) com iluminação volumétrica dinâmica em três orbs radiais ciano e teal (`.bg-orbs`).
+  - **Superfícies Glassmorphic Acetinadas**: Atualizadas as classes `.glass`, `.card-surface` e `.surface-glass` com `backdrop-filter: blur(20px) saturate(140%)`, bordas translúcidas de precisão (`rgba(45, 212, 191, 0.14)`) e elevação interativa com brilho suave no hover.
+- **Nova Tipografia 'DM Sans'**:
+  - Incorporada a família `DM Sans` (Google Fonts) para corpo de texto, botões, chips e rótulos de navegação, mantendo `JetBrains Mono` para códigos de hidrômetro e `Unbounded` para títulos de marca.
+- **Botões e Ações de Alto Brilho**:
+  - `.btn-primary` redesenhado com gradiente fluido `linear-gradient(120deg, #5EEAD4 0%, #2DD4BF 45%, #06B6D4 100%)`, tipografia escura (`#021A1A`) de alto contraste e microinteração de escala e sombra neon ao toque.
+  - `.icon-btn` e botões secundários estilizados com fundo translúcido e bordas ciano responsivas.
+- **Grade Tátil de Apartamentos (`.apt-btn`)**:
+  - Cantos suaves (18px), gradientes sutis de superfície, microinteração tátil de clique (`active: scale(0.96)`) e anéis iluminados neon nos estados de foto capturada e índice conferido.
+- **Chips de Navegação de Torres e Andares (`.chip`, `.chip-active`)**:
+  - Dimensão ergonômica tátil de 42px, cantos arredondados modernos (14px) e estado selecionado com glow neon teal/ciano.
+- **Tela de Índices com Moldura Fotográfica de Estúdio**:
+  - Moldura de foto (`.iv-photo-wrap`) com gradiente radial de iluminação central, painel inferior com vidro fosco e input de índice em JetBrains Mono com anel de foco neon.
+
+### Testes
+
+- `npm run test`: **98/98** testes unitários aprovados.
+- `npm run test:e2e`: **8/8** testes Playwright E2E aprovados.
+- `npm run build`: Typecheck (`tsc -b`) e build Vite 100% aprovados.
+
+---
+
+
 ## 2026-10-30 — Otimização de Consumo de Bateria: Toggles de Download com Marca d'Água e OCR Neural, e Suspensão em Background
 
 ### Feito
